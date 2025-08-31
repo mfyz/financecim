@@ -7,38 +7,68 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen">
-        <nav class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <h1 class="text-xl font-semibold">Financecim Prototype</h1>
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-4xl w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">Financecim Prototype</h1>
+                <p class="text-lg text-gray-600">Personal finance tracking application</p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-lg p-8">
+                <h2 class="text-2xl font-bold mb-6">Prototype Screens</h2>
+                
+                <div class="grid gap-4 md:grid-cols-2">
+                    <!-- Data Management -->
+                    <div>
+                        <h3 class="font-semibold text-gray-700 mb-3">Data Management</h3>
+                        <div class="space-y-2">
+                            <a href="./sources.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Sources</h4>
+                                <p class="text-sm text-gray-600">Manage financial sources (banks, cards)</p>
+                            </a>
+                            <a href="./categories.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Categories</h4>
+                                <p class="text-sm text-gray-600">Create and organize spending categories</p>
+                            </a>
+                            <a href="./mappings.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Category Mappings</h4>
+                                <p class="text-sm text-gray-600">Map source categories to your categories</p>
+                            </a>
+                            <a href="./rules.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Auto-Categorization Rules</h4>
+                                <p class="text-sm text-gray-600">Set up rules for automatic categorization</p>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Transactions -->
+                    <div>
+                        <h3 class="font-semibold text-gray-700 mb-3">Transactions & Import</h3>
+                        <div class="space-y-2">
+                            <a href="./transactions.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Transactions</h4>
+                                <p class="text-sm text-gray-600">View, filter, and categorize transactions</p>
+                            </a>
+                            <a href="./import.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                                <h4 class="font-semibold text-blue-600">Import Data</h4>
+                                <p class="text-sm text-gray-600">Import transactions from CSV files</p>
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </nav>
-        
-        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold mb-4">Welcome to Financecim</h2>
-                <p class="text-gray-600 mb-6">Personal finance tracking application prototype</p>
                 
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <a href="#" class="block p-4 border rounded-lg hover:shadow-md transition-shadow">
-                        <h3 class="font-semibold mb-2">Sources</h3>
-                        <p class="text-sm text-gray-600">Manage financial sources</p>
-                    </a>
-                    <a href="#" class="block p-4 border rounded-lg hover:shadow-md transition-shadow">
-                        <h3 class="font-semibold mb-2">Categories</h3>
-                        <p class="text-sm text-gray-600">Organize transaction categories</p>
-                    </a>
-                    <a href="#" class="block p-4 border rounded-lg hover:shadow-md transition-shadow">
-                        <h3 class="font-semibold mb-2">Transactions</h3>
-                        <p class="text-sm text-gray-600">View and manage transactions</p>
-                    </a>
+                <div class="mt-8 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-semibold text-blue-900 mb-2">💡 Prototype Features</h3>
+                    <ul class="text-sm text-blue-800 space-y-1">
+                        <li>• All screens are fully interactive with Alpine.js</li>
+                        <li>• Data is simulated (not persisted)</li>
+                        <li>• Navigation between all screens works</li>
+                        <li>• Forms and modals are functional</li>
+                        <li>• Filters and sorting demonstrate the intended UX</li>
+                    </ul>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 </body>
 </html>

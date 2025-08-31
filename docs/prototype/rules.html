@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Categorization Rules - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex" x-data="{ 
+        showAddModal: false,
+        showEditModal: false,
+        showTestModal: false,
+        editingRule: null,
+        testText: '',
+        testResult: null,
+        rules: [
+            { id: 1, type: 'contains', pattern: 'WALMART', category: 'Groceries', priority: 1, active: true },
+            { id: 2, type: 'contains', pattern: 'TARGET', category: 'Shopping', priority: 2, active: true },
+            { id: 3, type: 'starts_with', pattern: 'SHELL', category: 'Gas', priority: 3, active: true },
+            { id: 4, type: 'contains', pattern: 'STARBUCKS', category: 'Restaurants', priority: 4, active: true },
+            { id: 5, type: 'regex', pattern: '^UBER.*EATS', category: 'Restaurants', priority: 5, active: false },
+            { id: 6, type: 'contains', pattern: 'NETFLIX', category: 'Entertainment', priority: 6, active: true },
+            { id: 7, type: 'contains', pattern: 'SPOTIFY', category: 'Entertainment', priority: 7, active: true },
+            { id: 8, type: 'contains', pattern: 'COMCAST', category: 'Bills & Utilities', priority: 8, active: true }
+        ],
+        testRule(rule) {
+            if (!this.testText) {
+                this.testResult = 'Please enter test text';
+                return;
+            }
+            let matches = false;
+            const text = this.testText.toUpperCase();
+            const pattern = rule.pattern.toUpperCase();
+            
+            if (rule.type === 'contains') {
+                matches = text.includes(pattern);
+            } else if (rule.type === 'starts_with') {
+                matches = text.startsWith(pattern);
+            } else if (rule.type === 'regex') {
+                try {
+                    const regex = new RegExp(pattern);
+                    matches = regex.test(text);
+                } catch (e) {
+                    this.testResult = 'Invalid regex pattern';
+                    return;
+                }
+            }
+            
+            this.testResult = matches 
+                ? `✅ Match! Would categorize as: ${rule.category}` 
+                : '❌ No match';
+        },
+        moveUp(rule) {
+            const index = this.rules.findIndex(r => r.id === rule.id);
+            if (index > 0) {
+                const temp = this.rules[index].priority;
+                this.rules[index].priority = this.rules[index - 1].priority;
+                this.rules[index - 1].priority = temp;
+                this.rules.sort((a, b) => a.priority - b.priority);
+            }
+        },
+        moveDown(rule) {
+            const index = this.rules.findIndex(r => r.id === rule.id);
+            if (index < this.rules.length - 1) {
+                const temp = this.rules[index].priority;
+                this.rules[index].priority = this.rules[index + 1].priority;
+                this.rules[index + 1].priority = temp;
+                this.rules.sort((a, b) => a.priority - b.priority);
+            }
+        }
+    }">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Sources
+                </a>
+                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Categories
+                </a>
+                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Category Mappings
+                </a>
+                <a href="./rules.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    Auto-Categorization Rules
+                </a>
+                <a href="./transactions.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Transactions
+                </a>
+                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Import Data
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-3xl font-bold text-gray-800">Auto-Categorization Rules</h2>
+                    <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        + Add Rule
+                    </button>
+                </div>
+                <p class="text-gray-600">Rules are applied in priority order. First matching rule wins.</p>
+            </div>
+
+            <!-- Rules Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="rule in rules" :key="rule.id">
+                            <tr :class="!rule.active ? 'opacity-50' : ''">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <div class="flex items-center space-x-1">
+                                        <span x-text="rule.priority" class="font-semibold"></span>
+                                        <div class="flex flex-col">
+                                            <button @click="moveUp(rule)" class="text-gray-400 hover:text-gray-600" :disabled="rule.priority === 1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                                </svg>
+                                            </button>
+                                            <button @click="moveDown(rule)" class="text-gray-400 hover:text-gray-600" :disabled="rule.priority === rules.length">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span class="text-xs bg-gray-100 px-2 py-1 rounded mr-2" x-text="rule.type"></span>
+                                    <code class="text-xs bg-blue-50 px-2 py-1 rounded" x-text="rule.pattern"></code>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span x-text="rule.category"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button @click="rule.active = !rule.active">
+                                        <span x-show="rule.active" class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>
+                                        <span x-show="!rule.active" class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                                    </button>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button @click="editingRule = rule; testText = ''; testResult = null; showTestModal = true" class="text-green-600 hover:text-green-900 mr-3">Test</button>
+                                    <button @click="editingRule = rule; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                    <button @click="rules = rules.filter(r => r.id !== rule.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add Modal -->
+        <div x-show="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showAddModal = false">
+                <h3 class="text-lg font-semibold mb-4">Add Auto-Categorization Rule</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
+                        <select class="w-full border rounded-lg px-3 py-2">
+                            <option value="contains">Contains</option>
+                            <option value="starts_with">Starts With</option>
+                            <option value="regex">Regular Expression</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pattern</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., WALMART">
+                        <p class="text-xs text-gray-500 mt-1">Text to match in transaction descriptions</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select class="w-full border rounded-lg px-3 py-2">
+                            <option value="">Select a category...</option>
+                            <optgroup label="Food & Dining">
+                                <option value="Groceries">Groceries</option>
+                                <option value="Restaurants">Restaurants</option>
+                            </optgroup>
+                            <optgroup label="Transportation">
+                                <option value="Transportation">Transportation (General)</option>
+                                <option value="Gas">Gas</option>
+                            </optgroup>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <input type="number" class="w-full border rounded-lg px-3 py-2" value="9" min="1">
+                        <p class="text-xs text-gray-500 mt-1">Lower numbers = higher priority</p>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Rule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div x-show="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showEditModal = false">
+                <h3 class="text-lg font-semibold mb-4">Edit Rule</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
+                        <select class="w-full border rounded-lg px-3 py-2" :value="editingRule?.type">
+                            <option value="contains">Contains</option>
+                            <option value="starts_with">Starts With</option>
+                            <option value="regex">Regular Expression</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pattern</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingRule?.pattern">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select class="w-full border rounded-lg px-3 py-2" :value="editingRule?.category">
+                            <option value="">Select a category...</option>
+                            <optgroup label="Food & Dining">
+                                <option value="Groceries">Groceries</option>
+                                <option value="Restaurants">Restaurants</option>
+                            </optgroup>
+                            <optgroup label="Transportation">
+                                <option value="Transportation">Transportation (General)</option>
+                                <option value="Gas">Gas</option>
+                            </optgroup>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <input type="number" class="w-full border rounded-lg px-3 py-2" :value="editingRule?.priority" min="1">
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Modal -->
+        <div x-show="showTestModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showTestModal = false">
+                <h3 class="text-lg font-semibold mb-4">Test Rule</h3>
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-3 rounded">
+                        <p class="text-sm font-medium text-gray-700">Rule:</p>
+                        <p class="text-sm">
+                            <span class="bg-gray-100 px-2 py-1 rounded text-xs" x-text="editingRule?.type"></span>
+                            <code class="bg-blue-50 px-2 py-1 rounded text-xs ml-2" x-text="editingRule?.pattern"></code>
+                        </p>
+                        <p class="text-sm mt-1">→ <span x-text="editingRule?.category"></span></p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Test Transaction Description</label>
+                        <input 
+                            type="text" 
+                            x-model="testText"
+                            @keyup="testRule(editingRule)"
+                            class="w-full border rounded-lg px-3 py-2" 
+                            placeholder="e.g., WALMART SUPERCENTER #1234"
+                        >
+                    </div>
+                    <div x-show="testResult" class="p-3 rounded" :class="testResult?.includes('✅') ? 'bg-green-50' : 'bg-red-50'">
+                        <p class="text-sm" x-text="testResult"></p>
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button @click="showTestModal = false; testText = ''; testResult = null" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

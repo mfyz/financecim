@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex" x-data="{ 
+        selectedTransactions: [],
+        showBulkActions: false,
+        searchTerm: '',
+        dateFrom: '',
+        dateTo: '',
+        selectedSource: 'all',
+        selectedCategory: 'all',
+        amountMin: '',
+        amountMax: '',
+        showIgnored: false,
+        sortBy: 'date',
+        sortOrder: 'desc',
+        transactions: [
+            { id: 1, source: 'Chase Bank', date: '2024-01-20', description: 'WALMART SUPERCENTER #1234', amount: -125.43, source_category: 'FOOD_GROCERY', category: 'Groceries', ignore: false, notes: '' },
+            { id: 2, source: 'Chase Bank', date: '2024-01-19', description: 'SHELL GAS STATION', amount: -45.00, source_category: 'GAS_STATION', category: 'Gas', ignore: false, notes: 'Fill up' },
+            { id: 3, source: 'Capital One', date: '2024-01-19', description: 'STARBUCKS STORE #5678', amount: -6.75, source_category: 'RESTAURANT', category: 'Restaurants', ignore: false, notes: '' },
+            { id: 4, source: 'Chase Bank', date: '2024-01-18', description: 'TARGET STORE #9012', amount: -89.23, source_category: 'SHOPPING_GENERAL', category: 'Shopping', ignore: false, notes: '' },
+            { id: 5, source: 'Capital One', date: '2024-01-18', description: 'NETFLIX.COM', amount: -15.99, source_category: 'ENTERTAINMENT', category: 'Entertainment', ignore: false, notes: 'Monthly subscription' },
+            { id: 6, source: 'Chase Bank', date: '2024-01-17', description: 'COMCAST CABLE', amount: -120.00, source_category: 'UTILITIES', category: 'Bills & Utilities', ignore: false, notes: '' },
+            { id: 7, source: 'Chase Bank', date: '2024-01-17', description: 'PAYCHECK DEPOSIT', amount: 3500.00, source_category: 'INCOME', category: null, ignore: true, notes: 'Salary' },
+            { id: 8, source: 'Capital One', date: '2024-01-16', description: 'AMAZON.COM', amount: -42.99, source_category: 'SHOPPING_ONLINE', category: 'Shopping', ignore: false, notes: '' },
+            { id: 9, source: 'Chase Bank', date: '2024-01-16', description: 'WHOLE FOODS MARKET', amount: -78.65, source_category: 'FOOD_GROCERY', category: 'Groceries', ignore: false, notes: '' },
+            { id: 10, source: 'Capital One', date: '2024-01-15', description: 'UBER EATS', amount: -32.45, source_category: 'RESTAURANT', category: 'Restaurants', ignore: false, notes: 'Dinner delivery' }
+        ],
+        get filteredTransactions() {
+            let filtered = [...this.transactions];
+            
+            // Search filter
+            if (this.searchTerm) {
+                filtered = filtered.filter(t => 
+                    t.description.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                    t.notes.toLowerCase().includes(this.searchTerm.toLowerCase())
+                );
+            }
+            
+            // Date filters
+            if (this.dateFrom) {
+                filtered = filtered.filter(t => t.date >= this.dateFrom);
+            }
+            if (this.dateTo) {
+                filtered = filtered.filter(t => t.date <= this.dateTo);
+            }
+            
+            // Source filter
+            if (this.selectedSource !== 'all') {
+                filtered = filtered.filter(t => t.source === this.selectedSource);
+            }
+            
+            // Category filter
+            if (this.selectedCategory !== 'all') {
+                if (this.selectedCategory === 'uncategorized') {
+                    filtered = filtered.filter(t => !t.category);
+                } else {
+                    filtered = filtered.filter(t => t.category === this.selectedCategory);
+                }
+            }
+            
+            // Amount filters
+            if (this.amountMin) {
+                filtered = filtered.filter(t => Math.abs(t.amount) >= parseFloat(this.amountMin));
+            }
+            if (this.amountMax) {
+                filtered = filtered.filter(t => Math.abs(t.amount) <= parseFloat(this.amountMax));
+            }
+            
+            // Ignored filter
+            if (!this.showIgnored) {
+                filtered = filtered.filter(t => !t.ignore);
+            }
+            
+            // Sorting
+            filtered.sort((a, b) => {
+                let comparison = 0;
+                if (this.sortBy === 'date') {
+                    comparison = a.date.localeCompare(b.date);
+                } else if (this.sortBy === 'amount') {
+                    comparison = a.amount - b.amount;
+                } else if (this.sortBy === 'description') {
+                    comparison = a.description.localeCompare(b.description);
+                }
+                return this.sortOrder === 'asc' ? comparison : -comparison;
+            });
+            
+            return filtered;
+        },
+        toggleSort(field) {
+            if (this.sortBy === field) {
+                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortBy = field;
+                this.sortOrder = 'desc';
+            }
+        },
+        toggleTransaction(id) {
+            if (this.selectedTransactions.includes(id)) {
+                this.selectedTransactions = this.selectedTransactions.filter(tid => tid !== id);
+            } else {
+                this.selectedTransactions.push(id);
+            }
+            this.showBulkActions = this.selectedTransactions.length > 0;
+        },
+        selectAll() {
+            if (this.selectedTransactions.length === this.filteredTransactions.length) {
+                this.selectedTransactions = [];
+                this.showBulkActions = false;
+            } else {
+                this.selectedTransactions = this.filteredTransactions.map(t => t.id);
+                this.showBulkActions = true;
+            }
+        },
+        bulkCategorize(category) {
+            this.transactions.forEach(t => {
+                if (this.selectedTransactions.includes(t.id)) {
+                    t.category = category;
+                }
+            });
+            this.selectedTransactions = [];
+            this.showBulkActions = false;
+        },
+        bulkIgnore() {
+            this.transactions.forEach(t => {
+                if (this.selectedTransactions.includes(t.id)) {
+                    t.ignore = !t.ignore;
+                }
+            });
+            this.selectedTransactions = [];
+            this.showBulkActions = false;
+        }
+    }">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Sources
+                </a>
+                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Categories
+                </a>
+                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Category Mappings
+                </a>
+                <a href="./rules.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Auto-Categorization Rules
+                </a>
+                <a href="./transactions.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    Transactions
+                </a>
+                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Import Data
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Transactions</h2>
+                <p class="text-gray-600">View and manage all your transactions</p>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <!-- Search -->
+                    <div class="lg:col-span-2">
+                        <input 
+                            type="text" 
+                            x-model="searchTerm"
+                            placeholder="Search transactions..."
+                            class="w-full border rounded-lg px-3 py-2 text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Date Range -->
+                    <div>
+                        <input 
+                            type="date" 
+                            x-model="dateFrom"
+                            class="w-full border rounded-lg px-3 py-2 text-sm"
+                        >
+                    </div>
+                    <div>
+                        <input 
+                            type="date" 
+                            x-model="dateTo"
+                            class="w-full border rounded-lg px-3 py-2 text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Source -->
+                    <div>
+                        <select x-model="selectedSource" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            <option value="all">All Sources</option>
+                            <option value="Chase Bank">Chase Bank</option>
+                            <option value="Capital One">Capital One</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Category -->
+                    <div>
+                        <select x-model="selectedCategory" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            <option value="all">All Categories</option>
+                            <option value="uncategorized">Uncategorized</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Restaurants">Restaurants</option>
+                            <option value="Gas">Gas</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Amount Range -->
+                    <div class="flex space-x-2">
+                        <input 
+                            type="number" 
+                            x-model="amountMin"
+                            placeholder="Min $"
+                            class="w-1/2 border rounded-lg px-3 py-2 text-sm"
+                        >
+                        <input 
+                            type="number" 
+                            x-model="amountMax"
+                            placeholder="Max $"
+                            class="w-1/2 border rounded-lg px-3 py-2 text-sm"
+                        >
+                    </div>
+                    
+                    <!-- Show Ignored -->
+                    <div class="flex items-center">
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" x-model="showIgnored" class="mr-2">
+                            Show ignored
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Bar -->
+            <div x-show="showBulkActions" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-blue-900">
+                        <span x-text="selectedTransactions.length"></span> transactions selected
+                    </span>
+                    <div class="space-x-2">
+                        <select @change="bulkCategorize($event.target.value); $event.target.value=''" class="border rounded px-2 py-1 text-sm">
+                            <option value="">Bulk categorize as...</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Restaurants">Restaurants</option>
+                            <option value="Gas">Gas</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                        </select>
+                        <button @click="bulkIgnore()" class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                            Toggle Ignore
+                        </button>
+                        <button @click="selectedTransactions = []; showBulkActions = false" class="text-gray-600 hover:text-gray-800 text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-3">
+                                    <input 
+                                        type="checkbox" 
+                                        @click="selectAll()"
+                                        :checked="selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0"
+                                    >
+                                </th>
+                                <th @click="toggleSort('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                    Date
+                                    <span x-show="sortBy === 'date'">
+                                        <span x-show="sortOrder === 'desc'">↓</span>
+                                        <span x-show="sortOrder === 'asc'">↑</span>
+                                    </span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                                <th @click="toggleSort('description')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                    Description
+                                    <span x-show="sortBy === 'description'">
+                                        <span x-show="sortOrder === 'desc'">↓</span>
+                                        <span x-show="sortOrder === 'asc'">↑</span>
+                                    </span>
+                                </th>
+                                <th @click="toggleSort('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                    Amount
+                                    <span x-show="sortBy === 'amount'">
+                                        <span x-show="sortOrder === 'desc'">↓</span>
+                                        <span x-show="sortOrder === 'asc'">↑</span>
+                                    </span>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ignore</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="transaction in filteredTransactions" :key="transaction.id">
+                                <tr :class="transaction.ignore ? 'opacity-50 bg-gray-50' : ''">
+                                    <td class="px-4 py-3">
+                                        <input 
+                                            type="checkbox" 
+                                            :checked="selectedTransactions.includes(transaction.id)"
+                                            @click="toggleTransaction(transaction.id)"
+                                        >
+                                    </td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900" x-text="transaction.date"></td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.source"></td>
+                                    <td class="px-6 py-3 text-sm text-gray-900">
+                                        <div x-text="transaction.description"></div>
+                                        <div class="text-xs text-gray-500" x-text="transaction.source_category"></div>
+                                    </td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm font-semibold" 
+                                        :class="transaction.amount > 0 ? 'text-green-600' : 'text-red-600'">
+                                        <span x-text="transaction.amount > 0 ? '+' : ''"></span>
+                                        <span x-text="'$' + Math.abs(transaction.amount).toFixed(2)"></span>
+                                    </td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm">
+                                        <select 
+                                            x-model="transaction.category"
+                                            class="border rounded px-2 py-1 text-xs"
+                                            :class="!transaction.category ? 'border-red-300 bg-red-50' : ''"
+                                        >
+                                            <option value="">Uncategorized</option>
+                                            <option value="Groceries">Groceries</option>
+                                            <option value="Restaurants">Restaurants</option>
+                                            <option value="Gas">Gas</option>
+                                            <option value="Transportation">Transportation</option>
+                                            <option value="Entertainment">Entertainment</option>
+                                            <option value="Shopping">Shopping</option>
+                                            <option value="Bills & Utilities">Bills & Utilities</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm">
+                                        <input type="checkbox" x-model="transaction.ignore">
+                                    </td>
+                                    <td class="px-6 py-3 text-sm">
+                                        <input 
+                                            type="text" 
+                                            x-model="transaction.notes"
+                                            placeholder="Add notes..."
+                                            class="border rounded px-2 py-1 text-xs w-32"
+                                        >
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div x-show="filteredTransactions.length === 0" class="text-center py-8 text-gray-500">
+                    No transactions found
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="mt-4 text-sm text-gray-600">
+                Showing <span x-text="filteredTransactions.length"></span> of <span x-text="transactions.length"></span> transactions
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex" x-data="{ 
+        showAddModal: false,
+        showEditModal: false,
+        editingCategory: null,
+        categories: [
+            { id: 1, name: 'Food & Dining', parent: null, color: '#10B981', icon: '🍔' },
+            { id: 2, name: 'Groceries', parent: 'Food & Dining', color: '#10B981', icon: '🛒' },
+            { id: 3, name: 'Restaurants', parent: 'Food & Dining', color: '#10B981', icon: '🍽️' },
+            { id: 4, name: 'Transportation', parent: null, color: '#3B82F6', icon: '🚗' },
+            { id: 5, name: 'Gas', parent: 'Transportation', color: '#3B82F6', icon: '⛽' },
+            { id: 6, name: 'Entertainment', parent: null, color: '#8B5CF6', icon: '🎮' },
+            { id: 7, name: 'Shopping', parent: null, color: '#EC4899', icon: '🛍️' },
+            { id: 8, name: 'Bills & Utilities', parent: null, color: '#EF4444', icon: '📄' }
+        ]
+    }">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Sources
+                </a>
+                <a href="./categories.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    Categories
+                </a>
+                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Category Mappings
+                </a>
+                <a href="./rules.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Auto-Categorization Rules
+                </a>
+                <a href="./transactions.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Transactions
+                </a>
+                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Import Data
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8 flex justify-between items-center">
+                <h2 class="text-3xl font-bold text-gray-800">Categories</h2>
+                <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    + Add Category
+                </button>
+            </div>
+
+            <!-- Categories Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="category in categories" :key="category.id">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <span x-text="category.icon" class="mr-2"></span>
+                                    <span x-text="category.name"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span x-text="category.parent || '-'" :class="category.parent ? '' : 'text-gray-400'"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div class="flex items-center">
+                                        <div class="w-4 h-4 rounded mr-2" :style="`background-color: ${category.color}`"></div>
+                                        <span x-text="category.color" class="text-xs font-mono"></span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button @click="editingCategory = category; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                    <button @click="categories = categories.filter(c => c.id !== category.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add Modal -->
+        <div x-show="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showAddModal = false">
+                <h3 class="text-lg font-semibold mb-4">Add New Category</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., Groceries">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category (Optional)</label>
+                        <select class="w-full border rounded-lg px-3 py-2">
+                            <option value="">None</option>
+                            <option value="1">Food & Dining</option>
+                            <option value="4">Transportation</option>
+                            <option value="6">Entertainment</option>
+                            <option value="7">Shopping</option>
+                            <option value="8">Bills & Utilities</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                        <input type="color" class="w-full h-10 border rounded-lg px-1 py-1" value="#3B82F6">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., 🛒">
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Category</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div x-show="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showEditModal = false">
+                <h3 class="text-lg font-semibold mb-4">Edit Category</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingCategory?.name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category (Optional)</label>
+                        <select class="w-full border rounded-lg px-3 py-2">
+                            <option value="">None</option>
+                            <option value="1">Food & Dining</option>
+                            <option value="4">Transportation</option>
+                            <option value="6">Entertainment</option>
+                            <option value="7">Shopping</option>
+                            <option value="8">Bills & Utilities</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                        <input type="color" class="w-full h-10 border rounded-lg px-1 py-1" :value="editingCategory?.color">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingCategory?.icon">
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

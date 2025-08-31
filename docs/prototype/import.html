@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Data - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex" x-data="{ 
+        currentStep: 1,
+        selectedSource: '',
+        uploadedFiles: [],
+        csvData: [],
+        columnMapping: {
+            date: '',
+            description: '',
+            amount: '',
+            source_category: ''
+        },
+        previewData: [],
+        importSummary: {
+            totalRows: 0,
+            newTransactions: 0,
+            duplicates: 0,
+            errors: 0
+        },
+        handleFileUpload(event) {
+            const files = event.target.files;
+            this.uploadedFiles = Array.from(files).map(file => ({
+                name: file.name,
+                size: (file.size / 1024).toFixed(2) + ' KB',
+                rows: Math.floor(Math.random() * 500) + 100
+            }));
+            
+            // Simulate CSV parsing
+            this.csvData = [
+                ['Date', 'Description', 'Amount', 'Category', 'Balance'],
+                ['01/20/2024', 'WALMART SUPERCENTER', '-125.43', 'FOOD_GROCERY', '2345.67'],
+                ['01/19/2024', 'SHELL GAS STATION', '-45.00', 'GAS_STATION', '2470.67'],
+                ['01/19/2024', 'STARBUCKS', '-6.75', 'RESTAURANT', '2515.67'],
+                ['01/18/2024', 'TARGET', '-89.23', 'SHOPPING_GENERAL', '2522.42'],
+                ['01/18/2024', 'NETFLIX.COM', '-15.99', 'ENTERTAINMENT', '2611.65']
+            ];
+        },
+        autoDetectColumns() {
+            const headers = this.csvData[0];
+            headers.forEach((header, index) => {
+                const headerLower = header.toLowerCase();
+                if (headerLower.includes('date')) {
+                    this.columnMapping.date = index.toString();
+                } else if (headerLower.includes('desc') || headerLower.includes('merchant')) {
+                    this.columnMapping.description = index.toString();
+                } else if (headerLower.includes('amount') || headerLower.includes('debit')) {
+                    this.columnMapping.amount = index.toString();
+                } else if (headerLower.includes('categ') || headerLower.includes('type')) {
+                    this.columnMapping.source_category = index.toString();
+                }
+            });
+            this.updatePreview();
+        },
+        updatePreview() {
+            this.previewData = this.csvData.slice(1, 6).map(row => ({
+                date: row[parseInt(this.columnMapping.date)] || '',
+                description: row[parseInt(this.columnMapping.description)] || '',
+                amount: row[parseInt(this.columnMapping.amount)] || '',
+                source_category: row[parseInt(this.columnMapping.source_category)] || '',
+                auto_category: this.getAutoCategory(row[parseInt(this.columnMapping.description)] || '')
+            }));
+        },
+        getAutoCategory(description) {
+            const desc = description.toUpperCase();
+            if (desc.includes('WALMART')) return 'Groceries';
+            if (desc.includes('SHELL') || desc.includes('GAS')) return 'Gas';
+            if (desc.includes('STARBUCKS')) return 'Restaurants';
+            if (desc.includes('TARGET')) return 'Shopping';
+            if (desc.includes('NETFLIX')) return 'Entertainment';
+            return 'Uncategorized';
+        },
+        nextStep() {
+            if (this.currentStep === 2) {
+                this.autoDetectColumns();
+            }
+            if (this.currentStep === 3) {
+                // Calculate import summary
+                this.importSummary.totalRows = this.uploadedFiles.reduce((sum, file) => sum + file.rows, 0);
+                this.importSummary.newTransactions = Math.floor(this.importSummary.totalRows * 0.85);
+                this.importSummary.duplicates = Math.floor(this.importSummary.totalRows * 0.15);
+            }
+            this.currentStep++;
+        },
+        prevStep() {
+            this.currentStep--;
+        },
+        performImport() {
+            this.currentStep = 5;
+        }
+    }">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Sources
+                </a>
+                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Categories
+                </a>
+                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Category Mappings
+                </a>
+                <a href="./rules.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Auto-Categorization Rules
+                </a>
+                <a href="./transactions.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Transactions
+                </a>
+                <a href="./import.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    Import Data
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Import Transactions</h2>
+                
+                <!-- Progress Steps -->
+                <div class="flex items-center justify-center mt-6 mb-8">
+                    <div class="flex items-center">
+                        <div class="flex items-center">
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center" 
+                                 :class="currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">1</div>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold" :class="currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'">Upload</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 2 ? 'bg-blue-500' : ''"></div>
+                        <div class="flex items-center ml-8">
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
+                                 :class="currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">2</div>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold" :class="currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'">Map Columns</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 3 ? 'bg-blue-500' : ''"></div>
+                        <div class="flex items-center ml-8">
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
+                                 :class="currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">3</div>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold" :class="currentStep >= 3 ? 'text-gray-900' : 'text-gray-500'">Preview</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 4 ? 'bg-blue-500' : ''"></div>
+                        <div class="flex items-center ml-8">
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
+                                 :class="currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">4</div>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold" :class="currentStep >= 4 ? 'text-gray-900' : 'text-gray-500'">Confirm</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 5 ? 'bg-blue-500' : ''"></div>
+                        <div class="flex items-center ml-8">
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
+                                 :class="currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">5</div>
+                            <div class="ml-2">
+                                <div class="text-sm font-semibold" :class="currentStep >= 5 ? 'text-gray-900' : 'text-gray-500'">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1: Upload -->
+            <div x-show="currentStep === 1" class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Step 1: Upload CSV Files</h3>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Source</label>
+                    <select x-model="selectedSource" class="w-full md:w-64 border rounded-lg px-3 py-2">
+                        <option value="">Choose a source...</option>
+                        <option value="chase">Chase Bank</option>
+                        <option value="capital_one">Capital One</option>
+                        <option value="manual">Manual Entry</option>
+                    </select>
+                </div>
+
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">
+                        <label class="cursor-pointer">
+                            <span class="text-blue-600 hover:text-blue-500">Upload CSV files</span>
+                            <input type="file" @change="handleFileUpload($event)" multiple accept=".csv" class="hidden">
+                        </label>
+                        or drag and drop
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">Multiple CSV files supported (must have same column structure)</p>
+                </div>
+
+                <div x-show="uploadedFiles.length > 0" class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</h4>
+                    <div class="space-y-2">
+                        <template x-for="file in uploadedFiles" :key="file.name">
+                            <div class="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                                <div>
+                                    <span class="text-sm font-medium" x-text="file.name"></span>
+                                    <span class="text-xs text-gray-500 ml-2" x-text="`(${file.size}, ~${file.rows} rows)`"></span>
+                                </div>
+                                <button @click="uploadedFiles = uploadedFiles.filter(f => f.name !== file.name)" class="text-red-500 hover:text-red-700">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button 
+                        @click="nextStep()" 
+                        :disabled="!selectedSource || uploadedFiles.length === 0"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        Next: Map Columns →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Column Mapping -->
+            <div x-show="currentStep === 2" class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Step 2: Map CSV Columns</h3>
+                
+                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-blue-900">Auto-detection found possible matches. Please verify and adjust if needed.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">CSV Columns</h4>
+                        <div class="bg-gray-50 rounded p-3">
+                            <template x-for="(header, index) in csvData[0]" :key="index">
+                                <div class="py-1">
+                                    <span class="text-sm" x-text="`Column ${index + 1}: ${header}`"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">Transaction Fields</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Date *</label>
+                                <select x-model="columnMapping.date" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
+                                    <option value="">Select column...</option>
+                                    <template x-for="(header, index) in csvData[0]" :key="index">
+                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Description *</label>
+                                <select x-model="columnMapping.description" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
+                                    <option value="">Select column...</option>
+                                    <template x-for="(header, index) in csvData[0]" :key="index">
+                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Amount *</label>
+                                <select x-model="columnMapping.amount" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
+                                    <option value="">Select column...</option>
+                                    <template x-for="(header, index) in csvData[0]" :key="index">
+                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Source Category (Optional)</label>
+                                <select x-model="columnMapping.source_category" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
+                                    <option value="">Select column...</option>
+                                    <template x-for="(header, index) in csvData[0]" :key="index">
+                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="flex items-center text-sm">
+                                <input type="checkbox" class="mr-2">
+                                Save this mapping as template for future imports
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-between">
+                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        ← Previous
+                    </button>
+                    <button 
+                        @click="nextStep()" 
+                        :disabled="!columnMapping.date || !columnMapping.description || !columnMapping.amount"
+                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        Next: Preview →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Preview -->
+            <div x-show="currentStep === 3" class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Step 3: Preview Import</h3>
+                
+                <div class="mb-6 grid grid-cols-3 gap-4">
+                    <div class="bg-gray-50 rounded p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1">Total Files</p>
+                        <p class="text-2xl font-bold" x-text="uploadedFiles.length"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1">Total Rows</p>
+                        <p class="text-2xl font-bold" x-text="uploadedFiles.reduce((sum, file) => sum + file.rows, 0)"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1">Source</p>
+                        <p class="text-lg font-semibold capitalize" x-text="selectedSource.replace('_', ' ')"></p>
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Sample Transactions (First 5 rows)</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Source Category</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Auto-Category</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <template x-for="row in previewData" :key="row">
+                                <tr>
+                                    <td class="px-4 py-2 text-sm" x-text="row.date"></td>
+                                    <td class="px-4 py-2 text-sm" x-text="row.description"></td>
+                                    <td class="px-4 py-2 text-sm font-semibold" 
+                                        :class="row.amount.startsWith('-') ? 'text-red-600' : 'text-green-600'" 
+                                        x-text="row.amount"></td>
+                                    <td class="px-4 py-2 text-sm text-gray-500" x-text="row.source_category || '-'"></td>
+                                    <td class="px-4 py-2 text-sm">
+                                        <span class="px-2 py-1 text-xs rounded-full"
+                                              :class="row.auto_category === 'Uncategorized' ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'"
+                                              x-text="row.auto_category"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 p-3 bg-yellow-50 rounded">
+                    <p class="text-sm text-yellow-800">
+                        <strong>Note:</strong> Auto-categorization will be applied based on your rules and mappings.
+                    </p>
+                </div>
+
+                <div class="mt-6 flex justify-between">
+                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        ← Previous
+                    </button>
+                    <button @click="nextStep()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        Next: Confirm →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Confirm -->
+            <div x-show="currentStep === 4" class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Step 4: Confirm Import</h3>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                    <h4 class="text-lg font-semibold text-blue-900 mb-4">Import Summary</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-blue-700">Total Transactions:</p>
+                            <p class="text-2xl font-bold text-blue-900" x-text="importSummary.totalRows"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-green-700">New Transactions:</p>
+                            <p class="text-2xl font-bold text-green-900" x-text="importSummary.newTransactions"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-yellow-700">Duplicates to Skip:</p>
+                            <p class="text-2xl font-bold text-yellow-900" x-text="importSummary.duplicates"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-red-700">Errors:</p>
+                            <p class="text-2xl font-bold text-red-900" x-text="importSummary.errors"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="flex items-center">
+                        <input type="checkbox" checked class="mr-2">
+                        <span class="text-sm">Skip duplicate transactions</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" checked class="mr-2">
+                        <span class="text-sm">Apply auto-categorization rules</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" checked class="mr-2">
+                        <span class="text-sm">Apply source category mappings</span>
+                    </label>
+                </div>
+
+                <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                    <p class="text-sm text-yellow-800">
+                        <strong>⚠️ Important:</strong> This action will import <span x-text="importSummary.newTransactions"></span> new transactions. 
+                        This cannot be undone automatically, though you can manually delete transactions later.
+                    </p>
+                </div>
+
+                <div class="mt-6 flex justify-between">
+                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        ← Previous
+                    </button>
+                    <button @click="performImport()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                        Import Transactions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Complete -->
+            <div x-show="currentStep === 5" class="bg-white rounded-lg shadow p-6">
+                <div class="text-center py-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Import Complete!</h3>
+                    <p class="text-gray-600 mb-6">Successfully imported your transactions</p>
+                    
+                    <div class="bg-gray-50 rounded-lg p-6 mb-6 max-w-md mx-auto">
+                        <div class="space-y-2 text-left">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Files Processed:</span>
+                                <span class="text-sm font-semibold" x-text="uploadedFiles.length"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Transactions Added:</span>
+                                <span class="text-sm font-semibold text-green-600" x-text="importSummary.newTransactions"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Duplicates Skipped:</span>
+                                <span class="text-sm font-semibold text-yellow-600" x-text="importSummary.duplicates"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Auto-Categorized:</span>
+                                <span class="text-sm font-semibold text-blue-600" x-text="Math.floor(importSummary.newTransactions * 0.7)"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center space-x-4">
+                        <a href="./transactions.html" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            View Transactions
+                        </a>
+                        <button @click="currentStep = 1; uploadedFiles = []; selectedSource = ''" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Import More
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

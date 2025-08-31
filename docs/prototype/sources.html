@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sources - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex" x-data="{ 
+        showAddModal: false,
+        showEditModal: false,
+        editingSource: null,
+        sources: [
+            { id: 1, name: 'Chase Bank', type: 'bank', created: '2024-01-15' },
+            { id: 2, name: 'Capital One', type: 'credit_card', created: '2024-01-16' },
+            { id: 3, name: 'Manual Entry', type: 'manual', created: '2024-01-17' }
+        ]
+    }">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+            </div>
+            <nav class="mt-6">
+                <a href="./sources.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    Sources
+                </a>
+                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Categories
+                </a>
+                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Category Mappings
+                </a>
+                <a href="./rules.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Auto-Categorization Rules
+                </a>
+                <a href="./transactions.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Transactions
+                </a>
+                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    Import Data
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8 flex justify-between items-center">
+                <h2 class="text-3xl font-bold text-gray-800">Sources</h2>
+                <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    + Add Source
+                </button>
+            </div>
+
+            <!-- Sources Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="source in sources" :key="source.id">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="source.name"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                          :class="{
+                                              'bg-green-100 text-green-800': source.type === 'bank',
+                                              'bg-blue-100 text-blue-800': source.type === 'credit_card',
+                                              'bg-gray-100 text-gray-800': source.type === 'manual'
+                                          }"
+                                          x-text="source.type.replace('_', ' ')"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="source.created"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button @click="editingSource = source; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                    <button @click="sources = sources.filter(s => s.id !== source.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Add Modal -->
+        <div x-show="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showAddModal = false">
+                <h3 class="text-lg font-semibold mb-4">Add New Source</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., Chase Bank">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                        <select class="w-full border rounded-lg px-3 py-2">
+                            <option value="bank">Bank</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Source</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div x-show="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96" @click.away="showEditModal = false">
+                <h3 class="text-lg font-semibold mb-4">Edit Source</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingSource?.name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                        <select class="w-full border rounded-lg px-3 py-2" :value="editingSource?.type">
+                            <option value="bank">Bank</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

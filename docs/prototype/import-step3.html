@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Data - Step 3 Preview - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen" x-data="{ 
+        mobileMenuOpen: false,
+        darkMode: JSON.parse(localStorage.getItem('darkMode') || 'false'),
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
+            document.documentElement.classList.toggle('dark', this.darkMode);
+            // Re-initialize icons after theme change to ensure visibility
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 50);
+                }
+            });
+        },
+        init() {
+            // Apply dark mode on page load if stored preference exists
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
+            }
+            // Initialize icons after Alpine.js component is ready
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 100);
+                }
+            });
+            // Initialize preview data
+            this.generatePreviewData();
+            this.applyFilters();
+        },
+        // Current step fixed at 3 (Preview)
+        currentStep: 3,
+        selectedSource: 'chase',
+        
+        // Pagination
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalItems: 247,
+        
+        // Search and filters
+        searchTerm: '',
+        selectedCategory: '',
+        showErrorsOnly: false,
+        dateRange: 'all',
+        
+        // Raw preview data (simulating all transactions)
+        allPreviewData: [],
+        filteredData: [],
+        currentPageData: [],
+        
+        // Statistics
+        stats: {
+            totalTransactions: 247,
+            validTransactions: 231,
+            errorTransactions: 16,
+            categorizedTransactions: 198,
+            uncategorizedTransactions: 33,
+            duplicates: 8,
+            totalAmount: -2456.78,
+            avgAmount: -9.95
+        },
+        
+        // Validation errors
+        validationErrors: [
+            { row: 23, field: 'date', message: 'Invalid date format: 2024/13/01' },
+            { row: 45, field: 'amount', message: 'Non-numeric amount: $ABC.123' },
+            { row: 67, field: 'description', message: 'Empty description field' },
+            { row: 89, field: 'date', message: 'Future date: 2025-12-25' },
+            { row: 102, field: 'amount', message: 'Missing amount value' }
+        ],
+        
+        // Edit modal
+        editingTransaction: null,
+        showEditModal: false,
+        
+        generatePreviewData() {
+            // Generate sample transaction data with variety
+            const merchants = [
+                'WALMART SUPERCENTER', 'TARGET STORE', 'AMAZON.COM', 'STARBUCKS', 'SHELL GAS STATION',
+                'MCDONALDS', 'HOME DEPOT', 'COSTCO WHOLESALE', 'NETFLIX.COM', 'SPOTIFY PREMIUM',
+                'VERIZON WIRELESS', 'ELECTRIC COMPANY', 'RENT PAYMENT', 'SALARY DEPOSIT', 'ATM WITHDRAWAL',
+                'APPLE STORE', 'KROGER GROCERY', 'EXXON MOBIL', 'SUBWAY RESTAURANT', 'UBER TRIP',
+                'PAYPAL PAYMENT', 'BANK TRANSFER', 'CHECK DEPOSIT', 'INTEREST PAYMENT', 'DIVIDEND PAYMENT',
+                'INSURANCE PREMIUM', 'CREDIT CARD PAYMENT', 'MORTGAGE PAYMENT', 'STUDENT LOAN', 'CAR PAYMENT'
+            ];
+            
+            const categories = [
+                'Groceries', 'Gas', 'Restaurants', 'Shopping', 'Entertainment', 'Utilities', 'Rent',
+                'Salary', 'Transfer', 'ATM', 'Insurance', 'Loan', 'Investment', 'Uncategorized'
+            ];
+            
+            const sourceCategories = [
+                'FOOD_GROCERY', 'GAS_STATION', 'RESTAURANT', 'SHOPPING_GENERAL', 'ENTERTAINMENT',
+                'UTILITIES', 'RENT_HOUSING', 'PAYROLL', 'TRANSFER', 'ATM_FEE', 'INSURANCE', 'LOAN_PAYMENT'
+            ];
+            
+            this.allPreviewData = [];
+            let runningBalance = 3245.67;
+            
+            for (let i = 0; i < this.stats.totalTransactions; i++) {
+                const isError = i < this.stats.errorTransactions;
+                const isDeposit = Math.random() < 0.15; // 15% deposits
+                const amount = isDeposit 
+                    ? (Math.random() * 2000 + 100).toFixed(2)
+                    : (-Math.random() * 200 - 5).toFixed(2);
+                
+                runningBalance += parseFloat(amount);
+                
+                const date = new Date();
+                date.setDate(date.getDate() - Math.floor(Math.random() * 60));
+                
+                const merchant = merchants[Math.floor(Math.random() * merchants.length)];
+                const category = categories[Math.floor(Math.random() * categories.length)];
+                const sourceCategory = sourceCategories[Math.floor(Math.random() * sourceCategories.length)];
+                
+                let transaction = {
+                    id: i + 1,
+                    date: isError && Math.random() < 0.3 ? 'INVALID_DATE' : date.toISOString().split('T')[0],
+                    description: isError && Math.random() < 0.2 ? '' : merchant,
+                    amount: isError && Math.random() < 0.4 ? 'INVALID_AMOUNT' : (isDeposit ? amount : amount),
+                    source_category: sourceCategory,
+                    auto_category: category,
+                    balance: runningBalance.toFixed(2),
+                    isDuplicate: Math.random() < 0.03, // 3% duplicates
+                    hasError: isError,
+                    errorDetails: isError ? this.getRandomError(i + 1) : null,
+                    confidence: Math.floor(Math.random() * 40) + 60 // 60-99% confidence
+                };
+                
+                this.allPreviewData.push(transaction);
+            }
+        },
+        
+        getRandomError(rowNumber) {
+            const errors = [
+                { field: 'date', message: 'Invalid date format' },
+                { field: 'amount', message: 'Non-numeric amount' },
+                { field: 'description', message: 'Empty description' },
+                { field: 'date', message: 'Future date not allowed' },
+                { field: 'amount', message: 'Missing amount value' }
+            ];
+            return errors[Math.floor(Math.random() * errors.length)];
+        },
+        
+        applyFilters() {
+            let filtered = this.allPreviewData;
+            
+            // Search filter
+            if (this.searchTerm) {
+                const term = this.searchTerm.toLowerCase();
+                filtered = filtered.filter(t => 
+                    t.description.toLowerCase().includes(term) ||
+                    t.auto_category.toLowerCase().includes(term) ||
+                    t.source_category.toLowerCase().includes(term)
+                );
+            }
+            
+            // Category filter
+            if (this.selectedCategory) {
+                filtered = filtered.filter(t => t.auto_category === this.selectedCategory);
+            }
+            
+            // Show errors only
+            if (this.showErrorsOnly) {
+                filtered = filtered.filter(t => t.hasError);
+            }
+            
+            // Date range filter
+            if (this.dateRange !== 'all') {
+                const days = parseInt(this.dateRange);
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                
+                filtered = filtered.filter(t => {
+                    if (t.date === 'INVALID_DATE') return false;
+                    return new Date(t.date) >= cutoffDate;
+                });
+            }
+            
+            this.filteredData = filtered;
+            this.totalItems = filtered.length;
+            this.updateCurrentPageData();
+        },
+        
+        updateCurrentPageData() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + this.itemsPerPage;
+            this.currentPageData = this.filteredData.slice(start, end);
+        },
+        
+        get totalPages() {
+            return Math.ceil(this.totalItems / this.itemsPerPage);
+        },
+        
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.updateCurrentPageData();
+            }
+        },
+        
+        prevPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.updateCurrentPageData();
+            }
+        },
+        
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page;
+                this.updateCurrentPageData();
+            }
+        },
+        
+        editTransaction(transaction) {
+            this.editingTransaction = { ...transaction };
+            this.showEditModal = true;
+        },
+        
+        saveTransaction() {
+            // Find and update the transaction in allPreviewData
+            const index = this.allPreviewData.findIndex(t => t.id === this.editingTransaction.id);
+            if (index !== -1) {
+                this.allPreviewData[index] = { ...this.editingTransaction };
+                this.applyFilters();
+            }
+            this.showEditModal = false;
+            this.editingTransaction = null;
+        },
+        
+        cancelEdit() {
+            this.showEditModal = false;
+            this.editingTransaction = null;
+        },
+        
+        getErrorClass(transaction) {
+            if (transaction.hasError) return 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500';
+            if (transaction.isDuplicate) return 'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500';
+            return '';
+        },
+        
+        getConfidenceColor(confidence) {
+            if (confidence >= 90) return 'text-green-600 dark:text-green-400';
+            if (confidence >= 70) return 'text-yellow-600 dark:text-yellow-400';
+            return 'text-red-600 dark:text-red-400';
+        }
+    }">
+        <!-- Top Navigation -->
+        <nav class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-12">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white mr-6">Financecim</h1>
+                        
+                        <!-- Desktop Navigation -->
+                        <div class="hidden md:flex items-center space-x-1">
+                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Dashboard
+                            </a>
+                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Sources
+                            </a>
+                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Categories
+                            </a>
+                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Mappings
+                            </a>
+                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Rules
+                            </a>
+                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Transactions
+                            </a>
+                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Import
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Theme toggle and Mobile menu button -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Theme toggle -->
+                        <button @click="toggleDarkMode()" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                            <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+                            <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
+                        </button>
+                        
+                        <!-- Mobile menu button -->
+                        <div class="md:hidden">
+                            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <i data-lucide="menu" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Navigation -->
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 dark:border-gray-700 py-1.5">
+                    <div class="flex flex-col space-y-0.5">
+                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Dashboard
+                        </a>
+                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Sources
+                        </a>
+                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Categories
+                        </a>
+                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Mappings
+                        </a>
+                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Rules
+                        </a>
+                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Transactions
+                        </a>
+                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                            <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Import
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">Import Transactions - Preview</h2>
+                
+                <!-- Progress Steps -->
+                <div class="flex items-center justify-center mt-6 mb-8">
+                    <div class="flex items-center">
+                        <div class="flex items-center">
+                            <a href="./import.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-blue-500 text-white">1</a>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-white">Upload</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-blue-500"></div>
+                        <div class="flex items-center ml-8">
+                            <a href="./import-step2.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-blue-500 text-white">2</a>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-white">Map Columns</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-blue-500"></div>
+                        <div class="flex items-center ml-8">
+                            <button class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-blue-500 text-white">3</button>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-blue-600 dark:text-blue-400">Preview</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center ml-8">
+                            <a href="./import-step5.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400">4</a>
+                            <div class="ml-2">
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Summary -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i data-lucide="file-text" class="w-8 h-8 text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Transactions</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white" x-text="stats.totalTransactions"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i data-lucide="check-circle" class="w-8 h-8 text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Valid</p>
+                            <p class="text-2xl font-bold text-green-600 dark:text-green-400" x-text="stats.validTransactions"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i data-lucide="alert-circle" class="w-8 h-8 text-red-600 dark:text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Errors</p>
+                            <p class="text-2xl font-bold text-red-600 dark:text-red-400" x-text="stats.errorTransactions"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i data-lucide="tag" class="w-8 h-8 text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Categorized</p>
+                            <p class="text-2xl font-bold text-purple-600 dark:text-purple-400" x-text="stats.categorizedTransactions"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Errors Panel -->
+            <div x-show="stats.errorTransactions > 0" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <h3 class="text-sm font-medium text-red-800 dark:text-red-300">
+                            Validation Errors Found
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700 dark:text-red-400">
+                            <p class="mb-2" x-text="`Found ${stats.errorTransactions} transactions with validation errors. Please review and fix before importing.`"></p>
+                            <div class="space-y-1">
+                                <template x-for="error in validationErrors.slice(0, 5)" :key="error.row">
+                                    <p class="text-xs" x-text="`Row ${error.row}: ${error.field} - ${error.message}`"></p>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                x-model="searchTerm" 
+                                @input="applyFilters()" 
+                                placeholder="Search transactions..."
+                                class="w-full pl-8 pr-3 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5"></i>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                        <select x-model="selectedCategory" @change="applyFilters()" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            <option value="">All Categories</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Gas">Gas</option>
+                            <option value="Restaurants">Restaurants</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Uncategorized">Uncategorized</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date Range</label>
+                        <select x-model="dateRange" @change="applyFilters()" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            <option value="all">All Dates</option>
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter</label>
+                        <label class="flex items-center">
+                            <input type="checkbox" x-model="showErrorsOnly" @change="applyFilters()" class="mr-2">
+                            <span class="text-sm text-gray-900 dark:text-white">Show errors only</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Preview Table -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 overflow-hidden">
+                <div class="px-6 py-4 border-b dark:border-gray-700">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Transaction Preview</h3>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            Showing <span x-text="((currentPage - 1) * itemsPerPage) + 1"></span>-<span x-text="Math.min(currentPage * itemsPerPage, totalItems)"></span> 
+                            of <span x-text="totalItems"></span> transactions
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confidence</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                            <template x-for="transaction in currentPageData" :key="transaction.id">
+                                <tr :class="getErrorClass(transaction)">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white" x-text="transaction.date"></td>
+                                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                                        <div class="max-w-xs truncate" :title="transaction.description" x-text="transaction.description"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold" 
+                                        :class="parseFloat(transaction.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'">
+                                        $<span x-text="Math.abs(parseFloat(transaction.amount)).toFixed(2)"></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" 
+                                              x-text="transaction.auto_category"></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span :class="getConfidenceColor(transaction.confidence)" x-text="transaction.confidence + '%'"></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex space-x-2">
+                                            <span x-show="transaction.hasError" class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                                Error
+                                            </span>
+                                            <span x-show="transaction.isDuplicate" class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                                                Duplicate
+                                            </span>
+                                            <span x-show="!transaction.hasError && !transaction.isDuplicate" class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                                Valid
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <button @click="editTransaction(transaction)" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="px-6 py-3 bg-gray-50 dark:bg-gray-700 border-t dark:border-gray-600 flex items-center justify-between">
+                    <div class="text-sm text-gray-700 dark:text-gray-300">
+                        Page <span x-text="currentPage"></span> of <span x-text="totalPages"></span>
+                    </div>
+                    
+                    <div class="flex space-x-1">
+                        <button @click="prevPage()" :disabled="currentPage === 1" 
+                                class="px-3 py-1 rounded text-sm border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300">
+                            Previous
+                        </button>
+                        
+                        <template x-for="page in Math.min(5, totalPages)" :key="page">
+                            <button @click="goToPage(page)" 
+                                    :class="page === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'"
+                                    class="px-3 py-1 rounded text-sm border dark:border-gray-600" 
+                                    x-text="page"></button>
+                        </template>
+                        
+                        <button @click="nextPage()" :disabled="currentPage === totalPages" 
+                                class="px-3 py-1 rounded text-sm border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="mt-8 flex justify-between">
+                <a href="./import-step2.html" class="px-6 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                    ← Previous: Map Columns
+                </a>
+                <a href="./import-step5.html" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    Next: Complete Import →
+                </a>
+            </div>
+        </div>
+
+        <!-- Edit Transaction Modal -->
+        <div x-show="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="cancelEdit()">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+                <div class="mt-3">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Edit Transaction</h3>
+                        <button @click="cancelEdit()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    
+                    <template x-if="editingTransaction">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                                <input type="date" x-model="editingTransaction.date" 
+                                       class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                                <input type="text" x-model="editingTransaction.description" 
+                                       class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
+                                <input type="number" step="0.01" x-model="editingTransaction.amount" 
+                                       class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                                <select x-model="editingTransaction.auto_category" 
+                                        class="w-full border dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
+                                    <option value="Groceries">Groceries</option>
+                                    <option value="Gas">Gas</option>
+                                    <option value="Restaurants">Restaurants</option>
+                                    <option value="Shopping">Shopping</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Rent">Rent</option>
+                                    <option value="Salary">Salary</option>
+                                    <option value="Transfer">Transfer</option>
+                                    <option value="Uncategorized">Uncategorized</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-2 pt-4">
+                                <button @click="cancelEdit()" 
+                                        class="px-4 py-2 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    Cancel
+                                </button>
+                                <button @click="saveTransaction()" 
+                                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize icons and handle Alpine.js dynamic content
+        function initializeIcons() {
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                try {
+                    lucide.createIcons();
+                    // Mark icons as initialized to help with detection
+                    document.querySelectorAll('[data-lucide]').forEach(icon => {
+                        if (!icon.hasAttribute('data-lucide-initialized')) {
+                            icon.setAttribute('data-lucide-initialized', 'true');
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Failed to initialize Lucide icons:', error);
+                }
+            }
+        }
+        
+        // Make function globally available
+        window.initializeIcons = initializeIcons;
+        
+        // Initialize icons when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeIcons();
+        });
+        
+        // Re-initialize icons after Alpine.js renders new content
+        document.addEventListener('alpine:initialized', function() {
+            setTimeout(initializeIcons, 100);
+        });
+        
+        // Also initialize after any DOM mutations (Alpine.js updates)
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(function(mutations) {
+                let shouldUpdate = false;
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        // Check if any nodes with data-lucide were added or changed
+                        const nodes = Array.from(mutation.addedNodes || []);
+                        nodes.forEach(node => {
+                            if (node.nodeType === 1) { // Element node
+                                if (node.hasAttribute && node.hasAttribute('data-lucide')) {
+                                    shouldUpdate = true;
+                                }
+                                if (node.querySelectorAll && node.querySelectorAll('[data-lucide]').length > 0) {
+                                    shouldUpdate = true;
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldUpdate) {
+                    setTimeout(initializeIcons, 50);
+                }
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['x-show', 'style', 'class']
+            });
+        }
+        
+        // Fallback: periodic re-initialization for any missed icons
+        setInterval(function() {
+            const uninitializedIcons = document.querySelectorAll('[data-lucide]:not([data-lucide-initialized])');
+            if (uninitializedIcons.length > 0) {
+                initializeIcons();
+            }
+        }, 1000);
+        
+        // Initial call
+        initializeIcons();
+    </script>
+</body>
+</html>

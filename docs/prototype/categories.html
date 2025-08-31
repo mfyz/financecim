@@ -10,8 +10,8 @@
             darkMode: 'class'
         }
     </script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen" x-data="{ 
@@ -21,16 +21,32 @@
             this.darkMode = !this.darkMode;
             localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
             document.documentElement.classList.toggle('dark', this.darkMode);
+            // Reinitialize icons after theme change
+            this.reinitializeIcons();
         },
         init() {
             // Apply dark mode on page load if stored preference exists
             if (this.darkMode) {
                 document.documentElement.classList.add('dark');
             }
+            
+            // Initialize icons after Alpine.js component initialization
+            this.$nextTick(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
         },
         showAddModal: false,
         showEditModal: false,
         editingCategory: null,
+        reinitializeIcons() {
+            this.$nextTick(() => {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
+        },
         categories: [
             { id: 1, name: 'Food & Dining', parent: null, color: '#10B981', icon: '🍔' },
             { id: 2, name: 'Groceries', parent: 'Food & Dining', color: '#10B981', icon: '🛒' },
@@ -92,7 +108,7 @@
                         
                         <!-- Mobile menu button -->
                         <div class="md:hidden">
-                            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            <button @click="mobileMenuOpen = !mobileMenuOpen; reinitializeIcons()" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
                                 <i data-lucide="menu" class="w-5 h-5"></i>
                             </button>
                         </div>
@@ -139,45 +155,51 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8 flex justify-between items-center">
                 <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Categories</h2>
-                <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                <button @click="showAddModal = true; reinitializeIcons()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
                     <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
                     Add Category
                 </button>
             </div>
 
             <!-- Categories Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 overflow-hidden">
                 <table class="min-w-full">
-                    <thead class="bg-gray-50 border-b">
+                    <thead class="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Category</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Parent Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Color</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         <template x-for="category in categories" :key="category.id">
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                     <div class="flex items-center">
-                                        <span x-show="category.parent" class="ml-6 text-gray-400 mr-2">└</span>
+                                        <span x-show="category.parent" class="ml-6 text-gray-400 dark:text-gray-500 mr-2">└</span>
                                         <span x-text="category.icon" class="mr-2"></span>
                                         <span x-text="category.name"></span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <span x-text="category.parent || '-'" :class="category.parent ? '' : 'text-gray-400'"></span>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    <span x-text="category.parent || '-'" :class="category.parent ? '' : 'text-gray-400 dark:text-gray-500'"></span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     <div class="flex items-center">
                                         <div class="w-4 h-4 rounded mr-2" :style="`background-color: ${category.color}`"></div>
                                         <span x-text="category.color" class="text-xs font-mono"></span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button @click="editingCategory = category; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                    <button @click="categories = categories.filter(c => c.id !== category.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                    <div class="inline-flex rounded-md shadow-sm">
+                                        <button @click="editingCategory = category; showEditModal = true; reinitializeIcons()" class="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 flex items-center justify-center" title="Edit category">
+                                            <i data-lucide="edit" class="w-4 h-4"></i>
+                                        </button>
+                                        <button @click="categories = categories.filter(c => c.id !== category.id); reinitializeIcons()" class="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 flex items-center justify-center" title="Delete category">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -187,17 +209,17 @@
         </div>
 
         <!-- Add Modal -->
-        <div x-show="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 w-96" @click.away="showAddModal = false">
-                <h3 class="text-lg font-semibold mb-4">Add New Category</h3>
+        <div x-show="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-transition>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96" @click.away="showAddModal = false; reinitializeIcons()">
+                <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add New Category</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., Groceries">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                        <input type="text" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="e.g., Groceries">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category (Optional)</label>
-                        <select class="w-full border rounded-lg px-3 py-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Parent Category (Optional)</label>
+                        <select class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="">None</option>
                             <option value="1">Food & Dining</option>
                             <option value="4">Transportation</option>
@@ -207,33 +229,33 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                        <input type="color" class="w-full h-10 border rounded-lg px-1 py-1" value="#3B82F6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                        <input type="color" class="w-full h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700" value="#3B82F6">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
-                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., 🛒">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon (Emoji)</label>
+                        <input type="text" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="e.g., 🛒">
                     </div>
                     <div class="flex justify-end space-x-2 pt-4">
-                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Category</button>
+                        <button @click="showAddModal = false; reinitializeIcons()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">Cancel</button>
+                        <button @click="showAddModal = false; reinitializeIcons()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Category</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Edit Modal -->
-        <div x-show="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 w-96" @click.away="showEditModal = false">
-                <h3 class="text-lg font-semibold mb-4">Edit Category</h3>
+        <div x-show="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-transition>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96" @click.away="showEditModal = false; reinitializeIcons()">
+                <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Category</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingCategory?.name">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                        <input type="text" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" :value="editingCategory?.name">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category (Optional)</label>
-                        <select class="w-full border rounded-lg px-3 py-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Parent Category (Optional)</label>
+                        <select class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                             <option value="">None</option>
                             <option value="1">Food & Dining</option>
                             <option value="4">Transportation</option>
@@ -243,23 +265,118 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                        <input type="color" class="w-full h-10 border rounded-lg px-1 py-1" :value="editingCategory?.color">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                        <input type="color" class="w-full h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700" :value="editingCategory?.color">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
-                        <input type="text" class="w-full border rounded-lg px-3 py-2" :value="editingCategory?.icon">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon (Emoji)</label>
+                        <input type="text" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" :value="editingCategory?.icon">
                     </div>
                     <div class="flex justify-end space-x-2 pt-4">
-                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
+                        <button @click="showEditModal = false; reinitializeIcons()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">Cancel</button>
+                        <button @click="showEditModal = false; reinitializeIcons()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <script>
-        lucide.createIcons();
+        // Enhanced icon initialization system
+        let iconInitAttempts = 0;
+        const maxIconInitAttempts = 10;
+        
+        function initializeIcons() {
+            if (typeof lucide !== 'undefined') {
+                try {
+                    lucide.createIcons();
+                    console.log('Lucide icons initialized successfully');
+                } catch (error) {
+                    console.warn('Failed to initialize Lucide icons:', error);
+                }
+            }
+        }
+        
+        function retryIconInitialization() {
+            iconInitAttempts++;
+            initializeIcons();
+            
+            // Continue retrying for a reasonable number of attempts
+            if (iconInitAttempts < maxIconInitAttempts) {
+                setTimeout(retryIconInitialization, 100);
+            }
+        }
+        
+        // Initialize icons when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeIcons();
+            
+            // Start retry mechanism
+            setTimeout(retryIconInitialization, 50);
+        });
+        
+        // Initialize icons when Alpine.js is ready
+        document.addEventListener('alpine:init', () => {
+            setTimeout(initializeIcons, 100);
+        });
+        
+        // Re-initialize icons after Alpine.js has fully initialized
+        document.addEventListener('alpine:initialized', () => {
+            setTimeout(initializeIcons, 50);
+        });
+        
+        // MutationObserver to reinitialize icons when DOM changes
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(function(mutations) {
+                let shouldReinitialize = false;
+                
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        // Check if any added nodes contain lucide icons
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) { // Element node
+                                if (node.querySelector && node.querySelector('[data-lucide]')) {
+                                    shouldReinitialize = true;
+                                }
+                                if (node.hasAttribute && node.hasAttribute('data-lucide')) {
+                                    shouldReinitialize = true;
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldReinitialize) {
+                    // Debounce the reinitialization
+                    clearTimeout(observer.reinitTimeout);
+                    observer.reinitTimeout = setTimeout(initializeIcons, 10);
+                }
+            });
+            
+            // Start observing
+            setTimeout(() => {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }, 500);
+        }
+        
+        // Periodic icon check and reinitialization for robustness
+        setInterval(() => {
+            const lucideElements = document.querySelectorAll('[data-lucide]');
+            let needsReinit = false;
+            
+            lucideElements.forEach(element => {
+                // Check if the element has been processed by Lucide
+                if (!element.querySelector('svg') && element.hasAttribute('data-lucide')) {
+                    needsReinit = true;
+                }
+            });
+            
+            if (needsReinit) {
+                initializeIcons();
+            }
+        }, 2000);
     </script>
 </body>
 </html>

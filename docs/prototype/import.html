@@ -5,176 +5,248 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import Data - Financecim</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen" x-data="{ 
         mobileMenuOpen: false,
-        currentStep: 1,
-        selectedSource: '',
-        uploadedFiles: [],
-        csvData: [],
-        columnMapping: {
-            date: '',
-            description: '',
-            amount: '',
-            source_category: ''
-        },
-        previewData: [],
-        importSummary: {
-            totalRows: 0,
-            newTransactions: 0,
-            duplicates: 0,
-            errors: 0
-        },
-        handleFileUpload(event) {
-            const files = event.target.files;
-            this.uploadedFiles = Array.from(files).map(file => ({
-                name: file.name,
-                size: (file.size / 1024).toFixed(2) + ' KB',
-                rows: Math.floor(Math.random() * 500) + 100
-            }));
-            
-            // Simulate CSV parsing
-            this.csvData = [
-                ['Date', 'Description', 'Amount', 'Category', 'Balance'],
-                ['01/20/2024', 'WALMART SUPERCENTER', '-125.43', 'FOOD_GROCERY', '2345.67'],
-                ['01/19/2024', 'SHELL GAS STATION', '-45.00', 'GAS_STATION', '2470.67'],
-                ['01/19/2024', 'STARBUCKS', '-6.75', 'RESTAURANT', '2515.67'],
-                ['01/18/2024', 'TARGET', '-89.23', 'SHOPPING_GENERAL', '2522.42'],
-                ['01/18/2024', 'NETFLIX.COM', '-15.99', 'ENTERTAINMENT', '2611.65']
-            ];
-        },
-        autoDetectColumns() {
-            const headers = this.csvData[0];
-            headers.forEach((header, index) => {
-                const headerLower = header.toLowerCase();
-                if (headerLower.includes('date')) {
-                    this.columnMapping.date = index.toString();
-                } else if (headerLower.includes('desc') || headerLower.includes('merchant')) {
-                    this.columnMapping.description = index.toString();
-                } else if (headerLower.includes('amount') || headerLower.includes('debit')) {
-                    this.columnMapping.amount = index.toString();
-                } else if (headerLower.includes('categ') || headerLower.includes('type')) {
-                    this.columnMapping.source_category = index.toString();
+        darkMode: JSON.parse(localStorage.getItem('darkMode') || 'false'),
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
+            document.documentElement.classList.toggle('dark', this.darkMode);
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 50);
                 }
             });
-            this.updatePreview();
         },
-        updatePreview() {
-            this.previewData = this.csvData.slice(1, 6).map(row => ({
-                date: row[parseInt(this.columnMapping.date)] || '',
-                description: row[parseInt(this.columnMapping.description)] || '',
-                amount: row[parseInt(this.columnMapping.amount)] || '',
-                source_category: row[parseInt(this.columnMapping.source_category)] || '',
-                auto_category: this.getAutoCategory(row[parseInt(this.columnMapping.description)] || '')
-            }));
-        },
-        getAutoCategory(description) {
-            const desc = description.toUpperCase();
-            if (desc.includes('WALMART')) return 'Groceries';
-            if (desc.includes('SHELL') || desc.includes('GAS')) return 'Gas';
-            if (desc.includes('STARBUCKS')) return 'Restaurants';
-            if (desc.includes('TARGET')) return 'Shopping';
-            if (desc.includes('NETFLIX')) return 'Entertainment';
-            return 'Uncategorized';
-        },
-        nextStep() {
-            if (this.currentStep === 2) {
-                this.autoDetectColumns();
+        init() {
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
             }
-            if (this.currentStep === 3) {
-                // Calculate import summary
-                this.importSummary.totalRows = this.uploadedFiles.reduce((sum, file) => sum + file.rows, 0);
-                this.importSummary.newTransactions = Math.floor(this.importSummary.totalRows * 0.85);
-                this.importSummary.duplicates = Math.floor(this.importSummary.totalRows * 0.15);
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 100);
+                }
+            });
+        },
+        selectedSource: '',
+        uploadedFiles: [],
+        dragOver: false,
+        uploadProgress: 0,
+        uploadingFile: null,
+        validationErrors: [],
+        fileDetails: {},
+        handleFileUpload(event) {
+            const files = event.target.files || event.dataTransfer.files;
+            this.processFiles(files);
+        },
+        processFiles(files) {
+            this.validationErrors = [];
+            const newFiles = [];
+            
+            Array.from(files).forEach(file => {
+                const validation = this.validateFile(file);
+                if (validation.valid) {
+                    const fileData = {
+                        name: file.name,
+                        size: this.formatFileSize(file.size),
+                        sizeBytes: file.size,
+                        rows: Math.floor(Math.random() * 500) + 100,
+                        status: 'processing',
+                        preview: []
+                    };
+                    
+                    this.simulateFileProcessing(fileData);
+                    newFiles.push(fileData);
+                } else {
+                    this.validationErrors.push({
+                        file: file.name,
+                        errors: validation.errors
+                    });
+                }
+            });
+            
+            this.uploadedFiles = [...this.uploadedFiles, ...newFiles];
+        },
+        validateFile(file) {
+            const errors = [];
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            const allowedTypes = ['.csv', 'text/csv', 'application/csv'];
+            
+            // Check file size
+            if (file.size > maxSize) {
+                errors.push('File size exceeds 50MB limit');
             }
-            this.currentStep++;
+            
+            // Check file type
+            const isValidType = allowedTypes.some(type => 
+                file.type === type || file.name.toLowerCase().endsWith('.csv')
+            );
+            if (!isValidType) {
+                errors.push('Only CSV files are allowed');
+            }
+            
+            // Check file name
+            if (file.name.length > 100) {
+                errors.push('File name is too long');
+            }
+            
+            return {
+                valid: errors.length === 0,
+                errors: errors
+            };
         },
-        prevStep() {
-            this.currentStep--;
+        simulateFileProcessing(fileData) {
+            // Simulate file processing with progress
+            this.uploadingFile = fileData.name;
+            this.uploadProgress = 0;
+            
+            const progressInterval = setInterval(() => {
+                this.uploadProgress += Math.random() * 15;
+                if (this.uploadProgress >= 100) {
+                    this.uploadProgress = 100;
+                    clearInterval(progressInterval);
+                    
+                    // Complete processing
+                    setTimeout(() => {
+                        fileData.status = 'completed';
+                        fileData.preview = this.generateFilePreview();
+                        this.uploadingFile = null;
+                        this.uploadProgress = 0;
+                    }, 500);
+                }
+            }, 200);
         },
-        performImport() {
-            this.currentStep = 5;
+        generateFilePreview() {
+            return [
+                ['01/20/2024', 'WALMART SUPERCENTER', '-125.43', 'FOOD_GROCERY'],
+                ['01/19/2024', 'SHELL GAS STATION', '-45.00', 'GAS_STATION'],
+                ['01/19/2024', 'STARBUCKS', '-6.75', 'RESTAURANT'],
+                ['01/18/2024', 'TARGET', '-89.23', 'SHOPPING_GENERAL'],
+                ['01/18/2024', 'NETFLIX.COM', '-15.99', 'ENTERTAINMENT']
+            ];
+        },
+        formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+        removeFile(fileName) {
+            this.uploadedFiles = this.uploadedFiles.filter(f => f.name !== fileName);
+        },
+        canProceedToStep2() {
+            return this.selectedSource && this.uploadedFiles.length > 0 && 
+                   this.uploadedFiles.every(f => f.status === 'completed');
+        },
+        handleDragOver(event) {
+            event.preventDefault();
+            this.dragOver = true;
+        },
+        handleDragLeave(event) {
+            event.preventDefault();
+            this.dragOver = false;
+        },
+        handleDrop(event) {
+            event.preventDefault();
+            this.dragOver = false;
+            this.processFiles(event.dataTransfer.files);
         }
     }">
         <!-- Top Navigation -->
-        <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <nav class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-12">
                     <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-gray-800 mr-6">Financecim</h1>
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white mr-6">Financecim</h1>
                         
                         <!-- Desktop Navigation -->
                         <div class="hidden md:flex items-center space-x-1">
-                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Dashboard
                             </a>
-                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Sources
                             </a>
-                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Categories
                             </a>
-                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Mappings
                             </a>
-                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Rules
                             </a>
-                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                                 <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Transactions
                             </a>
-                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-700 text-sm">
+                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
                                 <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Import
                             </a>
                         </div>
                     </div>
                     
-                    <!-- Mobile menu button -->
-                    <div class="md:hidden flex items-center">
-                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100">
-                            <i data-lucide="menu" class="w-5 h-5"></i>
+                    <!-- Theme toggle and Mobile menu button -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Theme toggle -->
+                        <button @click="toggleDarkMode()" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                            <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+                            <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
                         </button>
+                        
+                        <!-- Mobile menu button -->
+                        <div class="md:hidden">
+                            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <i data-lucide="menu" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Mobile Navigation -->
-                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-1.5">
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 dark:border-gray-700 py-1.5">
                     <div class="flex flex-col space-y-0.5">
-                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
                             Dashboard
                         </a>
-                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
                             Sources
                         </a>
-                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
                             Categories
                         </a>
-                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
                             Mappings
                         </a>
-                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
                             Rules
                         </a>
-                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
                             <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
                             Transactions
                         </a>
-                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 text-blue-700 text-sm">
+                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
                             <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
                             Import
                         </a>
@@ -186,365 +258,306 @@
         <!-- Main Content -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-800 mb-2">Import Transactions</h2>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">Import Transactions</h2>
+                <p class="text-gray-600 dark:text-gray-300">Upload your CSV files to get started</p>
                 
                 <!-- Progress Steps -->
                 <div class="flex items-center justify-center mt-6 mb-8">
                     <div class="flex items-center">
                         <div class="flex items-center">
-                            <button @click="currentStep = 1" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow" 
-                                 :class="currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">1</button>
+                            <div class="rounded-full h-10 w-10 flex items-center justify-center bg-blue-500 text-white shadow-lg">1</div>
                             <div class="ml-2 mr-8">
-                                <div class="text-sm font-semibold" :class="currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'">Upload</div>
+                                <div class="text-sm font-semibold text-gray-900 dark:text-white">Upload</div>
                             </div>
                         </div>
-                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 2 ? 'bg-blue-500' : ''"></div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
                         <div class="flex items-center ml-8">
-                            <button @click="currentStep = 2" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
-                                 :class="currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">2</button>
+                            <a href="./import-step2.html" class="rounded-full h-10 w-10 flex items-center justify-center bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:shadow-lg transition-shadow">2</a>
                             <div class="ml-2 mr-8">
-                                <div class="text-sm font-semibold" :class="currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'">Map Columns</div>
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Map Columns</div>
                             </div>
                         </div>
-                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 3 ? 'bg-blue-500' : ''"></div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
                         <div class="flex items-center ml-8">
-                            <button @click="currentStep = 3" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
-                                 :class="currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">3</button>
+                            <a href="./import-step3.html" class="rounded-full h-10 w-10 flex items-center justify-center bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:shadow-lg transition-shadow">3</a>
                             <div class="ml-2 mr-8">
-                                <div class="text-sm font-semibold" :class="currentStep >= 3 ? 'text-gray-900' : 'text-gray-500'">Preview</div>
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Preview</div>
                             </div>
                         </div>
-                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 4 ? 'bg-blue-500' : ''"></div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
                         <div class="flex items-center ml-8">
-                            <button @click="currentStep = 4" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
-                                 :class="currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">4</button>
-                            <div class="ml-2 mr-8">
-                                <div class="text-sm font-semibold" :class="currentStep >= 4 ? 'text-gray-900' : 'text-gray-500'">Confirm</div>
-                            </div>
-                        </div>
-                        <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 5 ? 'bg-blue-500' : ''"></div>
-                        <div class="flex items-center ml-8">
-                            <button @click="currentStep = 5" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
-                                 :class="currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">5</button>
+                            <a href="./import-step5.html" class="rounded-full h-10 w-10 flex items-center justify-center bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:shadow-lg transition-shadow">4</a>
                             <div class="ml-2">
-                                <div class="text-sm font-semibold" :class="currentStep >= 5 ? 'text-gray-900' : 'text-gray-500'">Complete</div>
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Complete</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Step 1: Upload -->
-            <div x-show="currentStep === 1" class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">Step 1: Upload CSV Files</h3>
+            <!-- Step 1: Enhanced Upload Interface -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-8">
+                <h3 class="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Upload Your Transaction Files</h3>
                 
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Source</label>
-                    <select x-model="selectedSource" class="w-full md:w-64 border rounded-lg px-3 py-2">
-                        <option value="">Choose a source...</option>
-                        <option value="chase">Chase Bank</option>
-                        <option value="capital_one">Capital One</option>
-                        <option value="manual">Manual Entry</option>
-                    </select>
-                </div>
-
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">
-                        <label class="cursor-pointer">
-                            <span class="text-blue-600 hover:text-blue-500">Upload CSV files</span>
-                            <input type="file" @change="handleFileUpload($event)" multiple accept=".csv" class="hidden">
-                        </label>
-                        or drag and drop
-                    </p>
-                    <p class="text-xs text-gray-500 mt-1">Multiple CSV files supported (must have same column structure)</p>
-                </div>
-
-                <div x-show="uploadedFiles.length > 0" class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</h4>
-                    <div class="space-y-2">
-                        <template x-for="file in uploadedFiles" :key="file.name">
-                            <div class="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                                <div>
-                                    <span class="text-sm font-medium" x-text="file.name"></span>
-                                    <span class="text-xs text-gray-500 ml-2" x-text="`(${file.size}, ~${file.rows} rows)`"></span>
+                <!-- Source Selection -->
+                <div class="mb-8">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Select Data Source *</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label class="relative">
+                            <input type="radio" x-model="selectedSource" value="chase" class="peer sr-only">
+                            <div class="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-colors">
+                                <div class="flex items-center">
+                                    <i data-lucide="building-2" class="w-5 h-5 text-blue-500 mr-3"></i>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-white">Chase Bank</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Personal & Business accounts</div>
+                                    </div>
                                 </div>
-                                <button @click="uploadedFiles = uploadedFiles.filter(f => f.name !== file.name)" class="text-red-500 hover:text-red-700">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
+                            </div>
+                        </label>
+                        <label class="relative">
+                            <input type="radio" x-model="selectedSource" value="capital_one" class="peer sr-only">
+                            <div class="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-colors">
+                                <div class="flex items-center">
+                                    <i data-lucide="credit-card" class="w-5 h-5 text-blue-500 mr-3"></i>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-white">Capital One</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Credit cards & checking</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="relative">
+                            <input type="radio" x-model="selectedSource" value="manual" class="peer sr-only">
+                            <div class="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-colors">
+                                <div class="flex items-center">
+                                    <i data-lucide="edit" class="w-5 h-5 text-blue-500 mr-3"></i>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-white">Manual Entry</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">Custom CSV format</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- File Upload Area -->
+                <div class="mb-8" x-show="selectedSource">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Upload CSV Files *</label>
+                    <div 
+                        @dragover="handleDragOver($event)"
+                        @dragleave="handleDragLeave($event)"
+                        @drop="handleDrop($event)"
+                        class="border-2 border-dashed rounded-lg p-12 text-center transition-colors"
+                        :class="dragOver ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'">
+                        
+                        <div class="flex flex-col items-center">
+                            <i data-lucide="upload-cloud" class="w-16 h-16 text-gray-400 dark:text-gray-500 mb-4"></i>
+                            
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Drop your files here</h4>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">or</p>
+                            
+                            <label class="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
+                                <span>Browse Files</span>
+                                <input type="file" @change="handleFileUpload($event)" multiple accept=".csv" class="hidden">
+                            </label>
+                            
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                                Supports multiple CSV files • Max 50MB per file
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div x-show="uploadingFile" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-blue-900 dark:text-blue-300">Processing: <span x-text="uploadingFile"></span></span>
+                        <span class="text-sm text-blue-700 dark:text-blue-400" x-text="Math.round(uploadProgress) + '%'"></span>
+                    </div>
+                    <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" :style="`width: ${uploadProgress}%`"></div>
+                    </div>
+                </div>
+
+                <!-- Validation Errors -->
+                <div x-show="validationErrors.length > 0" class="mb-6">
+                    <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4">
+                        <h4 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">File Validation Errors:</h4>
+                        <template x-for="error in validationErrors" :key="error.file">
+                            <div class="mb-2">
+                                <div class="text-sm font-medium text-red-700 dark:text-red-400" x-text="error.file"></div>
+                                <template x-for="errorMsg in error.errors" :key="errorMsg">
+                                    <div class="text-sm text-red-600 dark:text-red-300 ml-4" x-text="'• ' + errorMsg"></div>
+                                </template>
                             </div>
                         </template>
                     </div>
                 </div>
 
-                <div class="mt-6 flex justify-end">
-                    <button 
-                        @click="nextStep()" 
-                        :disabled="!selectedSource || uploadedFiles.length === 0"
-                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                        Next: Map Columns →
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 2: Column Mapping -->
-            <div x-show="currentStep === 2" class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">Step 2: Map CSV Columns</h3>
-                
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-                    <p class="text-sm text-blue-900">Auto-detection found possible matches. Please verify and adjust if needed.</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-6">
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700 mb-3">CSV Columns</h4>
-                        <div class="bg-gray-50 rounded p-3">
-                            <template x-for="(header, index) in csvData[0]" :key="index">
-                                <div class="py-1">
-                                    <span class="text-sm" x-text="`Column ${index + 1}: ${header}`"></span>
+                <!-- Uploaded Files -->
+                <div x-show="uploadedFiles.length > 0" class="mb-8">
+                    <h4 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">Uploaded Files</h4>
+                    <div class="space-y-4">
+                        <template x-for="file in uploadedFiles" :key="file.name">
+                            <div class="border dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center">
+                                        <i data-lucide="file-text" class="w-5 h-5 text-blue-500 mr-3"></i>
+                                        <div>
+                                            <div class="font-medium text-gray-900 dark:text-white" x-text="file.name"></div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                <span x-text="file.size"></span> • 
+                                                <span x-text="file.rows + ' rows'"></span> • 
+                                                <span x-text="file.status === 'completed' ? 'Ready' : 'Processing...'" 
+                                                      :class="file.status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button @click="removeFile(file.name)" class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
                                 </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700 mb-3">Transaction Fields</h4>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Date *</label>
-                                <select x-model="columnMapping.date" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
-                                    <option value="">Select column...</option>
-                                    <template x-for="(header, index) in csvData[0]" :key="index">
-                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
-                                    </template>
-                                </select>
+                                
+                                <!-- File Preview -->
+                                <div x-show="file.status === 'completed' && file.preview.length > 0" class="mt-3">
+                                    <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sample Data:</div>
+                                    <div class="bg-white dark:bg-gray-800 rounded border dark:border-gray-600 overflow-hidden">
+                                        <div class="overflow-x-auto">
+                                            <table class="min-w-full divide-y dark:divide-gray-600">
+                                                <tbody>
+                                                    <template x-for="(row, index) in file.preview.slice(0, 3)" :key="index">
+                                                        <tr class="text-sm">
+                                                            <template x-for="(cell, cellIndex) in row" :key="cellIndex">
+                                                                <td class="px-3 py-1 text-gray-900 dark:text-white whitespace-nowrap" x-text="cell"></td>
+                                                            </template>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div x-show="file.preview.length > 3" class="px-3 py-2 bg-gray-50 dark:bg-gray-600 text-xs text-gray-500 dark:text-gray-400 text-center">
+                                            ... and <span x-text="file.rows - 3"></span> more rows
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Description *</label>
-                                <select x-model="columnMapping.description" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
-                                    <option value="">Select column...</option>
-                                    <template x-for="(header, index) in csvData[0]" :key="index">
-                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Amount *</label>
-                                <select x-model="columnMapping.amount" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
-                                    <option value="">Select column...</option>
-                                    <template x-for="(header, index) in csvData[0]" :key="index">
-                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">Source Category (Optional)</label>
-                                <select x-model="columnMapping.source_category" @change="updatePreview()" class="w-full border rounded px-3 py-2 text-sm">
-                                    <option value="">Select column...</option>
-                                    <template x-for="(header, index) in csvData[0]" :key="index">
-                                        <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <label class="flex items-center text-sm">
-                                <input type="checkbox" class="mr-2">
-                                Save this mapping as template for future imports
-                            </label>
-                        </div>
+                        </template>
                     </div>
                 </div>
 
-                <div class="mt-6 flex justify-between">
-                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                        ← Previous
-                    </button>
-                    <button 
-                        @click="nextStep()" 
-                        :disabled="!columnMapping.date || !columnMapping.description || !columnMapping.amount"
-                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                        Next: Preview →
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 3: Preview -->
-            <div x-show="currentStep === 3" class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">Step 3: Preview Import</h3>
-                
-                <div class="mb-6 grid grid-cols-3 gap-4">
-                    <div class="bg-gray-50 rounded p-3">
-                        <p class="text-xs text-gray-500 uppercase mb-1">Total Files</p>
-                        <p class="text-2xl font-bold" x-text="uploadedFiles.length"></p>
-                    </div>
-                    <div class="bg-gray-50 rounded p-3">
-                        <p class="text-xs text-gray-500 uppercase mb-1">Total Rows</p>
-                        <p class="text-2xl font-bold" x-text="uploadedFiles.reduce((sum, file) => sum + file.rows, 0)"></p>
-                    </div>
-                    <div class="bg-gray-50 rounded p-3">
-                        <p class="text-xs text-gray-500 uppercase mb-1">Source</p>
-                        <p class="text-lg font-semibold capitalize" x-text="selectedSource.replace('_', ' ')"></p>
-                    </div>
+                <!-- Requirements Info -->
+                <div class="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">CSV File Requirements:</h4>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <li class="flex items-center">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500 mr-2"></i>
+                            Must contain columns for date, description, and amount
+                        </li>
+                        <li class="flex items-center">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500 mr-2"></i>
+                            Date format: MM/DD/YYYY, YYYY-MM-DD, or DD/MM/YYYY
+                        </li>
+                        <li class="flex items-center">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500 mr-2"></i>
+                            Amount can be positive/negative numbers
+                        </li>
+                        <li class="flex items-center">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500 mr-2"></i>
+                            Multiple files must have the same column structure
+                        </li>
+                    </ul>
                 </div>
 
-                <h4 class="text-sm font-medium text-gray-700 mb-3">Sample Transactions (First 5 rows)</h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full border">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Source Category</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Auto-Category</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y">
-                            <template x-for="row in previewData" :key="row">
-                                <tr>
-                                    <td class="px-4 py-2 text-sm" x-text="row.date"></td>
-                                    <td class="px-4 py-2 text-sm" x-text="row.description"></td>
-                                    <td class="px-4 py-2 text-sm font-semibold" 
-                                        :class="row.amount.startsWith('-') ? 'text-red-600' : 'text-green-600'" 
-                                        x-text="row.amount"></td>
-                                    <td class="px-4 py-2 text-sm text-gray-500" x-text="row.source_category || '-'"></td>
-                                    <td class="px-4 py-2 text-sm">
-                                        <span class="px-2 py-1 text-xs rounded-full"
-                                              :class="row.auto_category === 'Uncategorized' ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'"
-                                              x-text="row.auto_category"></span>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mt-4 p-3 bg-yellow-50 rounded">
-                    <p class="text-sm text-yellow-800">
-                        <strong>Note:</strong> Auto-categorization will be applied based on your rules and mappings.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-between">
-                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                        ← Previous
-                    </button>
-                    <button @click="nextStep()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                        Next: Confirm →
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 4: Confirm -->
-            <div x-show="currentStep === 4" class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">Step 4: Confirm Import</h3>
-                
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                    <h4 class="text-lg font-semibold text-blue-900 mb-4">Import Summary</h4>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-sm text-blue-700">Total Transactions:</p>
-                            <p class="text-2xl font-bold text-blue-900" x-text="importSummary.totalRows"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-green-700">New Transactions:</p>
-                            <p class="text-2xl font-bold text-green-900" x-text="importSummary.newTransactions"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-yellow-700">Duplicates to Skip:</p>
-                            <p class="text-2xl font-bold text-yellow-900" x-text="importSummary.duplicates"></p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-red-700">Errors:</p>
-                            <p class="text-2xl font-bold text-red-900" x-text="importSummary.errors"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <label class="flex items-center">
-                        <input type="checkbox" checked class="mr-2">
-                        <span class="text-sm">Skip duplicate transactions</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" checked class="mr-2">
-                        <span class="text-sm">Apply auto-categorization rules</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" checked class="mr-2">
-                        <span class="text-sm">Apply source category mappings</span>
-                    </label>
-                </div>
-
-                <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <p class="text-sm text-yellow-800">
-                        <strong>⚠️ Important:</strong> This action will import <span x-text="importSummary.newTransactions"></span> new transactions. 
-                        This cannot be undone automatically, though you can manually delete transactions later.
-                    </p>
-                </div>
-
-                <div class="mt-6 flex justify-between">
-                    <button @click="prevStep()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                        ← Previous
-                    </button>
-                    <button @click="performImport()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
-                        Import Transactions
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 5: Complete -->
-            <div x-show="currentStep === 5" class="bg-white rounded-lg shadow p-6">
-                <div class="text-center py-8">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Import Complete!</h3>
-                    <p class="text-gray-600 mb-6">Successfully imported your transactions</p>
-                    
-                    <div class="bg-gray-50 rounded-lg p-6 mb-6 max-w-md mx-auto">
-                        <div class="space-y-2 text-left">
-                            <div class="flex justify-between">
-                                <span class="text-sm text-gray-600">Files Processed:</span>
-                                <span class="text-sm font-semibold" x-text="uploadedFiles.length"></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm text-gray-600">Transactions Added:</span>
-                                <span class="text-sm font-semibold text-green-600" x-text="importSummary.newTransactions"></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm text-gray-600">Duplicates Skipped:</span>
-                                <span class="text-sm font-semibold text-yellow-600" x-text="importSummary.duplicates"></span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm text-gray-600">Auto-Categorized:</span>
-                                <span class="text-sm font-semibold text-blue-600" x-text="Math.floor(importSummary.newTransactions * 0.7)"></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-center space-x-4">
-                        <a href="./transactions.html" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                            View Transactions
-                        </a>
-                        <button @click="currentStep = 1; uploadedFiles = []; selectedSource = ''" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                            Import More
-                        </button>
-                    </div>
+                <!-- Action Buttons -->
+                <div class="flex justify-end items-center">
+                    <a href="./import-step2.html" 
+                       class="px-6 py-3 text-white rounded-lg transition-colors flex items-center"
+                       :class="canProceedToStep2() ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'"
+                       :onclick="canProceedToStep2() ? '' : 'return false;'">
+                        <span>Next: Map Columns</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
     <script>
-        lucide.createIcons();
+        // Initialize icons and handle Alpine.js dynamic content
+        function initializeIcons() {
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                try {
+                    lucide.createIcons();
+                    // Mark icons as initialized to help with detection
+                    document.querySelectorAll('[data-lucide]').forEach(icon => {
+                        if (!icon.hasAttribute('data-lucide-initialized')) {
+                            icon.setAttribute('data-lucide-initialized', 'true');
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Failed to initialize Lucide icons:', error);
+                }
+            }
+        }
+        
+        // Make function globally available
+        window.initializeIcons = initializeIcons;
+        
+        // Initialize icons when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeIcons();
+        });
+        
+        // Re-initialize icons after Alpine.js renders new content
+        document.addEventListener('alpine:initialized', function() {
+            setTimeout(initializeIcons, 100);
+        });
+        
+        // Also initialize after any DOM mutations (Alpine.js updates)
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(function(mutations) {
+                let shouldUpdate = false;
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        // Check if any nodes with data-lucide were added or changed
+                        const nodes = Array.from(mutation.addedNodes || []);
+                        nodes.forEach(node => {
+                            if (node.nodeType === 1) { // Element node
+                                if (node.hasAttribute && node.hasAttribute('data-lucide')) {
+                                    shouldUpdate = true;
+                                }
+                                if (node.querySelectorAll && node.querySelectorAll('[data-lucide]').length > 0) {
+                                    shouldUpdate = true;
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldUpdate) {
+                    setTimeout(initializeIcons, 50);
+                }
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['x-show', 'style', 'class']
+            });
+        }
+        
+        // Fallback: periodic re-initialization for any missed icons
+        setInterval(function() {
+            const uninitializedIcons = document.querySelectorAll('[data-lucide]:not([data-lucide-initialized])');
+            if (uninitializedIcons.length > 0) {
+                initializeIcons();
+            }
+        }, 1000);
+        
+        // Initial call
+        initializeIcons();
     </script>
 </body>
 </html>

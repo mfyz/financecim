@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Step 2: Column Mapping - Financecim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        .drag-over {
+            @apply bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600;
+        }
+        .mapping-indicator {
+            position: relative;
+        }
+        .mapping-indicator::before {
+            content: '';
+            position: absolute;
+            left: -1px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, #3b82f6, #06b6d4);
+            border-radius: 0 2px 2px 0;
+        }
+        .confidence-indicator {
+            background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 100%);
+            height: 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen" x-data="{ 
+        mobileMenuOpen: false,
+        darkMode: JSON.parse(localStorage.getItem('darkMode') || 'false'),
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
+            document.documentElement.classList.toggle('dark', this.darkMode);
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 50);
+                }
+            });
+        },
+        init() {
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
+            }
+            this.$nextTick(() => {
+                if (window.initializeIcons) {
+                    setTimeout(window.initializeIcons, 100);
+                }
+            });
+            // Initialize with sample data
+            this.csvData = [
+                ['Date', 'Description', 'Amount', 'Category', 'Balance', 'Reference', 'Type'],
+                ['2024-01-20', 'WALMART SUPERCENTER #1234', '-125.43', 'FOOD_GROCERY', '2345.67', 'TXN001', 'PURCHASE'],
+                ['2024-01-19', 'SHELL GAS STATION #5678', '-45.00', 'GAS_STATION', '2470.67', 'TXN002', 'PURCHASE'],
+                ['2024-01-19', 'STARBUCKS STORE #9012', '-6.75', 'RESTAURANT', '2515.67', 'TXN003', 'PURCHASE'],
+                ['2024-01-18', 'TARGET STORE #3456', '-89.23', 'SHOPPING_GENERAL', '2522.42', 'TXN004', 'PURCHASE'],
+                ['2024-01-18', 'NETFLIX.COM MONTHLY', '-15.99', 'ENTERTAINMENT', '2611.65', 'TXN005', 'SUBSCRIPTION'],
+                ['2024-01-17', 'PAYCHECK DEPOSIT', '2500.00', 'INCOME', '2127.64', 'TXN006', 'DEPOSIT'],
+                ['2024-01-16', 'AMAZON PURCHASE', '-67.89', 'SHOPPING_ONLINE', '2195.53', 'TXN007', 'PURCHASE']
+            ];
+            this.autoDetectColumns();
+            this.updatePreview();
+        },
+        currentStep: 2,
+        selectedSource: 'chase',
+        uploadedFiles: [
+            { name: 'chase_transactions_jan2024.csv', size: '127.45 KB', rows: 247 },
+            { name: 'chase_transactions_feb2024.csv', size: '134.21 KB', rows: 298 }
+        ],
+        csvData: [],
+        columnMapping: {
+            date: '',
+            description: '',
+            amount: '',
+            source_category: ''
+        },
+        autoDetection: {
+            date: { column: 0, confidence: 95, reason: 'Contains date format YYYY-MM-DD' },
+            description: { column: 1, confidence: 90, reason: 'Contains merchant names and descriptions' },
+            amount: { column: 2, confidence: 88, reason: 'Contains numeric values with decimals' },
+            source_category: { column: 3, confidence: 75, reason: 'Contains category-like strings' }
+        },
+        mappingTemplates: [
+            { name: 'Chase Bank Standard', mapping: { date: 0, description: 1, amount: 2, source_category: 3 } },
+            { name: 'Capital One Export', mapping: { date: 0, description: 1, amount: 4, source_category: 2 } },
+            { name: 'Wells Fargo CSV', mapping: { date: 1, description: 2, amount: 3, source_category: 5 } }
+        ],
+        selectedTemplate: '',
+        saveMappingName: '',
+        showSaveTemplate: false,
+        draggedColumn: null,
+        previewData: [],
+        validationErrors: [],
+        sampleRowIndex: 0,
+        maxSampleRows: 7,
+        
+        autoDetectColumns() {
+            const headers = this.csvData[0];
+            const sampleData = this.csvData.slice(1, 4);
+            
+            headers.forEach((header, index) => {
+                const headerLower = header.toLowerCase();
+                const columnData = sampleData.map(row => row[index]).join(' ').toLowerCase();
+                
+                // Reset detection
+                let detectedField = null;
+                let confidence = 0;
+                let reason = '';
+                
+                // Date detection
+                if (headerLower.includes('date') || headerLower.includes('time')) {
+                    detectedField = 'date';
+                    confidence = 95;
+                    reason = `Header contains '${header}'`;
+                } else if (this.isDateColumn(sampleData.map(row => row[index]))) {
+                    detectedField = 'date';
+                    confidence = 85;
+                    reason = 'Contains date-like patterns';
+                }
+                
+                // Description detection
+                else if (headerLower.includes('desc') || headerLower.includes('merchant') || headerLower.includes('payee')) {
+                    detectedField = 'description';
+                    confidence = 90;
+                    reason = `Header contains '${header}'`;
+                } else if (columnData.includes('walmart') || columnData.includes('target') || columnData.includes('amazon')) {
+                    detectedField = 'description';
+                    confidence = 80;
+                    reason = 'Contains merchant names';
+                }
+                
+                // Amount detection
+                else if (headerLower.includes('amount') || headerLower.includes('debit') || headerLower.includes('credit')) {
+                    detectedField = 'amount';
+                    confidence = 88;
+                    reason = `Header contains '${header}'`;
+                } else if (this.isAmountColumn(sampleData.map(row => row[index]))) {
+                    detectedField = 'amount';
+                    confidence = 75;
+                    reason = 'Contains numeric currency values';
+                }
+                
+                // Category detection
+                else if (headerLower.includes('categ') || headerLower.includes('type') || headerLower.includes('class')) {
+                    detectedField = 'source_category';
+                    confidence = 75;
+                    reason = `Header contains '${header}'`;
+                }
+                
+                if (detectedField && !this.columnMapping[detectedField]) {
+                    this.columnMapping[detectedField] = index.toString();
+                    this.autoDetection[detectedField] = { column: index, confidence, reason };
+                }
+            });
+        },
+        
+        isDateColumn(values) {
+            const datePatterns = [
+                /^\d{4}-\d{2}-\d{2}$/,
+                /^\d{2}\/\d{2}\/\d{4}$/,
+                /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
+            ];
+            return values.some(val => datePatterns.some(pattern => pattern.test(val)));
+        },
+        
+        isAmountColumn(values) {
+            return values.some(val => /^-?\$?\d+(\.\d{2})?$/.test(val.toString().replace(',', '')));
+        },
+        
+        applyTemplate(template) {
+            this.columnMapping = { ...template.mapping };
+            this.updatePreview();
+            this.validateMapping();
+        },
+        
+        updatePreview() {
+            const startIndex = this.sampleRowIndex + 1;
+            const endIndex = Math.min(startIndex + 5, this.csvData.length);
+            
+            this.previewData = this.csvData.slice(startIndex, endIndex).map((row, index) => ({
+                rowIndex: startIndex + index,
+                date: row[parseInt(this.columnMapping.date)] || '',
+                description: row[parseInt(this.columnMapping.description)] || '',
+                amount: row[parseInt(this.columnMapping.amount)] || '',
+                source_category: row[parseInt(this.columnMapping.source_category)] || '',
+                auto_category: this.getAutoCategory(row[parseInt(this.columnMapping.description)] || ''),
+                raw_row: row
+            }));
+            
+            this.validateMapping();
+        },
+        
+        validateMapping() {
+            this.validationErrors = [];
+            
+            if (!this.columnMapping.date) {
+                this.validationErrors.push({ field: 'date', message: 'Date column is required' });
+            } else {
+                // Validate date format
+                const dateValues = this.csvData.slice(1, 4).map(row => row[parseInt(this.columnMapping.date)]);
+                if (!dateValues.some(val => this.isValidDate(val))) {
+                    this.validationErrors.push({ field: 'date', message: 'Selected column does not contain valid dates' });
+                }
+            }
+            
+            if (!this.columnMapping.description) {
+                this.validationErrors.push({ field: 'description', message: 'Description column is required' });
+            }
+            
+            if (!this.columnMapping.amount) {
+                this.validationErrors.push({ field: 'amount', message: 'Amount column is required' });
+            } else {
+                // Validate amount format
+                const amountValues = this.csvData.slice(1, 4).map(row => row[parseInt(this.columnMapping.amount)]);
+                if (!amountValues.some(val => this.isValidAmount(val))) {
+                    this.validationErrors.push({ field: 'amount', message: 'Selected column does not contain valid amounts' });
+                }
+            }
+        },
+        
+        isValidDate(value) {
+            return !isNaN(Date.parse(value));
+        },
+        
+        isValidAmount(value) {
+            return !isNaN(parseFloat(value.toString().replace(/[,$]/g, '')));
+        },
+        
+        getAutoCategory(description) {
+            const desc = description.toUpperCase();
+            if (desc.includes('WALMART')) return 'Groceries';
+            if (desc.includes('SHELL') || desc.includes('GAS')) return 'Gas & Fuel';
+            if (desc.includes('STARBUCKS')) return 'Restaurants';
+            if (desc.includes('TARGET')) return 'Shopping';
+            if (desc.includes('NETFLIX')) return 'Entertainment';
+            if (desc.includes('AMAZON')) return 'Online Shopping';
+            if (desc.includes('PAYCHECK') || desc.includes('SALARY')) return 'Income';
+            return 'Uncategorized';
+        },
+        
+        handleDragStart(event, columnIndex) {
+            this.draggedColumn = columnIndex;
+            event.dataTransfer.effectAllowed = 'move';
+        },
+        
+        handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            event.target.closest('.drop-zone')?.classList.add('drag-over');
+        },
+        
+        handleDragLeave(event) {
+            event.target.closest('.drop-zone')?.classList.remove('drag-over');
+        },
+        
+        handleDrop(event, field) {
+            event.preventDefault();
+            event.target.closest('.drop-zone')?.classList.remove('drag-over');
+            
+            if (this.draggedColumn !== null) {
+                this.columnMapping[field] = this.draggedColumn.toString();
+                this.updatePreview();
+                this.draggedColumn = null;
+            }
+        },
+        
+        saveTemplate() {
+            if (this.saveMappingName.trim()) {
+                const newTemplate = {
+                    name: this.saveMappingName,
+                    mapping: { ...this.columnMapping }
+                };
+                this.mappingTemplates.push(newTemplate);
+                this.saveMappingName = '';
+                this.showSaveTemplate = false;
+            }
+        },
+        
+        nextSamplePage() {
+            if (this.sampleRowIndex + 5 < this.csvData.length - 1) {
+                this.sampleRowIndex += 5;
+                this.updatePreview();
+            }
+        },
+        
+        prevSamplePage() {
+            if (this.sampleRowIndex > 0) {
+                this.sampleRowIndex = Math.max(0, this.sampleRowIndex - 5);
+                this.updatePreview();
+            }
+        },
+        
+        getConfidenceColor(confidence) {
+            if (confidence >= 85) return 'text-green-600 dark:text-green-400';
+            if (confidence >= 70) return 'text-yellow-600 dark:text-yellow-400';
+            return 'text-red-600 dark:text-red-400';
+        },
+        
+        getConfidenceWidth(confidence) {
+            return `${confidence}%`;
+        }
+    }">
+        <!-- Top Navigation -->
+        <nav class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-12">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white mr-6">Financecim</h1>
+                        
+                        <!-- Desktop Navigation -->
+                        <div class="hidden md:flex items-center space-x-1">
+                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Dashboard
+                            </a>
+                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Sources
+                            </a>
+                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Categories
+                            </a>
+                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Mappings
+                            </a>
+                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Rules
+                            </a>
+                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Transactions
+                            </a>
+                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Import
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Theme toggle and Mobile menu button -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Theme toggle -->
+                        <button @click="toggleDarkMode()" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                            <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+                            <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
+                        </button>
+                        
+                        <!-- Mobile menu button -->
+                        <div class="md:hidden">
+                            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <i data-lucide="menu" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Navigation -->
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 dark:border-gray-700 py-1.5">
+                    <div class="flex flex-col space-y-0.5">
+                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Dashboard
+                        </a>
+                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Sources
+                        </a>
+                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Categories
+                        </a>
+                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Mappings
+                        </a>
+                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Rules
+                        </a>
+                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Transactions
+                        </a>
+                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                            <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Import
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">Import Transactions - Column Mapping</h2>
+                
+                <!-- Progress Steps -->
+                <div class="flex items-center justify-center mt-6 mb-8">
+                    <div class="flex items-center">
+                        <div class="flex items-center">
+                            <a href="./import.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-blue-500 text-white">1</a>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-white">Upload</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-blue-500"></div>
+                        <div class="flex items-center ml-8">
+                            <a href="./import-step2.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-blue-500 text-white">2</a>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-white">Map Columns</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center ml-8">
+                            <a href="./import-step3.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400">3</a>
+                            <div class="ml-2 mr-8">
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Preview</div>
+                            </div>
+                        </div>
+                        <div class="h-1 w-16 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center ml-8">
+                            <a href="./import-step5.html" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400">4</a>
+                            <div class="ml-2">
+                                <div class="text-sm font-semibold text-gray-500 dark:text-gray-400">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column Mapping Interface -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left Column: CSV Structure & Auto-Detection -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">CSV Structure</h3>
+                        <span class="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded-full">
+                            <span x-text="uploadedFiles.reduce((sum, file) => sum + file.rows, 0)"></span> rows
+                        </span>
+                    </div>
+                    
+                    <!-- File Info -->
+                    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">Files:</div>
+                        <template x-for="file in uploadedFiles" :key="file.name">
+                            <div class="text-sm text-gray-900 dark:text-white mb-1">
+                                <i data-lucide="file-text" class="w-3 h-3 inline mr-1"></i>
+                                <span x-text="file.name"></span>
+                                <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(<span x-text="file.rows"></span> rows)</span>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <!-- CSV Columns with drag handles -->
+                    <div class="space-y-2">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Available Columns:</div>
+                        <template x-for="(header, index) in csvData[0]" :key="index">
+                            <div draggable="true" 
+                                 @dragstart="handleDragStart($event, index)"
+                                 class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-move hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                <div class="flex items-center">
+                                    <i data-lucide="grip-vertical" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="`Column ${index + 1}`"></div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400" x-text="header"></div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                    <span x-text="csvData[1] ? csvData[1][index] : 'No data'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Middle Column: Mapping Configuration -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Field Mapping</h3>
+                        <button @click="autoDetectColumns(); updatePreview()" 
+                                class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50">
+                            <i data-lucide="zap" class="w-3 h-3 inline mr-1"></i>
+                            Auto-detect
+                        </button>
+                    </div>
+
+                    <!-- Mapping Templates -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Templates:</label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="template in mappingTemplates" :key="template.name">
+                                <button @click="applyTemplate(template)" 
+                                        class="text-xs px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300">
+                                    <span x-text="template.name"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Field Mapping Controls -->
+                    <div class="space-y-4">
+                        <!-- Date Field -->
+                        <div class="drop-zone" 
+                             @dragover="handleDragOver($event)" 
+                             @dragleave="handleDragLeave($event)" 
+                             @drop="handleDrop($event, 'date')">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Date *
+                                <span x-show="autoDetection.date" class="ml-2 text-xs" :class="getConfidenceColor(autoDetection.date.confidence)">
+                                    <i data-lucide="check-circle" class="w-3 h-3 inline"></i>
+                                    <span x-text="autoDetection.date.confidence + '%'"></span>
+                                </span>
+                            </label>
+                            <select x-model="columnMapping.date" @change="updatePreview()" 
+                                    class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    :class="validationErrors.find(e => e.field === 'date') ? 'border-red-300 dark:border-red-600' : (columnMapping.date ? 'mapping-indicator border-blue-300 dark:border-blue-600' : '')">
+                                <option value="">Select column or drag here...</option>
+                                <template x-for="(header, index) in csvData[0]" :key="index">
+                                    <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                </template>
+                            </select>
+                            <div x-show="autoDetection.date && columnMapping.date === autoDetection.date.column.toString()" 
+                                 class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <i data-lucide="lightbulb" class="w-3 h-3 inline"></i>
+                                <span x-text="autoDetection.date.reason"></span>
+                            </div>
+                            <div x-show="validationErrors.find(e => e.field === 'date')" class="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <span x-text="validationErrors.find(e => e.field === 'date')?.message"></span>
+                            </div>
+                        </div>
+
+                        <!-- Description Field -->
+                        <div class="drop-zone" 
+                             @dragover="handleDragOver($event)" 
+                             @dragleave="handleDragLeave($event)" 
+                             @drop="handleDrop($event, 'description')">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Description *
+                                <span x-show="autoDetection.description" class="ml-2 text-xs" :class="getConfidenceColor(autoDetection.description.confidence)">
+                                    <i data-lucide="check-circle" class="w-3 h-3 inline"></i>
+                                    <span x-text="autoDetection.description.confidence + '%'"></span>
+                                </span>
+                            </label>
+                            <select x-model="columnMapping.description" @change="updatePreview()" 
+                                    class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    :class="validationErrors.find(e => e.field === 'description') ? 'border-red-300 dark:border-red-600' : (columnMapping.description ? 'mapping-indicator border-blue-300 dark:border-blue-600' : '')">
+                                <option value="">Select column or drag here...</option>
+                                <template x-for="(header, index) in csvData[0]" :key="index">
+                                    <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                </template>
+                            </select>
+                            <div x-show="autoDetection.description && columnMapping.description === autoDetection.description.column.toString()" 
+                                 class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <i data-lucide="lightbulb" class="w-3 h-3 inline"></i>
+                                <span x-text="autoDetection.description.reason"></span>
+                            </div>
+                            <div x-show="validationErrors.find(e => e.field === 'description')" class="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <span x-text="validationErrors.find(e => e.field === 'description')?.message"></span>
+                            </div>
+                        </div>
+
+                        <!-- Amount Field -->
+                        <div class="drop-zone" 
+                             @dragover="handleDragOver($event)" 
+                             @dragleave="handleDragLeave($event)" 
+                             @drop="handleDrop($event, 'amount')">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Amount *
+                                <span x-show="autoDetection.amount" class="ml-2 text-xs" :class="getConfidenceColor(autoDetection.amount.confidence)">
+                                    <i data-lucide="check-circle" class="w-3 h-3 inline"></i>
+                                    <span x-text="autoDetection.amount.confidence + '%'"></span>
+                                </span>
+                            </label>
+                            <select x-model="columnMapping.amount" @change="updatePreview()" 
+                                    class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    :class="validationErrors.find(e => e.field === 'amount') ? 'border-red-300 dark:border-red-600' : (columnMapping.amount ? 'mapping-indicator border-blue-300 dark:border-blue-600' : '')">
+                                <option value="">Select column or drag here...</option>
+                                <template x-for="(header, index) in csvData[0]" :key="index">
+                                    <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                </template>
+                            </select>
+                            <div x-show="autoDetection.amount && columnMapping.amount === autoDetection.amount.column.toString()" 
+                                 class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <i data-lucide="lightbulb" class="w-3 h-3 inline"></i>
+                                <span x-text="autoDetection.amount.reason"></span>
+                            </div>
+                            <div x-show="validationErrors.find(e => e.field === 'amount')" class="mt-1 text-xs text-red-600 dark:text-red-400">
+                                <span x-text="validationErrors.find(e => e.field === 'amount')?.message"></span>
+                            </div>
+                        </div>
+
+                        <!-- Source Category Field -->
+                        <div class="drop-zone" 
+                             @dragover="handleDragOver($event)" 
+                             @dragleave="handleDragLeave($event)" 
+                             @drop="handleDrop($event, 'source_category')">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Source Category (Optional)
+                                <span x-show="autoDetection.source_category" class="ml-2 text-xs" :class="getConfidenceColor(autoDetection.source_category.confidence)">
+                                    <i data-lucide="check-circle" class="w-3 h-3 inline"></i>
+                                    <span x-text="autoDetection.source_category.confidence + '%'"></span>
+                                </span>
+                            </label>
+                            <select x-model="columnMapping.source_category" @change="updatePreview()" 
+                                    class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    :class="columnMapping.source_category ? 'mapping-indicator border-blue-300 dark:border-blue-600' : ''">
+                                <option value="">Select column or drag here...</option>
+                                <template x-for="(header, index) in csvData[0]" :key="index">
+                                    <option :value="index" x-text="`Column ${index + 1}: ${header}`"></option>
+                                </template>
+                            </select>
+                            <div x-show="autoDetection.source_category && columnMapping.source_category === autoDetection.source_category.column.toString()" 
+                                 class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <i data-lucide="lightbulb" class="w-3 h-3 inline"></i>
+                                <span x-text="autoDetection.source_category.reason"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save Template -->
+                    <div class="mt-6 pt-4 border-t dark:border-gray-600">
+                        <button @click="showSaveTemplate = !showSaveTemplate" 
+                                class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">
+                            <i data-lucide="save" class="w-4 h-4 inline mr-1"></i>
+                            Save as template
+                        </button>
+                        <div x-show="showSaveTemplate" class="mt-2 flex gap-2">
+                            <input x-model="saveMappingName" 
+                                   placeholder="Template name..." 
+                                   class="flex-1 border dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                            <button @click="saveTemplate()" 
+                                    :disabled="!saveMappingName.trim()"
+                                    class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Live Preview -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Live Preview</h3>
+                        <div class="flex items-center gap-2">
+                            <button @click="prevSamplePage()" 
+                                    :disabled="sampleRowIndex === 0"
+                                    class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                Rows <span x-text="sampleRowIndex + 1"></span>-<span x-text="Math.min(sampleRowIndex + 5, csvData.length - 1)"></span>
+                            </span>
+                            <button @click="nextSamplePage()" 
+                                    :disabled="sampleRowIndex + 5 >= csvData.length - 1"
+                                    class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mapping Status -->
+                    <div x-show="validationErrors.length > 0" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+                        <div class="text-sm font-medium text-red-800 dark:text-red-300 mb-1">Mapping Issues:</div>
+                        <template x-for="error in validationErrors" :key="error.field">
+                            <div class="text-xs text-red-600 dark:text-red-400">• <span x-text="error.message"></span></div>
+                        </template>
+                    </div>
+
+                    <div x-show="validationErrors.length === 0 && (columnMapping.date || columnMapping.description || columnMapping.amount)" 
+                         class="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
+                        <div class="text-sm text-green-800 dark:text-green-300">
+                            <i data-lucide="check-circle" class="w-4 h-4 inline mr-1"></i>
+                            Mapping looks good! Preview shows how your data will be imported.
+                        </div>
+                    </div>
+
+                    <!-- Preview Table -->
+                    <div class="overflow-hidden border dark:border-gray-600 rounded-lg">
+                        <table class="min-w-full divide-y dark:divide-gray-600">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Amount</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Category</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y dark:divide-gray-600">
+                                <template x-for="row in previewData" :key="row.rowIndex">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td class="px-3 py-2 text-xs">
+                                            <div :class="row.date ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'" 
+                                                 x-text="row.date || 'No mapping'"></div>
+                                        </td>
+                                        <td class="px-3 py-2 text-xs">
+                                            <div :class="row.description ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'" 
+                                                 x-text="row.description || 'No mapping'"></div>
+                                        </td>
+                                        <td class="px-3 py-2 text-xs">
+                                            <div x-show="row.amount" 
+                                                 :class="row.amount && row.amount.toString().startsWith('-') ? 'text-red-600 dark:text-red-400 font-medium' : 'text-green-600 dark:text-green-400 font-medium'"
+                                                 x-text="row.amount"></div>
+                                            <div x-show="!row.amount" class="text-gray-400 dark:text-gray-500">No mapping</div>
+                                        </td>
+                                        <td class="px-3 py-2 text-xs">
+                                            <span x-show="row.source_category" 
+                                                  class="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs"
+                                                  x-text="row.source_category"></span>
+                                            <span x-show="row.auto_category && !row.source_category" 
+                                                  class="inline-block px-2 py-1 rounded-full text-xs"
+                                                  :class="row.auto_category === 'Uncategorized' ? 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'"
+                                                  x-text="'Auto: ' + row.auto_category"></span>
+                                            <span x-show="!row.source_category && !row.auto_category" class="text-gray-400 dark:text-gray-500">-</span>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr x-show="previewData.length === 0">
+                                    <td colspan="4" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                                        Configure field mappings to see preview
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Sample Navigation -->
+                    <div x-show="previewData.length > 0" class="mt-4 text-center">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            Showing sample from <span x-text="csvData.length - 1"></span> total transactions
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="mt-8 flex justify-between">
+                <a href="./import.html" class="px-6 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 flex items-center">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+                    Previous: Upload Files
+                </a>
+                <a href="./import-step3.html" 
+                   :class="validationErrors.length === 0 && columnMapping.date && columnMapping.description && columnMapping.amount ? 
+                           'px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600' : 
+                           'px-6 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-lg cursor-not-allowed'"
+                   class="flex items-center">
+                    Next: Preview Data
+                    <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize icons and handle Alpine.js dynamic content
+        function initializeIcons() {
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                try {
+                    lucide.createIcons();
+                    document.querySelectorAll('[data-lucide]').forEach(icon => {
+                        if (!icon.hasAttribute('data-lucide-initialized')) {
+                            icon.setAttribute('data-lucide-initialized', 'true');
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Failed to initialize Lucide icons:', error);
+                }
+            }
+        }
+        
+        window.initializeIcons = initializeIcons;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeIcons();
+        });
+        
+        document.addEventListener('alpine:initialized', function() {
+            setTimeout(initializeIcons, 100);
+        });
+        
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(function(mutations) {
+                let shouldUpdate = false;
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        const nodes = Array.from(mutation.addedNodes || []);
+                        nodes.forEach(node => {
+                            if (node.nodeType === 1) {
+                                if (node.hasAttribute && node.hasAttribute('data-lucide')) {
+                                    shouldUpdate = true;
+                                }
+                                if (node.querySelectorAll && node.querySelectorAll('[data-lucide]').length > 0) {
+                                    shouldUpdate = true;
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldUpdate) {
+                    setTimeout(initializeIcons, 50);
+                }
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['x-show', 'style', 'class']
+            });
+        }
+        
+        setInterval(function() {
+            const uninitializedIcons = document.querySelectorAll('[data-lucide]:not([data-lucide-initialized])');
+            if (uninitializedIcons.length > 0) {
+                initializeIcons();
+            }
+        }, 1000);
+        
+        initializeIcons();
+    </script>
+</body>
+</html>

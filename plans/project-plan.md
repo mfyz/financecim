@@ -19,6 +19,7 @@ A minimal personal finance application for tracking and categorizing transaction
   - parent_category_id (optional, for subcategories)
   - color (for UI visualization)
   - icon (optional)
+  - monthlyBudget (optional, decimal for budget tracking)
   - created_at
   - updated_at
 
@@ -31,28 +32,30 @@ A minimal personal finance application for tracking and categorizing transaction
   - created_at
   - updated_at
 
-### 3. Source Category Mapping
-- **Purpose**: Map source-specific categories to our unified categories (multi-source)
-- **Fields**:
+### 3. Auto-Categorization Rules
+- **Purpose**: Automatically categorize transactions using dual rule systems
+- **Unit Rules**: Assign transactions to business units/entities
   - id
-  - source_category_name (original category from source)
-  - category_id (FK to categories)
+  - rule_type (source, description)
+  - pattern (text to match)
+  - match_type (contains, starts_with, exact, regex)
+  - unit_id (FK to units)
+  - priority (for rule precedence)
+  - active (boolean)
   - created_at
   - updated_at
-
-### 4. Category Auto Mapping Rules
-- **Purpose**: Automatically categorize transactions based on description patterns
-- **Fields**:
+- **Category Rules**: Assign transactions to spending categories
   - id
-  - rule_type (contains, starts_with, regex)
+  - rule_type (description, source_category)
   - pattern (text to match)
+  - match_type (contains, starts_with, exact, regex)
   - category_id (FK to categories)
   - priority (for rule precedence)
   - active (boolean)
   - created_at
   - updated_at
 
-### 5. Units
+### 4. Units
 - **Purpose**: Top-level categorization for business units/entities (e.g., "Main Business", "Side Hustle", "Personal")
 - **Fields**:
   - id
@@ -63,7 +66,7 @@ A minimal personal finance application for tracking and categorizing transaction
   - created_at
   - updated_at
 
-### 6. Transactions
+### 5. Transactions
 - **Purpose**: Core transaction data
 - **Fields**:
   - id
@@ -79,7 +82,7 @@ A minimal personal finance application for tracking and categorizing transaction
   - created_at
   - updated_at
 
-### 7. Import Log
+### 6. Import Log
 - **Purpose**: Track import history and results
 - **Fields**:
   - id
@@ -120,27 +123,27 @@ A minimal personal finance application for tracking and categorizing transaction
 
 #### 3. Categories Management
 - List of categories with CRUD operations
-- Add/edit category form
+- Add/edit category form with monthly budget input
 - Parent category support for hierarchy
 - Color picker for visualization
+- Monthly Budget column with inline editing in table view
 
-#### 4. Source Category Mapping
-- List view of mappings
-- Add mapping: select source category name → map to category
-- Edit/delete existing mappings
-- Search/filter by source category name
+#### 4. Auto-Categorization Rules (Enhanced Dual System)
+- **Unit Rules**: Assign transactions to business units/entities
+  - Rules list with enable/disable toggle
+  - Add/edit rule form with rule type (source, description)
+  - Pattern matching with multiple types (contains, starts_with, exact)
+  - Unit selection dropdown
+  - Priority ordering with drag & drop
+- **Category Rules**: Assign transactions to spending categories
+  - Rules list with enable/disable toggle  
+  - Add/edit rule form with rule type (description, source_category)
+  - Pattern matching with multiple types (contains, starts_with, exact)
+  - Category selection dropdown
+  - Priority ordering with drag & drop
+  - Source category fields as text input (not dropdown)
 
-#### 5. Auto-Categorization Rules
-- Rules list with enable/disable toggle
-- Add/edit rule form
-  - Rule type dropdown (contains, starts_with, regex)
-  - Pattern input
-  - Category selection
-  - Priority setting
-- Test rule against sample text
-- Reorder rules by priority
-
-#### 6. Transactions Screen
+#### 5. Transactions Screen
 - **Main Features**:
   - Sortable columns (date, amount, description, category)
   - Filters:
@@ -163,10 +166,11 @@ A minimal personal finance application for tracking and categorizing transaction
   - Bulk categorize
   - Bulk ignore/unignore
 
-#### 7. Import Flow
+#### 6. Import Flow
 - **Step 1: Upload**
   - Drag & drop CSV files (supports multiple files)
   - Select source for import
+  - Import History button for viewing past imports
   - Note: Multiple CSVs must have same column structure
 - **Step 2: Column Mapping**
   - Auto-detect columns
@@ -181,6 +185,15 @@ A minimal personal finance application for tracking and categorizing transaction
   - Import log entry created
   - Show success/error message with statistics
   - Navigate to transactions
+
+#### 7. Import Log
+- **Purpose**: Historical view of all past imports
+- **Features**:
+  - Table view showing: Import Date, File Name, Rows Imported, Source, Status
+  - Status indicators (completed/failed) with color coding
+  - Navigation from Import page
+  - Read-only view for audit purposes
+  - Sample data for various financial sources
 
 ### UI Components Needed (Phase 1)
 - Navigation sidebar
@@ -266,6 +279,14 @@ A minimal personal finance application for tracking and categorizing transaction
 - ✅ Column mapping screen with auto-detection
 - ✅ Transaction preview with validation and categorization
 - ✅ Completion screen with statistics and charts
+- ✅ Units system with CRUD management page
+- ✅ Enhanced Rules page with dual rule systems (Unit Rules + Category Rules)
+- ✅ Updated Transactions table with Unit column and filtering
+- ✅ Source category mappings removed and integrated into Category Rules
+- ✅ Source category fields changed from dropdown to text input
+- ✅ Fixed swapped Unit/Category column headers in transactions table
+- ✅ Added Monthly Budget column to Categories page with inline editing
+- ✅ Import Log page with table view of past imports and navigation button
 
 ## Next Steps
 1. ✅ Create project plan documentation

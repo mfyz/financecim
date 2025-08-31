@@ -52,11 +52,23 @@ A minimal personal finance application for tracking and categorizing transaction
   - created_at
   - updated_at
 
-### 5. Transactions
+### 5. Units
+- **Purpose**: Top-level categorization for business units/entities (e.g., "Main Business", "Side Hustle", "Personal")
+- **Fields**:
+  - id
+  - name (e.g., "Marketing Agency", "Freelance Design", "Personal")
+  - color (for UI visualization)
+  - icon (optional)
+  - active (boolean)
+  - created_at
+  - updated_at
+
+### 6. Transactions
 - **Purpose**: Core transaction data
 - **Fields**:
   - id
   - source_id (FK to sources)
+  - unit_id (FK to units, user-editable)
   - date (transaction date)
   - description (transaction description)
   - amount (positive for income, negative for expenses)
@@ -67,7 +79,7 @@ A minimal personal finance application for tracking and categorizing transaction
   - created_at
   - updated_at
 
-### 6. Import Log
+### 7. Import Log
 - **Purpose**: Track import history and results
 - **Fields**:
   - id
@@ -95,24 +107,30 @@ A minimal personal finance application for tracking and categorizing transaction
 
 ### Implementation Order
 
-#### 1. Sources Management
+#### 1. Units Management
+- List view with add/edit/delete
+- Simple form for unit configuration (name, color, icon)
+- Table display with actions
+- Default units: "Personal", "Main Business"
+
+#### 2. Sources Management
 - List view with add/edit/delete
 - Simple form for source configuration
 - Table display with actions
 
-#### 2. Categories Management
+#### 3. Categories Management
 - List of categories with CRUD operations
 - Add/edit category form
 - Parent category support for hierarchy
 - Color picker for visualization
 
-#### 3. Source Category Mapping
+#### 4. Source Category Mapping
 - List view of mappings
 - Add mapping: select source category name → map to category
 - Edit/delete existing mappings
 - Search/filter by source category name
 
-#### 4. Auto-Categorization Rules
+#### 5. Auto-Categorization Rules
 - Rules list with enable/disable toggle
 - Add/edit rule form
   - Rule type dropdown (contains, starts_with, regex)
@@ -122,11 +140,12 @@ A minimal personal finance application for tracking and categorizing transaction
 - Test rule against sample text
 - Reorder rules by priority
 
-#### 5. Transactions Screen
+#### 6. Transactions Screen
 - **Main Features**:
   - Sortable columns (date, amount, description, category)
   - Filters:
     - Date range picker
+    - Unit filter
     - Source filter
     - Category filter
     - Amount range
@@ -134,15 +153,17 @@ A minimal personal finance application for tracking and categorizing transaction
   - Search by description
   - Pagination or infinite scroll
 - **Inline Editing**:
+  - Unit dropdown
   - Category dropdown
   - Ignore checkbox
   - Notes field
 - **Bulk Actions**:
   - Select multiple transactions
+  - Bulk assign unit
   - Bulk categorize
   - Bulk ignore/unignore
 
-#### 6. Import Flow
+#### 7. Import Flow
 - **Step 1: Upload**
   - Drag & drop CSV files (supports multiple files)
   - Select source for import
@@ -156,13 +177,9 @@ A minimal personal finance application for tracking and categorizing transaction
   - Highlight any issues
   - Show auto-categorization preview
   - Display file names and row counts
-- **Step 4: Confirm**
-  - Summary of import (X new, Y duplicates across all files)
-  - Option to skip duplicates
-  - Import button
-- **Step 5: Results**
+- **Step 4: Complete**
   - Import log entry created
-  - Show success/error message
+  - Show success/error message with statistics
   - Navigate to transactions
 
 ### UI Components Needed (Phase 1)
@@ -230,11 +247,32 @@ A minimal personal finance application for tracking and categorizing transaction
 - Local-first approach (no cloud dependency initially)
 - Single-user application (no multi-tenancy initially)
 
+## Recent Updates
+
+### Prototype Changes (Latest)
+- **Import Flow Simplified**: Removed Step 4 (Confirm) as it added no value. Now flows: Upload → Map Columns → Preview → Complete
+- **Main Import Page**: Replaced with enhanced Step 1 (Upload) interface with drag & drop, file validation, and progress indicators
+- **Units System Added**: New top-level categorization for business units/entities (e.g., "Personal", "Main Business", "Side Hustle")
+  - Added Units table to data model
+  - Added unit_id field to Transactions
+  - Updated UI plans to include unit management and filtering
+
+### Completed Prototype Features
+- ✅ Compact navbar design (h-12) across all screens
+- ✅ Dark/light theme toggle with localStorage persistence
+- ✅ Enhanced button styling with proper icon visibility
+- ✅ 4-step import flow with individual step screens
+- ✅ Enhanced upload interface with drag & drop functionality
+- ✅ Column mapping screen with auto-detection
+- ✅ Transaction preview with validation and categorization
+- ✅ Completion screen with statistics and charts
+
 ## Next Steps
 1. ✅ Create project plan documentation
-2. ⏳ Build HTML/Tailwind prototype
-3. ⏳ Gather feedback and iterate on UI
-4. ⏳ Finalize tech stack decision
-5. ⏳ Implement backend and database
-6. ⏳ Build frontend application
-7. ⏳ Testing and refinement
+2. 🔄 Build HTML/Tailwind prototype (in progress - import flow complete)
+3. ⏳ Add Units management to prototype
+4. ⏳ Gather feedback and iterate on UI
+5. ⏳ Finalize tech stack decision
+6. ⏳ Implement backend and database
+7. ⏳ Build frontend application
+8. ⏳ Testing and refinement

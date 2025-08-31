@@ -74,8 +74,11 @@
                         <template x-for="category in categories" :key="category.id">
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <span x-text="category.icon" class="mr-2"></span>
-                                    <span x-text="category.name"></span>
+                                    <div class="flex items-center">
+                                        <span x-show="category.parent" class="ml-6 text-gray-400 mr-2">└</span>
+                                        <span x-text="category.icon" class="mr-2"></span>
+                                        <span x-text="category.name"></span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <span x-text="category.parent || '-'" :class="category.parent ? '' : 'text-gray-400'"></span>

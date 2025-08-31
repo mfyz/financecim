@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transactions - Financecim</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen flex" x-data="{ 
+    <div class="min-h-screen" x-data="{ 
+        mobileMenuOpen: false,
         selectedTransactions: [],
         showBulkActions: false,
         searchTerm: '',
@@ -189,35 +191,92 @@
             }
         }
     }">
-        <!-- Sidebar -->
-        <div class="w-64 bg-white shadow-lg">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-800 mr-8">Financecim</h1>
+                        
+                        <!-- Desktop Navigation -->
+                        <div class="hidden md:flex items-center space-x-1">
+                            <a href="./index.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                                Dashboard
+                            </a>
+                            <a href="./sources.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="building-2" class="w-4 h-4 mr-2"></i>
+                                Sources
+                            </a>
+                            <a href="./categories.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="tags" class="w-4 h-4 mr-2"></i>
+                                Categories
+                            </a>
+                            <a href="./mappings.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="git-merge" class="w-4 h-4 mr-2"></i>
+                                Mappings
+                            </a>
+                            <a href="./rules.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="workflow" class="w-4 h-4 mr-2"></i>
+                                Rules
+                            </a>
+                            <a href="./transactions.html" class="flex items-center px-3 py-2 rounded-md bg-blue-100 text-blue-700">
+                                <i data-lucide="receipt" class="w-4 h-4 mr-2"></i>
+                                Transactions
+                            </a>
+                            <a href="./import.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                                <i data-lucide="upload" class="w-4 h-4 mr-2"></i>
+                                Import
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile menu button -->
+                    <div class="md:hidden flex items-center">
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100">
+                            <i data-lucide="menu" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Navigation -->
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-2">
+                    <div class="flex flex-col space-y-1">
+                        <a href="./index.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                            Dashboard
+                        </a>
+                        <a href="./sources.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="building-2" class="w-4 h-4 mr-2"></i>
+                            Sources
+                        </a>
+                        <a href="./categories.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="tags" class="w-4 h-4 mr-2"></i>
+                            Categories
+                        </a>
+                        <a href="./mappings.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="git-merge" class="w-4 h-4 mr-2"></i>
+                            Mappings
+                        </a>
+                        <a href="./rules.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="workflow" class="w-4 h-4 mr-2"></i>
+                            Rules
+                        </a>
+                        <a href="./transactions.html" class="flex items-center px-3 py-2 rounded-md bg-blue-100 text-blue-700">
+                            <i data-lucide="receipt" class="w-4 h-4 mr-2"></i>
+                            Transactions
+                        </a>
+                        <a href="./import.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
+                            <i data-lucide="upload" class="w-4 h-4 mr-2"></i>
+                            Import
+                        </a>
+                    </div>
+                </div>
             </div>
-            <nav class="mt-6">
-                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Sources
-                </a>
-                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Categories
-                </a>
-                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Category Mappings
-                </a>
-                <a href="./rules.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Auto-Categorization Rules
-                </a>
-                <a href="./transactions.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
-                    Transactions
-                </a>
-                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Import Data
-                </a>
-            </nav>
-        </div>
+        </nav>
 
         <!-- Main Content -->
-        <div class="flex-1 p-8">
+        <div class="max-w-none mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-bold text-gray-800 mb-2">Transactions</h2>
                 <p class="text-gray-600">View and manage all your transactions</p>
@@ -347,9 +406,9 @@
             </div>
 
             <!-- Transactions Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="bg-white rounded-lg shadow">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full">
+                    <table class="min-w-full lg:w-full">
                         <thead class="bg-gray-50 border-b">
                             <tr>
                                 <th class="px-4 py-3">
@@ -359,32 +418,66 @@
                                         :checked="selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0"
                                     >
                                 </th>
-                                <th @click="toggleSort('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                                    Date
-                                    <span x-show="sortBy === 'date'">
-                                        <span x-show="sortOrder === 'desc'">↓</span>
-                                        <span x-show="sortOrder === 'asc'">↑</span>
-                                    </span>
+                                <th @click="toggleSort('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="calendar" class="w-3 h-3 mr-1"></i>
+                                        Date
+                                        <span x-show="sortBy === 'date'" class="ml-1">
+                                            <i x-show="sortOrder === 'desc'" data-lucide="chevron-down" class="w-3 h-3"></i>
+                                            <i x-show="sortOrder === 'asc'" data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </span>
+                                    </div>
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                                <th @click="toggleSort('description')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                                    Description
-                                    <span x-show="sortBy === 'description'">
-                                        <span x-show="sortOrder === 'desc'">↓</span>
-                                        <span x-show="sortOrder === 'asc'">↑</span>
-                                    </span>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="building-2" class="w-3 h-3 mr-1"></i>
+                                        Source
+                                    </div>
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Category</th>
-                                <th @click="toggleSort('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                                    Amount
-                                    <span x-show="sortBy === 'amount'">
-                                        <span x-show="sortOrder === 'desc'">↓</span>
-                                        <span x-show="sortOrder === 'asc'">↑</span>
-                                    </span>
+                                <th @click="toggleSort('description')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[200px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="file-text" class="w-3 h-3 mr-1"></i>
+                                        Description
+                                        <span x-show="sortBy === 'description'" class="ml-1">
+                                            <i x-show="sortOrder === 'desc'" data-lucide="chevron-down" class="w-3 h-3"></i>
+                                            <i x-show="sortOrder === 'asc'" data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </span>
+                                    </div>
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ignore</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="tag" class="w-3 h-3 mr-1"></i>
+                                        Source Category
+                                    </div>
+                                </th>
+                                <th @click="toggleSort('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[100px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="dollar-sign" class="w-3 h-3 mr-1"></i>
+                                        Amount
+                                        <span x-show="sortBy === 'amount'" class="ml-1">
+                                            <i x-show="sortOrder === 'desc'" data-lucide="chevron-down" class="w-3 h-3"></i>
+                                            <i x-show="sortOrder === 'asc'" data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="tags" class="w-3 h-3 mr-1"></i>
+                                        Category
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="eye-off" class="w-3 h-3 mr-1"></i>
+                                        Ignore
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
+                                    <div class="flex items-center">
+                                        <i data-lucide="sticky-note" class="w-3 h-3 mr-1"></i>
+                                        Notes
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -449,5 +542,8 @@
             </div>
         </div>
     </div>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

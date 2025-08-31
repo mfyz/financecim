@@ -1,0 +1,240 @@
+# Financecim - Project Plan
+
+## Overview
+A minimal personal finance application for tracking and categorizing transactions from multiple sources.
+
+## Core Objectives
+- Import transactions from various financial sources
+- Automatically categorize transactions using mapping rules
+- Allow manual categorization and transaction management
+- Provide clear visibility into spending patterns
+
+## Data Model
+
+### 1. Categories
+- **Purpose**: Define spending categories for transaction classification
+- **Fields**:
+  - id (unique identifier)
+  - name (e.g., "Groceries", "Transportation", "Entertainment")
+  - parent_category_id (optional, for subcategories)
+  - color (for UI visualization)
+  - icon (optional)
+  - created_at
+  - updated_at
+
+### 2. Sources
+- **Purpose**: Represent different financial institutions or import sources
+- **Fields**:
+  - id
+  - name (e.g., "Chase Bank", "Capital One")
+  - type (bank, credit_card, manual)
+  - created_at
+  - updated_at
+
+### 3. Source Category Mapping
+- **Purpose**: Map source-specific categories to our unified categories (multi-source)
+- **Fields**:
+  - id
+  - source_category_name (original category from source)
+  - category_id (FK to categories)
+  - created_at
+  - updated_at
+
+### 4. Category Auto Mapping Rules
+- **Purpose**: Automatically categorize transactions based on description patterns
+- **Fields**:
+  - id
+  - rule_type (contains, starts_with, regex)
+  - pattern (text to match)
+  - category_id (FK to categories)
+  - priority (for rule precedence)
+  - active (boolean)
+  - created_at
+  - updated_at
+
+### 5. Transactions
+- **Purpose**: Core transaction data
+- **Fields**:
+  - id
+  - source_id (FK to sources)
+  - date (transaction date)
+  - description (transaction description)
+  - amount (positive for income, negative for expenses)
+  - source_category (original category from source)
+  - category_id (FK to categories, user-editable)
+  - ignore (boolean, user-editable)
+  - notes (text, user-editable)
+  - created_at
+  - updated_at
+
+### 6. Import Log
+- **Purpose**: Track import history and results
+- **Fields**:
+  - id
+  - source_id (FK to sources)
+  - import_date (when the import was performed)
+  - file_name (optional, for file-based imports)
+  - transactions_added (count of new transactions)
+  - transactions_skipped (count of duplicates/ignored)
+  - transactions_updated (count of updated transactions)
+  - status (success, partial, failed)
+  - error_message (optional, for failures)
+  - metadata (JSON, for additional import details)
+  - created_at
+
+## Technology Stack
+
+### Confirmed Stack
+- **Framework**: Next.js with TypeScript
+- **Database**: SQLite (local) with Turso/libSQL (remote)
+- **ORM**: Drizzle ORM
+- **UI**: Tailwind CSS + shadcn/ui components
+- **Deployment**: TBD
+
+## Phase 1: Core CRUD & Transactions
+
+### Implementation Order
+
+#### 1. Sources Management
+- List view with add/edit/delete
+- Simple form for source configuration
+- Table display with actions
+
+#### 2. Categories Management
+- List of categories with CRUD operations
+- Add/edit category form
+- Parent category support for hierarchy
+- Color picker for visualization
+
+#### 3. Source Category Mapping
+- List view of mappings
+- Add mapping: select source category name → map to category
+- Edit/delete existing mappings
+- Search/filter by source category name
+
+#### 4. Auto-Categorization Rules
+- Rules list with enable/disable toggle
+- Add/edit rule form
+  - Rule type dropdown (contains, starts_with, regex)
+  - Pattern input
+  - Category selection
+  - Priority setting
+- Test rule against sample text
+- Reorder rules by priority
+
+#### 5. Transactions Screen
+- **Main Features**:
+  - Sortable columns (date, amount, description, category)
+  - Filters:
+    - Date range picker
+    - Source filter
+    - Category filter
+    - Amount range
+    - Ignored/active toggle
+  - Search by description
+  - Pagination or infinite scroll
+- **Inline Editing**:
+  - Category dropdown
+  - Ignore checkbox
+  - Notes field
+- **Bulk Actions**:
+  - Select multiple transactions
+  - Bulk categorize
+  - Bulk ignore/unignore
+
+#### 6. Import Flow
+- **Step 1: Upload**
+  - Drag & drop CSV files (supports multiple files)
+  - Select source for import
+  - Note: Multiple CSVs must have same column structure
+- **Step 2: Column Mapping**
+  - Auto-detect columns
+  - Map CSV columns to transaction fields
+  - Save mapping as template (optional)
+- **Step 3: Preview**
+  - Show first 10-20 rows (from each file if multiple)
+  - Highlight any issues
+  - Show auto-categorization preview
+  - Display file names and row counts
+- **Step 4: Confirm**
+  - Summary of import (X new, Y duplicates across all files)
+  - Option to skip duplicates
+  - Import button
+- **Step 5: Results**
+  - Import log entry created
+  - Show success/error message
+  - Navigate to transactions
+
+### UI Components Needed (Phase 1)
+- Navigation sidebar
+- Data tables with sorting/filtering
+- Forms with validation
+- Modals/sheets for add/edit
+- Select/combobox components
+- Date range picker
+- File upload with drag & drop
+- Bulk action toolbar
+- Toast notifications
+- Loading states
+
+## Phase 2: Dashboard & Reporting
+
+### Screens to Implement
+
+#### 1. Dashboard
+- Monthly spending overview
+- Category breakdown charts
+- Recent transactions widget
+- Quick stats cards
+- Spending trends
+
+#### 2. Reports
+- Monthly/yearly comparisons
+- Category analysis
+- Source-wise breakdown
+- Custom date range reports
+- Export functionality
+
+## Phase 3: Implementation
+
+### Core Features Priority
+1. **MVP (Must Have)**
+   - Import transactions from CSV
+   - Manual categorization
+   - Basic transaction list/search
+   - Simple category management
+
+2. **Enhanced (Should Have)**
+   - Auto-categorization rules
+   - Multiple source support
+   - Source category mapping
+   - Dashboard with visualizations
+
+3. **Nice to Have**
+   - Bank API integration
+   - Budget tracking
+   - Recurring transaction detection
+   - Export functionality
+   - Mobile responsive design
+
+## Success Criteria
+- Clean, intuitive interface
+- Fast transaction categorization workflow
+- Accurate auto-categorization (80%+ accuracy)
+- Sub-second response times
+- Reliable data import without duplicates
+
+## Constraints
+- Keep it minimal and focused
+- Prioritize usability over features
+- Local-first approach (no cloud dependency initially)
+- Single-user application (no multi-tenancy initially)
+
+## Next Steps
+1. ✅ Create project plan documentation
+2. ⏳ Build HTML/Tailwind prototype
+3. ⏳ Gather feedback and iterate on UI
+4. ⏳ Finalize tech stack decision
+5. ⏳ Implement backend and database
+6. ⏳ Build frontend application
+7. ⏳ Testing and refinement

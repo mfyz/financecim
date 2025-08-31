@@ -14,14 +14,18 @@
         editingMapping: null,
         searchTerm: '',
         mappings: [
-            { id: 1, source_category: 'FOOD_GROCERY', category: 'Groceries', category_color: '#10B981' },
-            { id: 2, source_category: 'RESTAURANT', category: 'Restaurants', category_color: '#10B981' },
-            { id: 3, source_category: 'GAS_STATION', category: 'Gas', category_color: '#3B82F6' },
-            { id: 4, source_category: 'AUTO_SERVICE', category: 'Transportation', category_color: '#3B82F6' },
-            { id: 5, source_category: 'ENTERTAINMENT', category: 'Entertainment', category_color: '#8B5CF6' },
-            { id: 6, source_category: 'SHOPPING_GENERAL', category: 'Shopping', category_color: '#EC4899' },
-            { id: 7, source_category: 'UTILITIES', category: 'Bills & Utilities', category_color: '#EF4444' },
-            { id: 8, source_category: 'INTERNET_CABLE', category: 'Bills & Utilities', category_color: '#EF4444' }
+            { id: 1, source_category: 'Food & Dining', category: 'Restaurants', category_color: '#10B981' },
+            { id: 2, source_category: 'Groceries', category: 'Groceries', category_color: '#10B981' },
+            { id: 3, source_category: 'Gas & Fuel', category: 'Gas', category_color: '#3B82F6' },
+            { id: 4, source_category: 'Automotive', category: 'Transportation', category_color: '#3B82F6' },
+            { id: 5, source_category: 'Travel & Entertainment', category: 'Entertainment', category_color: '#8B5CF6' },
+            { id: 6, source_category: 'General Merchandise', category: 'Shopping', category_color: '#EC4899' },
+            { id: 7, source_category: 'Bills & Utilities', category: 'Bills & Utilities', category_color: '#EF4444' },
+            { id: 8, source_category: 'Cable/Internet/Phone', category: 'Bills & Utilities', category_color: '#EF4444' },
+            { id: 9, source_category: 'Personal Care', category: 'Shopping', category_color: '#EC4899' },
+            { id: 10, source_category: 'Home Improvement', category: 'Shopping', category_color: '#EC4899' },
+            { id: 11, source_category: 'Transfer', category: 'Transfer', category_color: '#6B7280' },
+            { id: 12, source_category: 'Payment/Credit', category: 'Payment', category_color: '#6B7280' }
         ],
         get filteredMappings() {
             if (!this.searchTerm) return this.mappings;
@@ -95,7 +99,7 @@
                         <template x-for="mapping in filteredMappings" :key="mapping.id">
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <code class="bg-gray-100 px-2 py-1 rounded text-xs" x-text="mapping.source_category"></code>
+                                    <span class="bg-gray-100 px-2 py-1 rounded text-sm" x-text="mapping.source_category"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">→</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -125,8 +129,8 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Source Category Name</label>
-                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., FOOD_GROCERY">
-                        <p class="text-xs text-gray-500 mt-1">This is the category name from your bank/card statements</p>
+                        <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="e.g., Food & Dining, Travel & Entertainment">
+                        <p class="text-xs text-gray-500 mt-1">Enter the exact category text from your bank/card statements</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Map to Category</label>

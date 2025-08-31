@@ -5,12 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Categories - Financecim</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 dark:bg-gray-900">
     <div class="min-h-screen" x-data="{ 
         mobileMenuOpen: false,
+        darkMode: JSON.parse(localStorage.getItem('darkMode') || 'false'),
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('darkMode', JSON.stringify(this.darkMode));
+            document.documentElement.classList.toggle('dark', this.darkMode);
+        },
+        init() {
+            // Apply dark mode on page load if stored preference exists
+            if (this.darkMode) {
+                document.documentElement.classList.add('dark');
+            }
+        },
         showAddModal: false,
         showEditModal: false,
         editingCategory: null,
@@ -26,82 +43,91 @@
         ]
     }">
         <!-- Top Navigation -->
-        <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <nav class="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
+                <div class="flex justify-between h-12">
                     <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-gray-800 mr-8">Financecim</h1>
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white mr-6">Financecim</h1>
                         
                         <!-- Desktop Navigation -->
                         <div class="hidden md:flex items-center space-x-1">
-                            <a href="./index.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Dashboard
                             </a>
-                            <a href="./sources.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="building-2" class="w-4 h-4 mr-2"></i>
+                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Sources
                             </a>
-                            <a href="./categories.html" class="flex items-center px-3 py-2 rounded-md bg-blue-100 text-blue-700">
-                                <i data-lucide="tags" class="w-4 h-4 mr-2"></i>
+                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                                <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Categories
                             </a>
-                            <a href="./mappings.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="git-merge" class="w-4 h-4 mr-2"></i>
+                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Mappings
                             </a>
-                            <a href="./rules.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="workflow" class="w-4 h-4 mr-2"></i>
+                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Rules
                             </a>
-                            <a href="./transactions.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="receipt" class="w-4 h-4 mr-2"></i>
+                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Transactions
                             </a>
-                            <a href="./import.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                                <i data-lucide="upload" class="w-4 h-4 mr-2"></i>
+                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
                                 Import
                             </a>
                         </div>
                     </div>
                     
-                    <!-- Mobile menu button -->
-                    <div class="md:hidden flex items-center">
-                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100">
-                            <i data-lucide="menu" class="w-5 h-5"></i>
+                    <!-- Theme toggle and Mobile menu button -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Theme toggle -->
+                        <button @click="toggleDarkMode()" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                            <i x-show="!darkMode" data-lucide="moon" class="w-5 h-5"></i>
+                            <i x-show="darkMode" data-lucide="sun" class="w-5 h-5"></i>
                         </button>
+                        
+                        <!-- Mobile menu button -->
+                        <div class="md:hidden">
+                            <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <i data-lucide="menu" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Mobile Navigation -->
-                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-2">
-                    <div class="flex flex-col space-y-1">
-                        <a href="./index.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 dark:border-gray-700 py-1.5">
+                    <div class="flex flex-col space-y-0.5">
+                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
                             Dashboard
                         </a>
-                        <a href="./sources.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="building-2" class="w-4 h-4 mr-2"></i>
+                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
                             Sources
                         </a>
-                        <a href="./categories.html" class="flex items-center px-3 py-2 rounded-md bg-blue-100 text-blue-700">
-                            <i data-lucide="tags" class="w-4 h-4 mr-2"></i>
+                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                            <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
                             Categories
                         </a>
-                        <a href="./mappings.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="git-merge" class="w-4 h-4 mr-2"></i>
+                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
                             Mappings
                         </a>
-                        <a href="./rules.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="workflow" class="w-4 h-4 mr-2"></i>
+                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
                             Rules
                         </a>
-                        <a href="./transactions.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="receipt" class="w-4 h-4 mr-2"></i>
+                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
                             Transactions
                         </a>
-                        <a href="./import.html" class="flex items-center px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">
-                            <i data-lucide="upload" class="w-4 h-4 mr-2"></i>
+                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+                            <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
                             Import
                         </a>
                     </div>
@@ -112,7 +138,7 @@
         <!-- Main Content -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8 flex justify-between items-center">
-                <h2 class="text-3xl font-bold text-gray-800">Categories</h2>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Categories</h2>
                 <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
                     <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
                     Add Category

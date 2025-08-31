@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto-Categorization Rules - Financecim</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen flex" x-data="{ 
+    <div class="min-h-screen" x-data="{ 
+        mobileMenuOpen: false,
         showAddModal: false,
         showEditModal: false,
         showTestModal: false,
@@ -71,40 +73,98 @@
             }
         }
     }">
-        <!-- Sidebar -->
-        <div class="w-64 bg-white shadow-lg">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold text-gray-800">Financecim</h1>
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-sm border-b sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-12">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold text-gray-800 mr-6">Financecim</h1>
+                        
+                        <!-- Desktop Navigation -->
+                        <div class="hidden md:flex items-center space-x-1">
+                            <a href="./index.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Dashboard
+                            </a>
+                            <a href="./sources.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Sources
+                            </a>
+                            <a href="./categories.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Categories
+                            </a>
+                            <a href="./mappings.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Mappings
+                            </a>
+                            <a href="./rules.html" class="flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-700 text-sm">
+                                <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Rules
+                            </a>
+                            <a href="./transactions.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Transactions
+                            </a>
+                            <a href="./import.html" class="flex items-center px-2 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                                Import
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile menu button -->
+                    <div class="md:hidden flex items-center">
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-md hover:bg-gray-100">
+                            <i data-lucide="menu" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Navigation -->
+                <div x-show="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-1.5">
+                    <div class="flex flex-col space-y-0.5">
+                        <a href="./index.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Dashboard
+                        </a>
+                        <a href="./sources.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Sources
+                        </a>
+                        <a href="./categories.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="tags" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Categories
+                        </a>
+                        <a href="./mappings.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="git-merge" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Mappings
+                        </a>
+                        <a href="./rules.html" class="flex items-center px-3 py-1 rounded-md bg-blue-100 text-blue-700 text-sm">
+                            <i data-lucide="workflow" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Rules
+                        </a>
+                        <a href="./transactions.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="receipt" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Transactions
+                        </a>
+                        <a href="./import.html" class="flex items-center px-3 py-1 rounded-md text-gray-700 hover:bg-gray-100 text-sm">
+                            <i data-lucide="upload" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Import
+                        </a>
+                    </div>
+                </div>
             </div>
-            <nav class="mt-6">
-                <a href="./sources.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Sources
-                </a>
-                <a href="./categories.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Categories
-                </a>
-                <a href="./mappings.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Category Mappings
-                </a>
-                <a href="./rules.html" class="block px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
-                    Auto-Categorization Rules
-                </a>
-                <a href="./transactions.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Transactions
-                </a>
-                <a href="./import.html" class="block px-6 py-3 text-gray-700 hover:bg-gray-50">
-                    Import Data
-                </a>
-            </nav>
-        </div>
+        </nav>
 
         <!-- Main Content -->
-        <div class="flex-1 p-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-3xl font-bold text-gray-800">Auto-Categorization Rules</h2>
-                    <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                        + Add Rule
+                    <button @click="showAddModal = true" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
+                        <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                        Add Rule
                     </button>
                 </div>
                 <p class="text-gray-600">Rules are applied in priority order. First matching rule wins.</p>
@@ -156,9 +216,18 @@
                                     </button>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button @click="editingRule = rule; testText = ''; testResult = null; showTestModal = true" class="text-green-600 hover:text-green-900 mr-3">Test</button>
-                                    <button @click="editingRule = rule; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                                    <button @click="rules = rules.filter(r => r.id !== rule.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                                    <button @click="editingRule = rule; testText = ''; testResult = null; showTestModal = true" class="text-green-600 hover:text-green-900 mr-3 flex items-center">
+                                        <i data-lucide="play" class="w-3 h-3 mr-1"></i>
+                                        Test
+                                    </button>
+                                    <button @click="editingRule = rule; showEditModal = true" class="text-blue-600 hover:text-blue-900 mr-3 flex items-center">
+                                        <i data-lucide="edit-2" class="w-3 h-3 mr-1"></i>
+                                        Edit
+                                    </button>
+                                    <button @click="if(confirm('Are you sure you want to delete this rule?')) rules = rules.filter(r => r.id !== rule.id)" class="text-red-600 hover:text-red-900 flex items-center">
+                                        <i data-lucide="trash-2" class="w-3 h-3 mr-1"></i>
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         </template>
@@ -208,8 +277,14 @@
                         <p class="text-xs text-gray-500 mt-1">Lower numbers = higher priority</p>
                     </div>
                     <div class="flex justify-end space-x-2 pt-4">
-                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Add Rule</button>
+                        <button @click="showAddModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800 flex items-center">
+                            <i data-lucide="x" class="w-3 h-3 mr-1"></i>
+                            Cancel
+                        </button>
+                        <button @click="showAddModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+                            <i data-lucide="plus" class="w-3 h-3 mr-1"></i>
+                            Add Rule
+                        </button>
                     </div>
                 </div>
             </div>
@@ -254,8 +329,14 @@
                         <input type="number" class="w-full border rounded-lg px-3 py-2" :value="editingRule?.priority" min="1">
                     </div>
                     <div class="flex justify-end space-x-2 pt-4">
-                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
-                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Changes</button>
+                        <button @click="showEditModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800 flex items-center">
+                            <i data-lucide="x" class="w-3 h-3 mr-1"></i>
+                            Cancel
+                        </button>
+                        <button @click="showEditModal = false" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+                            <i data-lucide="save" class="w-3 h-3 mr-1"></i>
+                            Save Changes
+                        </button>
                     </div>
                 </div>
             </div>
@@ -294,5 +375,8 @@
             </div>
         </div>
     </div>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

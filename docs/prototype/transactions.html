@@ -23,16 +23,20 @@
         sortBy: 'date',
         sortOrder: 'desc',
         transactions: [
-            { id: 1, source: 'Chase Bank', date: '2024-01-20', description: 'WALMART SUPERCENTER #1234', amount: -125.43, source_category: 'FOOD_GROCERY', category: 'Groceries', ignore: false, notes: '' },
-            { id: 2, source: 'Chase Bank', date: '2024-01-19', description: 'SHELL GAS STATION', amount: -45.00, source_category: 'GAS_STATION', category: 'Gas', ignore: false, notes: 'Fill up' },
-            { id: 3, source: 'Capital One', date: '2024-01-19', description: 'STARBUCKS STORE #5678', amount: -6.75, source_category: 'RESTAURANT', category: 'Restaurants', ignore: false, notes: '' },
-            { id: 4, source: 'Chase Bank', date: '2024-01-18', description: 'TARGET STORE #9012', amount: -89.23, source_category: 'SHOPPING_GENERAL', category: 'Shopping', ignore: false, notes: '' },
-            { id: 5, source: 'Capital One', date: '2024-01-18', description: 'NETFLIX.COM', amount: -15.99, source_category: 'ENTERTAINMENT', category: 'Entertainment', ignore: false, notes: 'Monthly subscription' },
-            { id: 6, source: 'Chase Bank', date: '2024-01-17', description: 'COMCAST CABLE', amount: -120.00, source_category: 'UTILITIES', category: 'Bills & Utilities', ignore: false, notes: '' },
-            { id: 7, source: 'Chase Bank', date: '2024-01-17', description: 'PAYCHECK DEPOSIT', amount: 3500.00, source_category: 'INCOME', category: null, ignore: true, notes: 'Salary' },
-            { id: 8, source: 'Capital One', date: '2024-01-16', description: 'AMAZON.COM', amount: -42.99, source_category: 'SHOPPING_ONLINE', category: 'Shopping', ignore: false, notes: '' },
-            { id: 9, source: 'Chase Bank', date: '2024-01-16', description: 'WHOLE FOODS MARKET', amount: -78.65, source_category: 'FOOD_GROCERY', category: 'Groceries', ignore: false, notes: '' },
-            { id: 10, source: 'Capital One', date: '2024-01-15', description: 'UBER EATS', amount: -32.45, source_category: 'RESTAURANT', category: 'Restaurants', ignore: false, notes: 'Dinner delivery' }
+            { id: 1, source: 'Chase Bank', date: '2024-01-20', description: 'WALMART SUPERCENTER #1234', amount: -125.43, source_category: 'Groceries', category: 'Groceries', ignore: false, notes: '' },
+            { id: 2, source: 'Chase Bank', date: '2024-01-19', description: 'SHELL GAS STATION', amount: -45.00, source_category: 'Gas & Fuel', category: 'Gas', ignore: false, notes: 'Fill up' },
+            { id: 3, source: 'Capital One', date: '2024-01-19', description: 'STARBUCKS STORE #5678', amount: -6.75, source_category: 'Food & Dining', category: 'Restaurants', ignore: false, notes: '' },
+            { id: 4, source: 'Chase Bank', date: '2024-01-18', description: 'TARGET STORE #9012', amount: -89.23, source_category: 'General Merchandise', category: 'Shopping', ignore: false, notes: '' },
+            { id: 5, source: 'Capital One', date: '2024-01-18', description: 'NETFLIX.COM', amount: -15.99, source_category: 'Travel & Entertainment', category: 'Entertainment', ignore: false, notes: 'Monthly subscription' },
+            { id: 6, source: 'Chase Bank', date: '2024-01-17', description: 'COMCAST CABLE', amount: -120.00, source_category: 'Bills & Utilities', category: 'Bills & Utilities', ignore: false, notes: '' },
+            { id: 7, source: 'Chase Bank', date: '2024-01-17', description: 'PAYCHECK DEPOSIT', amount: 3500.00, source_category: 'Income', category: null, ignore: true, notes: 'Salary' },
+            { id: 8, source: 'Capital One', date: '2024-01-16', description: 'AMAZON.COM', amount: -42.99, source_category: 'General Merchandise', category: 'Shopping', ignore: false, notes: '' },
+            { id: 9, source: 'Chase Bank', date: '2024-01-16', description: 'WHOLE FOODS MARKET', amount: -78.65, source_category: 'Groceries', category: 'Groceries', ignore: false, notes: '' },
+            { id: 10, source: 'Capital One', date: '2024-01-15', description: 'UBER EATS', amount: -32.45, source_category: 'Food & Dining', category: 'Restaurants', ignore: false, notes: 'Dinner delivery' },
+            { id: 11, source: 'Chase Bank', date: '2024-01-14', description: 'DIVIDEND PAYMENT', amount: 250.00, source_category: 'Investment', category: null, ignore: false, notes: 'Quarterly dividend' },
+            { id: 12, source: 'Capital One', date: '2024-01-13', description: 'CASHBACK REWARD', amount: 45.67, source_category: 'Rewards', category: null, ignore: false, notes: '' },
+            { id: 13, source: 'Chase Bank', date: '2024-01-12', description: 'VENMO PAYMENT FROM FRIEND', amount: 25.00, source_category: 'Transfer', category: null, ignore: false, notes: 'Dinner split' },
+            { id: 14, source: 'Chase Bank', date: '2024-01-11', description: 'INTEREST EARNED', amount: 15.32, source_category: 'Interest', category: null, ignore: false, notes: 'Savings account' }
         ],
         get filteredTransactions() {
             let filtered = [...this.transactions];
@@ -370,6 +374,7 @@
                                         <span x-show="sortOrder === 'asc'">↑</span>
                                     </span>
                                 </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Category</th>
                                 <th @click="toggleSort('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                                     Amount
                                     <span x-show="sortBy === 'amount'">
@@ -394,10 +399,8 @@
                                     </td>
                                     <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900" x-text="transaction.date"></td>
                                     <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.source"></td>
-                                    <td class="px-6 py-3 text-sm text-gray-900">
-                                        <div x-text="transaction.description"></div>
-                                        <div class="text-xs text-gray-500" x-text="transaction.source_category"></div>
-                                    </td>
+                                    <td class="px-6 py-3 text-sm text-gray-900" x-text="transaction.description"></td>
+                                    <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.source_category"></td>
                                     <td class="px-6 py-3 whitespace-nowrap text-sm font-semibold" 
                                         :class="transaction.amount > 0 ? 'text-green-600' : 'text-red-600'">
                                         <span x-text="transaction.amount > 0 ? '+' : ''"></span>

@@ -3,69 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financecim - Prototype</title>
+    <title>Dashboard - Financecim</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center px-4">
-        <div class="max-w-4xl w-full">
-            <div class="text-center mb-8">
-                <h1 class="text-4xl font-bold text-gray-900 mb-2">Financecim Prototype</h1>
-                <p class="text-lg text-gray-600">Personal finance tracking application</p>
+    <div class="min-h-screen flex" x-data="{ 
+        sidebarCollapsed: false,
+        monthlySpending: 2847.33,
+        monthlyIncome: 3500.00,
+        accountBalance: 4652.67,
+        recentTransactions: [
+            { date: '2024-01-20', description: 'WALMART SUPERCENTER', amount: -125.43, category: 'Groceries' },
+            { date: '2024-01-19', description: 'SHELL GAS STATION', amount: -45.00, category: 'Gas' },
+            { date: '2024-01-19', description: 'STARBUCKS', amount: -6.75, category: 'Restaurants' },
+            { date: '2024-01-18', description: 'TARGET STORE', amount: -89.23, category: 'Shopping' },
+            { date: '2024-01-17', description: 'PAYCHECK DEPOSIT', amount: 3500.00, category: 'Income' }
+        ],
+        categoryBreakdown: [
+            { category: 'Groceries', amount: 326.52, color: '#10B981', percentage: 35 },
+            { category: 'Gas', amount: 180.00, color: '#3B82F6', percentage: 19 },
+            { category: 'Restaurants', amount: 245.80, color: '#8B5CF6', percentage: 26 },
+            { category: 'Shopping', amount: 156.90, color: '#EC4899', percentage: 17 },
+            { category: 'Bills & Utilities', amount: 320.00, color: '#EF4444', percentage: 34 }
+        ]
+    }">
+        <!-- Sidebar -->
+        <div class="bg-white shadow-lg transition-all duration-300" :class="sidebarCollapsed ? 'w-16' : 'w-64'">
+            <div class="p-6 flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-800" x-show="!sidebarCollapsed">Financecim</h1>
+                <button @click="sidebarCollapsed = !sidebarCollapsed" class="p-2 rounded-lg hover:bg-gray-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
             </div>
-            
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <h2 class="text-2xl font-bold mb-6">Prototype Screens</h2>
-                
-                <div class="grid gap-4 md:grid-cols-2">
-                    <!-- Data Management -->
-                    <div>
-                        <h3 class="font-semibold text-gray-700 mb-3">Data Management</h3>
-                        <div class="space-y-2">
-                            <a href="./sources.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Sources</h4>
-                                <p class="text-sm text-gray-600">Manage financial sources (banks, cards)</p>
-                            </a>
-                            <a href="./categories.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Categories</h4>
-                                <p class="text-sm text-gray-600">Create and organize spending categories</p>
-                            </a>
-                            <a href="./mappings.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Category Mappings</h4>
-                                <p class="text-sm text-gray-600">Map source categories to your categories</p>
-                            </a>
-                            <a href="./rules.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Auto-Categorization Rules</h4>
-                                <p class="text-sm text-gray-600">Set up rules for automatic categorization</p>
-                            </a>
+            <nav class="mt-6">
+                <a href="./index.html" class="flex items-center px-6 py-3 bg-blue-50 text-blue-700 border-r-4 border-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Dashboard</span>
+                </a>
+                <a href="./sources.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Sources</span>
+                </a>
+                <a href="./categories.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Categories</span>
+                </a>
+                <a href="./mappings.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Category Mappings</span>
+                </a>
+                <a href="./rules.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Auto-Categorization Rules</span>
+                </a>
+                <a href="./transactions.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Transactions</span>
+                </a>
+                <a href="./import.html" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                    </svg>
+                    <span class="ml-3" x-show="!sidebarCollapsed">Import Data</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Dashboard</h2>
+                <p class="text-gray-600">Your financial overview for January 2024</p>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">Monthly Spending</p>
+                            <p class="text-2xl font-bold text-red-600">-$<span x-text="monthlySpending.toFixed(2)"></span></p>
                         </div>
-                    </div>
-                    
-                    <!-- Transactions -->
-                    <div>
-                        <h3 class="font-semibold text-gray-700 mb-3">Transactions & Import</h3>
-                        <div class="space-y-2">
-                            <a href="./transactions.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Transactions</h4>
-                                <p class="text-sm text-gray-600">View, filter, and categorize transactions</p>
-                            </a>
-                            <a href="./import.html" class="block p-3 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
-                                <h4 class="font-semibold text-blue-600">Import Data</h4>
-                                <p class="text-sm text-gray-600">Import transactions from CSV files</p>
-                            </a>
+                        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                            </svg>
                         </div>
                     </div>
                 </div>
                 
-                <div class="mt-8 p-4 bg-blue-50 rounded-lg">
-                    <h3 class="font-semibold text-blue-900 mb-2">💡 Prototype Features</h3>
-                    <ul class="text-sm text-blue-800 space-y-1">
-                        <li>• All screens are fully interactive with Alpine.js</li>
-                        <li>• Data is simulated (not persisted)</li>
-                        <li>• Navigation between all screens works</li>
-                        <li>• Forms and modals are functional</li>
-                        <li>• Filters and sorting demonstrate the intended UX</li>
-                    </ul>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">Monthly Income</p>
+                            <p class="text-2xl font-bold text-green-600">+$<span x-text="monthlyIncome.toFixed(2)"></span></p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">Account Balance</p>
+                            <p class="text-2xl font-bold text-blue-600">$<span x-text="accountBalance.toFixed(2)"></span></p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Recent Transactions -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">Recent Transactions</h3>
+                        <a href="./transactions.html" class="text-blue-600 text-sm hover:text-blue-800">View all →</a>
+                    </div>
+                    <div class="space-y-3">
+                        <template x-for="transaction in recentTransactions" :key="transaction">
+                            <div class="flex items-center justify-between py-2 border-b last:border-b-0">
+                                <div class="flex-1">
+                                    <p class="font-medium text-sm" x-text="transaction.description"></p>
+                                    <p class="text-xs text-gray-500" x-text="transaction.date + ' • ' + transaction.category"></p>
+                                </div>
+                                <p class="font-semibold" 
+                                   :class="transaction.amount > 0 ? 'text-green-600' : 'text-red-600'">
+                                    <span x-text="transaction.amount > 0 ? '+' : ''"></span>$<span x-text="Math.abs(transaction.amount).toFixed(2)"></span>
+                                </p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">Spending by Category</h3>
+                        <a href="./categories.html" class="text-blue-600 text-sm hover:text-blue-800">Manage →</a>
+                    </div>
+                    <div class="space-y-4">
+                        <template x-for="item in categoryBreakdown" :key="item.category">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full mr-3" :style="`background-color: ${item.color}`"></div>
+                                    <span class="text-sm font-medium" x-text="item.category"></span>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold">$<span x-text="item.amount.toFixed(2)"></span></p>
+                                    <div class="w-16 bg-gray-200 rounded-full h-2 mt-1">
+                                        <div class="bg-blue-600 h-2 rounded-full" :style="`width: ${item.percentage}%`"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mt-8 bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <a href="./import.html" class="flex flex-col items-center p-4 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium">Import CSV</span>
+                    </a>
+                    
+                    <a href="./categories.html" class="flex flex-col items-center p-4 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium">Add Category</span>
+                    </a>
+                    
+                    <a href="./rules.html" class="flex flex-col items-center p-4 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium">Setup Rules</span>
+                    </a>
+                    
+                    <a href="./transactions.html" class="flex flex-col items-center p-4 border rounded-lg hover:shadow-md hover:border-blue-300 transition-all">
+                        <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mb-2">
+                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium">Review Transactions</span>
+                    </a>
                 </div>
             </div>
         </div>

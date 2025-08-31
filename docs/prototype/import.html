@@ -133,40 +133,40 @@
                 <div class="flex items-center justify-center mt-6 mb-8">
                     <div class="flex items-center">
                         <div class="flex items-center">
-                            <div class="rounded-full h-10 w-10 flex items-center justify-center" 
-                                 :class="currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">1</div>
+                            <button @click="currentStep = 1" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow" 
+                                 :class="currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">1</button>
                             <div class="ml-2 mr-8">
                                 <div class="text-sm font-semibold" :class="currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'">Upload</div>
                             </div>
                         </div>
                         <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 2 ? 'bg-blue-500' : ''"></div>
                         <div class="flex items-center ml-8">
-                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
-                                 :class="currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">2</div>
+                            <button @click="currentStep = 2" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
+                                 :class="currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">2</button>
                             <div class="ml-2 mr-8">
                                 <div class="text-sm font-semibold" :class="currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'">Map Columns</div>
                             </div>
                         </div>
                         <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 3 ? 'bg-blue-500' : ''"></div>
                         <div class="flex items-center ml-8">
-                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
-                                 :class="currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">3</div>
+                            <button @click="currentStep = 3" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
+                                 :class="currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">3</button>
                             <div class="ml-2 mr-8">
                                 <div class="text-sm font-semibold" :class="currentStep >= 3 ? 'text-gray-900' : 'text-gray-500'">Preview</div>
                             </div>
                         </div>
                         <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 4 ? 'bg-blue-500' : ''"></div>
                         <div class="flex items-center ml-8">
-                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
-                                 :class="currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">4</div>
+                            <button @click="currentStep = 4" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
+                                 :class="currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">4</button>
                             <div class="ml-2 mr-8">
                                 <div class="text-sm font-semibold" :class="currentStep >= 4 ? 'text-gray-900' : 'text-gray-500'">Confirm</div>
                             </div>
                         </div>
                         <div class="h-1 w-16 bg-gray-300" :class="currentStep >= 5 ? 'bg-blue-500' : ''"></div>
                         <div class="flex items-center ml-8">
-                            <div class="rounded-full h-10 w-10 flex items-center justify-center"
-                                 :class="currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">5</div>
+                            <button @click="currentStep = 5" class="rounded-full h-10 w-10 flex items-center justify-center hover:shadow-lg transition-shadow"
+                                 :class="currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'">5</button>
                             <div class="ml-2">
                                 <div class="text-sm font-semibold" :class="currentStep >= 5 ? 'text-gray-900' : 'text-gray-500'">Complete</div>
                             </div>

@@ -14,6 +14,7 @@
         searchTerm: '',
         dateFrom: '',
         dateTo: '',
+        datePreset: '',
         selectedSource: 'all',
         selectedCategory: 'all',
         amountMin: '',
@@ -136,6 +137,52 @@
             });
             this.selectedTransactions = [];
             this.showBulkActions = false;
+        },
+        applyDatePreset() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const day = today.getDate();
+            
+            switch(this.datePreset) {
+                case 'today':
+                    this.dateFrom = this.dateTo = today.toISOString().split('T')[0];
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(day - 1);
+                    this.dateFrom = this.dateTo = yesterday.toISOString().split('T')[0];
+                    break;
+                case 'last7days':
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(day - 7);
+                    this.dateFrom = weekAgo.toISOString().split('T')[0];
+                    this.dateTo = today.toISOString().split('T')[0];
+                    break;
+                case 'last30days':
+                    const monthAgo = new Date(today);
+                    monthAgo.setDate(day - 30);
+                    this.dateFrom = monthAgo.toISOString().split('T')[0];
+                    this.dateTo = today.toISOString().split('T')[0];
+                    break;
+                case 'thismonth':
+                    this.dateFrom = new Date(year, month, 1).toISOString().split('T')[0];
+                    this.dateTo = today.toISOString().split('T')[0];
+                    break;
+                case 'lastmonth':
+                    const lastMonth = new Date(year, month - 1, 1);
+                    const lastMonthEnd = new Date(year, month, 0);
+                    this.dateFrom = lastMonth.toISOString().split('T')[0];
+                    this.dateTo = lastMonthEnd.toISOString().split('T')[0];
+                    break;
+                case 'thisyear':
+                    this.dateFrom = new Date(year, 0, 1).toISOString().split('T')[0];
+                    this.dateTo = today.toISOString().split('T')[0];
+                    break;
+                case 'all':
+                    this.dateFrom = this.dateTo = '';
+                    break;
+            }
         }
     }">
         <!-- Sidebar -->
@@ -174,7 +221,7 @@
 
             <!-- Filters -->
             <div class="bg-white rounded-lg shadow p-4 mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
                     <!-- Search -->
                     <div class="lg:col-span-2">
                         <input 
@@ -185,11 +232,27 @@
                         >
                     </div>
                     
+                    <!-- Date Preset -->
+                    <div>
+                        <select x-model="datePreset" @change="applyDatePreset()" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            <option value="">Quick dates...</option>
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="last7days">Last 7 days</option>
+                            <option value="last30days">Last 30 days</option>
+                            <option value="thismonth">This month</option>
+                            <option value="lastmonth">Last month</option>
+                            <option value="thisyear">This year</option>
+                            <option value="all">All time</option>
+                        </select>
+                    </div>
+                    
                     <!-- Date Range -->
                     <div>
                         <input 
                             type="date" 
                             x-model="dateFrom"
+                            placeholder="From date"
                             class="w-full border rounded-lg px-3 py-2 text-sm"
                         >
                     </div>
@@ -197,6 +260,7 @@
                         <input 
                             type="date" 
                             x-model="dateTo"
+                            placeholder="To date"
                             class="w-full border rounded-lg px-3 py-2 text-sm"
                         >
                     </div>

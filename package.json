@@ -19,7 +19,12 @@
     "visual-check": "node scripts/visual-check.js",
     "compare-prototype": "node scripts/compare-prototype.js",
     "kill-server": "ps aux | grep 'next dev -p 5601' | grep -v grep | awk '{print $2}' | xargs -r kill -TERM 2>/dev/null || echo 'No Next.js dev server found'",
-    "restart": "npm run kill-server && npm run dev"
+    "restart": "npm run kill-server && npm run dev",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx db/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "tsx db/seed.ts"
   },
   "repository": {
     "type": "git",
@@ -35,8 +40,12 @@
   "description": "",
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.5",
     "lucide-react": "^0.542.0",
     "next": "^15.5.2",
     "postcss": "^8.5.6",
@@ -53,6 +62,7 @@
     "eslint": "^9.34.0",
     "eslint-config-next": "^15.5.2",
     "puppeteer": "^24.17.1",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }

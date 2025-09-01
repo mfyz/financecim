@@ -350,7 +350,7 @@ export default function RulesPage() {
             </div>
             <button 
               onClick={() => setShowAddUnitRuleModal(true)}
-              className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center"
+              className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center cursor-pointer"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Unit Rule
@@ -493,7 +493,7 @@ export default function RulesPage() {
           </div>
           <button 
             onClick={() => setShowAddCategoryRuleModal(true)}
-            className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center"
+            className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center cursor-pointer"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Category Rule

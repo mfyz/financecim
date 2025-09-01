@@ -48,13 +48,14 @@ export function Modal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" data-testid="modal-backdrop">
       <div className="flex min-h-full items-center justify-center p-4">
         {/* Backdrop */}
         <div 
           className="fixed inset-0 transition-opacity"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={onClose}
+          data-testid="modal-backdrop-overlay"
         />
         
         {/* Modal panel */}
@@ -67,7 +68,7 @@ export function Modal({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -79,7 +80,7 @@ export function Modal({
             <div className="absolute right-4 top-4 z-10">
               <button
                 onClick={onClose}
-                className="rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
                 <X className="h-6 w-6" />
               </button>

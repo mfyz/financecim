@@ -107,7 +107,7 @@ export default function CategoriesPage() {
         <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Categories</h2>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center"
+          className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Category
@@ -178,14 +178,14 @@ export default function CategoriesPage() {
                         setEditingCategory({ ...category })
                         setShowEditModal(true)
                       }}
-                      className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center"
+                      className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center cursor-pointer"
                       title="Edit category"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => deleteCategory(category.id)}
-                      className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center"
+                      className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
                       title="Delete category"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -266,13 +266,13 @@ export default function CategoriesPage() {
                 setShowAddModal(false)
                 resetNewCategory()
               }}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center"
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center cursor-pointer"
             >
               Cancel
             </button>
             <button 
               onClick={addCategory}
-              className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center"
+              className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center cursor-pointer"
             >
               Add Category
             </button>
@@ -346,13 +346,13 @@ export default function CategoriesPage() {
                   setShowEditModal(false)
                   setEditingCategory(null)
                 }}
-                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center"
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center cursor-pointer"
               >
                 Cancel
               </button>
               <button 
                 onClick={editCategory}
-                className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center"
+                className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center cursor-pointer"
               >
                 Save Changes
               </button>

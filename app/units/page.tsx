@@ -127,7 +127,7 @@ export default function UnitsPage() {
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Unit
@@ -223,7 +223,7 @@ export default function UnitsPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first business unit.</p>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
           >
             Add Unit
           </button>

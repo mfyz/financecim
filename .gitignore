@@ -45,6 +45,7 @@ next-env.d.ts
 
 # visual verification
 screenshots/
+test_screenshots/
 
 # Personal information & sensitive data
 .env

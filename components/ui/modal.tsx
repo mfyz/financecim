@@ -52,12 +52,13 @@ export function Modal({
       <div className="flex min-h-full items-center justify-center p-4">
         {/* Backdrop */}
         <div 
-          className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity"
+          className="fixed inset-0 transition-opacity"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={onClose}
         />
         
         {/* Modal panel */}
-        <div className={`relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all w-full ${sizeClasses[size]} ${className}`}>
+        <div className={`relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all w-full z-10 ${sizeClasses[size]} ${className}`}>
           {/* Header */}
           {title && (
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">

@@ -318,35 +318,23 @@ POST/PUT/DELETE         → Returns success with mock response
 - [ ] Add tag parsing/validation to transaction endpoints
 - [ ] Create tag suggestions endpoint from real data
 
-## Phase 3: Auto-Categorization System (Week 5-6)
+## Phase 3: Advanced Features - Transactions & Rules (Week 6-7)
 
-### 3.1 Dual Rules Engine
-**Screens:** `/rules`
-- [x] Unit Rules: Source-based and description-based rules
-- [x] Category Rules: Description and source category rules
-- [x] Priority-based rule ordering with drag & drop
-- [x] Rule testing interface with live preview
-- [x] Bulk rule management operations
+### 3.1 Transaction Management Backend
+- [ ] Replace mock `/api/transactions` with real database
+- [ ] Implement complex filtering logic
+- [ ] Add pagination and sorting at database level
+- [ ] Implement bulk operations efficiently
+- [ ] Create transaction search with full-text support
 
-**Features:**
-- [x] Multiple match types: contains, starts_with, exact, regex
-- [x] Rule precedence system based on priority
-- [x] Enable/disable rules functionality
-- [x] Rule testing with sample data
+### 3.2 Auto-Categorization System
+- [ ] Implement dual rules tables (unit_rules, category_rules)
+- [ ] Create rule matching engine with priority system
+- [ ] Add regex support for pattern matching
+- [ ] Build rule testing API endpoint
+- [ ] Implement auto-categorization during import
 
-**API Endpoints:**
-- `GET /api/rules/units` - List unit rules
-- `POST /api/rules/units` - Create unit rule
-- `PUT /api/rules/units/[id]` - Update unit rule
-- `DELETE /api/rules/units/[id]` - Delete unit rule
-- `GET /api/rules/categories` - List category rules
-- `POST /api/rules/categories` - Create category rule
-- `PUT /api/rules/categories/[id]` - Update category rule
-- `DELETE /api/rules/categories/[id]` - Delete category rule
-- `POST /api/rules/test` - Test rule against sample data
-
-### 3.2 Auto-Categorization Engine
-**Core Logic:**
+### 3.3 Rules Processing Engine
 ```typescript
 interface AutoCategorizationEngine {
   applyUnitRules(transaction: Transaction): string | null;
@@ -356,118 +344,53 @@ interface AutoCategorizationEngine {
 }
 ```
 
-**Implementation Priority:**
-1. Rule matching algorithm with regex support
-2. Priority-based rule execution
-3. Performance optimization for bulk processing
-4. Caching system for rule evaluation
+## Phase 4: Import System & Analytics (Week 8-9)
 
-## Phase 4: Transaction Management (Week 7-8)
+### 4.1 CSV Import Backend
+- [ ] Implement CSV parsing with multiple format support
+- [ ] Create column mapping and validation logic
+- [ ] Build duplicate detection system
+- [ ] Add batch transaction insertion
+- [ ] Create import history tracking
+- [ ] Apply auto-categorization during import
 
-### 4.1 Advanced Transaction Interface
-**Screens:** `/transactions`
-- [x] Comprehensive filtering system:
-  - Date range picker with presets
-  - Unit, source, category filters
-  - Amount range filtering
-  - Search by description
-  - Show/hide ignored transactions
-  - **Tag-based filtering and search**
-- [x] Sortable columns (date, amount, description)
-- [x] Bulk operations:
-  - Select multiple transactions
-  - Bulk unit assignment  
-  - Bulk categorization
-  - Bulk ignore/unignore
-  - **Bulk tag assignment/removal**
-- [x] Inline editing for all editable fields
-- [x] Real-time filtering and search
-- [ ] **Tag management per transaction:**
-  - Visual tag indicators with colors
-  - Add/remove tags inline
-  - Tag suggestions based on description/category
-  - Tag autocomplete functionality
+### 4.2 Dashboard Analytics
+- [ ] Replace mock dashboard metrics with real calculations
+- [ ] Implement spending trends calculations
+- [ ] Create category breakdown analytics
+- [ ] Add monthly comparison logic
+- [ ] Build efficient aggregation queries
 
-**API Endpoints:**
-- `GET /api/transactions` - List transactions with filtering (includes tags)
-- `POST /api/transactions` - Create transaction
-- `PUT /api/transactions/[id]` - Update transaction
-- `DELETE /api/transactions/[id]` - Delete transaction
-- `PATCH /api/transactions/bulk` - Bulk update operations
-- `PATCH /api/transactions/[id]/tags` - Update tags for transaction
-- `PATCH /api/transactions/bulk/tags` - Bulk tag operations (add/remove tags)
+## Phase 5: Testing & Optimization (Week 10)
 
-### 4.2 Transaction Processing
-**Features:**
-- Automatic unit assignment via rules
-- Automatic categorization via rules
-- Duplicate detection and prevention
-- Data validation and sanitization
-- Transaction history tracking
+### 5.1 Unit Testing
+- [ ] Write unit tests for tag utilities
+- [ ] Test auto-categorization engine
+- [ ] Test import validation logic
+- [ ] Test complex filtering functions
+- [ ] Achieve 80% coverage on critical paths
 
-## Phase 5: Import System (Week 9-10)
+### 5.2 E2E Testing (Conservative)
+- [ ] Test critical import flow only
+- [ ] Test transaction filtering workflow
+- [ ] Verify auto-categorization works end-to-end
+- [ ] Keep tests minimal and maintainable
 
-### 5.1 Multi-Step Import Flow
-**Screens:** `/import` (4-step process)
-- [x] **Step 1 - Upload:** Drag & drop multiple CSV files
-- [x] **Step 2 - Map Columns:** Auto-detection with manual override
-- [x] **Step 3 - Preview:** Validation with auto-categorization preview
-- [x] **Step 4 - Complete:** Results summary with statistics
-
-**Features:**
-- [x] Multiple CSV file support with validation
-- [x] Column mapping with templates
-- [x] Real-time preview with error detection
-- [x] Progress tracking and file processing status
-- [x] Import history logging
-
-**API Endpoints:**
-- `POST /api/import/upload` - Handle file upload
-- `POST /api/import/analyze` - Analyze CSV structure
-- `POST /api/import/preview` - Generate preview with validation
-- `POST /api/import/execute` - Execute import with logging
-- `GET /api/import/history` - List import history
-
-### 5.2 Import Processing Engine
-**Core Features:**
-- CSV parsing with multiple format support
-- Data validation and transformation
-- Duplicate detection across sources
-- Batch processing for large files
-- Error handling and rollback capabilities
-- Auto-categorization during import
-
-## Phase 6: Dashboard & Analytics (Week 11-12)
-
-### 6.1 Financial Dashboard
-**Screens:** `/` (Dashboard)
-- [x] Key metrics cards (spending, income, balance)
-- [x] Recent transactions widget
-- [x] Category breakdown with charts
-- [x] Spending trends visualization
-- [x] Monthly comparison data
-
-**API Endpoints:**
-- `GET /api/analytics/summary` - Dashboard summary data
-- `GET /api/analytics/trends` - Spending trends
-- `GET /api/analytics/categories` - Category breakdown
-- `GET /api/analytics/monthly` - Monthly comparisons
-
-### 6.2 Advanced Analytics (Future)
-- Custom date range reports
-- Unit-wise financial analysis
-- Budget vs actual spending
-- Export functionality (CSV, PDF)
-- Recurring transaction detection
+### 5.3 Performance Optimization
+- [ ] Add database indexes for common queries
+- [ ] Implement query result caching
+- [ ] Optimize bundle size with code splitting
+- [ ] Add pagination to large data sets
+- [ ] Profile and optimize slow queries
 
 ## Technical Implementation Details
 
-### 6.3 State Management
+### State Management
 **Approach:** React Server Components + Client state
 - Server Components for data fetching
 - Client state for UI interactions
 - Optimistic updates for better UX
-- Real-time data synchronization
+- Keep it simple - no external state management libraries
 
 ### 6.4 Data Validation
 **Schema Validation:**

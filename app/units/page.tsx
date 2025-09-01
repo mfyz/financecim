@@ -298,7 +298,7 @@ export default function UnitsPage() {
                   <div className="flex space-x-1">
                     <button 
                       onClick={() => toggleUnitStatus(unit.id)}
-                      className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
                       title={unit.active ? 'Deactivate unit' : 'Activate unit'}
                     >
                       {unit.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -308,14 +308,14 @@ export default function UnitsPage() {
                         setEditingUnit({ ...unit })
                         setShowEditModal(true)
                       }}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
                       title="Edit unit"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => deleteUnit(unit.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
                       title="Delete unit"
                     >
                       <Trash2 className="w-4 h-4" />

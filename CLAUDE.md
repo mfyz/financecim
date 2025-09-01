@@ -302,7 +302,29 @@ __e2e__/          # E2E tests
   - ✅ Proper routing between import steps
   - ✅ Navigation breadcrumbs
 
-#### Phase 1.4 - Core Pages (PENDING)
+#### Phase 1.4 - Units Management ✅ COMPLETED
+- ✅ **Units Page** (`/app/units/page.tsx`) - Complete grid layout with real database integration
+- ✅ **Units Data Model** (`/db/models/units.model.ts`) - Full CRUD operations with validation
+- ✅ **Units API Endpoints** - Complete REST API:
+  - ✅ `GET /api/units` - Fetch all units
+  - ✅ `POST /api/units` - Create new unit
+  - ✅ `PUT /api/units/[id]` - Update unit
+  - ✅ `DELETE /api/units/[id]` - Delete unit (with foreign key protection)
+  - ✅ `POST /api/units/[id]/toggle` - Toggle active status
+- ✅ **Grid Layout** - Professional card-based display with color-coded borders
+- ✅ **Add/Edit Modals** - Complete CRUD modals with:
+  - ✅ Emoji icon text input (single character)
+  - ✅ Color picker with hex input
+  - ✅ Form validation and error handling
+  - ✅ Loading states and toast notifications
+- ✅ **Status Management** - Active/Inactive toggle with UI feedback
+- ✅ **Database Integration** - Real SQLite operations, no mock data
+- ✅ **Toast Notifications** - Fixed transparent background issue
+- ✅ **Responsive Design** - Mobile and desktop responsive
+- ✅ **Dark Mode Support** - Full theme compatibility
+- ✅ **Visual Verification** - Comprehensive Puppeteer testing completed
+
+#### Phase 1.5 - Core Pages (PENDING)
 - ❌ Dashboard page enhancements
 - ❌ Transaction management system
 - ❌ Category management
@@ -318,8 +340,12 @@ __e2e__/          # E2E tests
 - ✅ Comprehensive seed data with realistic test data
 
 #### Phase 2.2 - Real Database Integration (IN PROGRESS)
-- 🔄 Replace mock APIs with real database operations
-- 🔄 Implement data model layer approach
+- ✅ **Units Integration** - Complete real database operations for Units
+- ✅ **Sources Integration** - Complete real database operations for Sources  
+- 🔄 Categories database integration
+- 🔄 Transactions database integration
+- 🔄 Rules database integration
+- ✅ **Data Model Layer** - Implemented for Units and Sources (`db/models/`)
 - 🔄 Create comprehensive unit tests for API endpoints
 
 ### 8. Commands Reference

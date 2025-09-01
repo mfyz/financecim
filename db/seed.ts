@@ -21,11 +21,11 @@ async function seed() {
     // Seed Units
     console.log('📦 Seeding units...')
     const seedUnits = await db.insert(units).values([
-      { name: 'Personal', description: 'Personal expenses and income', color: '#6B7280', icon: 'user', active: true },
-      { name: 'Main Business', description: 'Primary business operations', color: '#3B82F6', icon: 'briefcase', active: true },
-      { name: 'Side Hustle', description: 'Freelance and consulting work', color: '#10B981', icon: 'lightbulb', active: true },
-      { name: 'Real Estate', description: 'Rental property income and expenses', color: '#F59E0B', icon: 'home', active: true },
-      { name: 'Investments', description: 'Investment related transactions', color: '#8B5CF6', icon: 'trending-up', active: false }
+      { name: 'Personal', description: 'Personal expenses and income', color: '#6B7280', icon: '👤', active: true },
+      { name: 'Main Business', description: 'Primary business operations', color: '#3B82F6', icon: '💼', active: true },
+      { name: 'Side Hustle', description: 'Freelance and consulting work', color: '#10B981', icon: '💡', active: true },
+      { name: 'Real Estate', description: 'Rental property income and expenses', color: '#F59E0B', icon: '🏠', active: true },
+      { name: 'Investments', description: 'Investment related transactions', color: '#8B5CF6', icon: '📈', active: false }
     ]).returning({ id: units.id })
 
     // Seed Sources

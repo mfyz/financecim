@@ -1,121 +1,234 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Play, Pause, Layers } from 'lucide-react'
 import { Modal } from '@/components/ui'
-import { Form, FormField, FormTextarea, FormSelect } from '@/components/forms'
+import { Form, FormField, FormTextarea } from '@/components/forms'
+import { Unit, NewUnit } from '@/db/schema'
+import { toast } from 'react-hot-toast'
 
-interface Unit {
-  id: number
-  name: string
-  description: string
-  color: string
-  icon: string
-  active: boolean
-}
-
-interface NewUnit {
+interface NewUnitForm {
   name: string
   description: string
   color: string
   icon: string
 }
-
-const iconOptions = [
-  { value: 'user', label: 'User' },
-  { value: 'briefcase', label: 'Briefcase' },
-  { value: 'lightbulb', label: 'Lightbulb' },
-  { value: 'home', label: 'Home' },
-  { value: 'trending-up', label: 'Trending Up' },
-  { value: 'building-2', label: 'Building' },
-  { value: 'car', label: 'Car' },
-  { value: 'heart', label: 'Heart' },
-  { value: 'star', label: 'Star' },
-  { value: 'zap', label: 'Zap' }
-]
-
-// Mock data matching the prototype with "Test" prefix
-const initialUnits: Unit[] = [
-  { id: 1, name: 'Test Personal', description: 'Personal expenses and income', color: '#6B7280', icon: 'user', active: true },
-  { id: 2, name: 'Test Main Business', description: 'Primary business operations', color: '#3B82F6', icon: 'briefcase', active: true },
-  { id: 3, name: 'Test Side Hustle', description: 'Freelance and consulting work', color: '#10B981', icon: 'lightbulb', active: true },
-  { id: 4, name: 'Test Real Estate', description: 'Rental property income and expenses', color: '#F59E0B', icon: 'home', active: true },
-  { id: 5, name: 'Test Investments', description: 'Investment related transactions', color: '#8B5CF6', icon: 'trending-up', active: false }
-]
 
 export default function UnitsPage() {
-  const [units, setUnits] = useState<Unit[]>(initialUnits)
+  const [units, setUnits] = useState<Unit[]>([])
+  const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
-  const [newUnit, setNewUnit] = useState<NewUnit>({
+  const [newUnit, setNewUnit] = useState<NewUnitForm>({
     name: '',
     description: '',
     color: '#3B82F6',
-    icon: 'briefcase'
+    icon: '💼'
   })
+  const [submitting, setSubmitting] = useState(false)
+
+  // Fetch units from API
+  const fetchUnits = async () => {
+    try {
+      const response = await fetch('/api/units')
+      const result = await response.json()
+      
+      if (result.success) {
+        setUnits(result.data)
+      } else {
+        toast.error('Failed to fetch units')
+      }
+    } catch (error) {
+      toast.error('Error loading units')
+      console.error('Error fetching units:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load units on component mount
+  useEffect(() => {
+    fetchUnits()
+  }, [])
 
   const resetNewUnit = () => {
     setNewUnit({
       name: '',
       description: '',
       color: '#3B82F6',
-      icon: 'briefcase'
+      icon: '💼'
     })
   }
 
-  const addUnit = () => {
-    if (newUnit.name.trim()) {
-      const newId = Math.max(...units.map(u => u.id)) + 1
-      setUnits(prev => [...prev, {
-        id: newId,
-        name: newUnit.name,
-        description: newUnit.description,
-        color: newUnit.color,
-        icon: newUnit.icon,
-        active: true
-      }])
-      setShowAddModal(false)
-      resetNewUnit()
+  const addUnit = async () => {
+    if (!newUnit.name.trim()) {
+      toast.error('Unit name is required')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const response = await fetch('/api/units', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newUnit),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setUnits(prev => [...prev, result.data])
+        setShowAddModal(false)
+        resetNewUnit()
+        toast.success('Unit created successfully')
+      } else {
+        toast.error(result.message || 'Failed to create unit')
+      }
+    } catch (error) {
+      toast.error('Error creating unit')
+      console.error('Error creating unit:', error)
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const editUnit = () => {
-    if (editingUnit) {
-      setUnits(prev => prev.map(u => 
-        u.id === editingUnit.id ? { ...editingUnit } : u
-      ))
-      setShowEditModal(false)
-      setEditingUnit(null)
+  const editUnit = async () => {
+    if (!editingUnit) return
+
+    if (!editingUnit.name.trim()) {
+      toast.error('Unit name is required')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const { id, createdAt, updatedAt, ...updateData } = editingUnit
+      
+      const response = await fetch(`/api/units/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setUnits(prev => prev.map(u => 
+          u.id === editingUnit.id ? result.data : u
+        ))
+        setShowEditModal(false)
+        setEditingUnit(null)
+        toast.success('Unit updated successfully')
+      } else {
+        toast.error(result.message || 'Failed to update unit')
+      }
+    } catch (error) {
+      toast.error('Error updating unit')
+      console.error('Error updating unit:', error)
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const deleteUnit = (unitId: number) => {
-    if (confirm('Are you sure you want to delete this unit? This action cannot be undone.')) {
-      setUnits(prev => prev.filter(u => u.id !== unitId))
+  const deleteUnit = async (unitId: number) => {
+    if (!confirm('Are you sure you want to delete this unit? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/units/${unitId}`, {
+        method: 'DELETE',
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setUnits(prev => prev.filter(u => u.id !== unitId))
+        toast.success('Unit deleted successfully')
+      } else {
+        toast.error(result.message || 'Failed to delete unit')
+      }
+    } catch (error) {
+      toast.error('Error deleting unit')
+      console.error('Error deleting unit:', error)
     }
   }
 
-  const toggleUnitStatus = (unitId: number) => {
-    setUnits(prev => prev.map(u => 
-      u.id === unitId ? { ...u, active: !u.active } : u
-    ))
+  const toggleUnitStatus = async (unitId: number) => {
+    try {
+      const response = await fetch(`/api/units/${unitId}/toggle`, {
+        method: 'POST',
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setUnits(prev => prev.map(u => 
+          u.id === unitId ? result.data : u
+        ))
+        toast.success(result.message)
+      } else {
+        toast.error(result.message || 'Failed to toggle unit status')
+      }
+    } catch (error) {
+      toast.error('Error toggling unit status')
+      console.error('Error toggling unit status:', error)
+    }
   }
 
   const getIconComponent = (iconName: string) => {
-    const iconMap: { [key: string]: React.ComponentType<{ className?: string; style?: React.CSSProperties }> } = {
-      'user': ({ className, style }) => <div className={className} style={style}>👤</div>,
-      'briefcase': ({ className, style }) => <div className={className} style={style}>💼</div>,
-      'lightbulb': ({ className, style }) => <div className={className} style={style}>💡</div>,
-      'home': ({ className, style }) => <div className={className} style={style}>🏠</div>,
-      'trending-up': ({ className, style }) => <div className={className} style={style}>📈</div>,
-      'building-2': ({ className, style }) => <div className={className} style={style}>🏢</div>,
-      'car': ({ className, style }) => <div className={className} style={style}>🚗</div>,
-      'heart': ({ className, style }) => <div className={className} style={style}>❤️</div>,
-      'star': ({ className, style }) => <div className={className} style={style}>⭐</div>,
-      'zap': ({ className, style }) => <div className={className} style={style}>⚡</div>
-    }
-    return iconMap[iconName] || iconMap['briefcase']
+    return ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+      <div className={`${className} flex items-center justify-center text-base`} style={style}>
+        {iconName || '💼'}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse">
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
+            </div>
+            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-gray-200 dark:border-gray-700">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg mr-3"></div>
+                    <div>
+                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-1"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                    </div>
+                  </div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                </div>
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+                    <div className="flex space-x-1">
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -157,7 +270,7 @@ export default function UnitsPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{unit.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{unit.description}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{unit.description || ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -275,11 +388,16 @@ export default function UnitsPage() {
             </div>
           </div>
           
-          <FormSelect
+          <FormField
             label="Icon"
             value={newUnit.icon}
-            onChange={(e) => setNewUnit(prev => ({ ...prev, icon: e.target.value }))}
-            options={iconOptions}
+            onChange={(e) => {
+              // Limit to single character (emoji or symbol)
+              const value = e.target.value.slice(0, 1)
+              setNewUnit(prev => ({ ...prev, icon: value }))
+            }}
+            placeholder="💼"
+            maxLength={1}
           />
           
           <div className="flex justify-end space-x-2 pt-4">
@@ -288,15 +406,19 @@ export default function UnitsPage() {
                 setShowAddModal(false)
                 resetNewUnit()
               }}
-              className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-lg cursor-pointer"
             >
               Cancel
             </button>
             <button 
               onClick={addUnit}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              disabled={submitting}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center cursor-pointer"
             >
-              Add Unit
+              {submitting && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
+              {submitting ? 'Creating...' : 'Add Unit'}
             </button>
           </div>
         </Form>
@@ -323,7 +445,7 @@ export default function UnitsPage() {
             
             <FormTextarea
               label="Description"
-              value={editingUnit.description}
+              value={editingUnit.description || ''}
               onChange={(e) => setEditingUnit(prev => prev ? { ...prev, description: e.target.value } : null)}
               rows={2}
             />
@@ -346,11 +468,16 @@ export default function UnitsPage() {
               </div>
             </div>
             
-            <FormSelect
+            <FormField
               label="Icon"
-              value={editingUnit.icon}
-              onChange={(e) => setEditingUnit(prev => prev ? { ...prev, icon: e.target.value } : null)}
-              options={iconOptions}
+              value={editingUnit.icon || '💼'}
+              onChange={(e) => {
+                // Limit to single character (emoji or symbol)
+                const value = e.target.value.slice(0, 1)
+                setEditingUnit(prev => prev ? { ...prev, icon: value } : null)
+              }}
+              placeholder="💼"
+              maxLength={1}
             />
             
             <div className="flex justify-end space-x-2 pt-4">
@@ -359,15 +486,19 @@ export default function UnitsPage() {
                   setShowEditModal(false)
                   setEditingUnit(null)
                 }}
-                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
               <button 
                 onClick={editUnit}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                disabled={submitting}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center cursor-pointer"
               >
-                Save Changes
+                {submitting && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                )}
+                {submitting ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </Form>

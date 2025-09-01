@@ -64,7 +64,7 @@ export function MainNav() {
   return (
     <>
       {/* Top Navigation */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-12">
             <div className="flex items-center">
@@ -129,7 +129,7 @@ export function MainNav() {
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-800 border-b dark:border-gray-700 shadow-lg">
+        <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-lg">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navigationItems.map((item) => {
               const Icon = item.icon

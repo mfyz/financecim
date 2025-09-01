@@ -15,8 +15,8 @@ export default function HomePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 text-green-600 dark:text-green-400">💰</div>
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center text-lg">
+                💰
               </div>
             </div>
             <div className="ml-4 flex-1">
@@ -29,8 +29,8 @@ export default function HomePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 text-blue-600 dark:text-blue-400">📈</div>
+              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center text-lg">
+                📈
               </div>
             </div>
             <div className="ml-4 flex-1">
@@ -43,8 +43,8 @@ export default function HomePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 text-red-600 dark:text-red-400">📊</div>
+              <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center text-lg">
+                📊
               </div>
             </div>
             <div className="ml-4 flex-1">
@@ -57,8 +57,8 @@ export default function HomePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 text-purple-600 dark:text-purple-400">💳</div>
+              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center text-lg">
+                💳
               </div>
             </div>
             <div className="ml-4 flex-1">

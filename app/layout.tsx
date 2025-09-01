@@ -18,6 +18,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('financecim-theme') || 'light';
+                document.documentElement.classList.add(theme);
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
         <ThemeProvider defaultTheme="light" storageKey="financecim-theme">
           <div className="min-h-screen">

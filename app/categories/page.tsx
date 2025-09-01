@@ -1,199 +1,375 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Edit, Trash2 } from 'lucide-react'
-import { Modal } from '@/components/ui'
+import { useState, useEffect } from 'react'
+import { Plus, Edit2, Trash2 } from 'lucide-react'
+import { Modal, Confirm } from '@/components/ui'
 import { Form, FormField, FormSelect } from '@/components/forms'
+import toast from 'react-hot-toast'
 
 interface Category {
   id: number
   name: string
-  parent: string | null
+  parentCategoryId: number | null
   color: string
-  icon: string
-  monthlyBudget: number
+  icon: string | null
+  monthlyBudget: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface CategoryWithChildren extends Category {
+  children?: CategoryWithChildren[]
 }
 
 interface NewCategory {
   name: string
-  parent: string | null
+  parentCategoryId: number | null
   color: string
-  icon: string
-  monthlyBudget: number
+  icon: string | null
+  monthlyBudget: number | null
 }
 
-// Mock data matching the prototype with "Test" prefix
-const initialCategories: Category[] = [
-  { id: 1, name: 'Test Food & Dining', parent: null, color: '#10B981', icon: '🍔', monthlyBudget: 800 },
-  { id: 2, name: 'Test Groceries', parent: 'Test Food & Dining', color: '#10B981', icon: '🛒', monthlyBudget: 400 },
-  { id: 3, name: 'Test Restaurants', parent: 'Test Food & Dining', color: '#10B981', icon: '🍽️', monthlyBudget: 300 },
-  { id: 4, name: 'Test Transportation', parent: null, color: '#3B82F6', icon: '🚗', monthlyBudget: 500 },
-  { id: 5, name: 'Test Gas', parent: 'Test Transportation', color: '#3B82F6', icon: '⛽', monthlyBudget: 200 },
-  { id: 6, name: 'Test Entertainment', parent: null, color: '#8B5CF6', icon: '🎮', monthlyBudget: 150 },
-  { id: 7, name: 'Test Shopping', parent: null, color: '#EC4899', icon: '🛍️', monthlyBudget: 300 },
-  { id: 8, name: 'Test Bills & Utilities', parent: null, color: '#EF4444', icon: '📄', monthlyBudget: 600 }
-]
-
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(initialCategories)
+  const [categories, setCategories] = useState<CategoryWithChildren[]>([])
+  const [flatCategories, setFlatCategories] = useState<Category[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<number | null>(null)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [editingBudgetId, setEditingBudgetId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [newCategory, setNewCategory] = useState<NewCategory>({
     name: '',
-    parent: null,
+    parentCategoryId: null,
     color: '#3B82F6',
-    icon: '',
-    monthlyBudget: 0
+    icon: null,
+    monthlyBudget: null
   })
+
+  // Fetch categories on mount
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true)
+      // Fetch both hierarchical and flat lists
+      const [hierarchicalRes, flatRes] = await Promise.all([
+        fetch('/api/categories'),
+        fetch('/api/categories?flat=true')
+      ])
+      
+      if (!hierarchicalRes.ok || !flatRes.ok) {
+        throw new Error('Failed to fetch categories')
+      }
+      
+      const hierarchicalData = await hierarchicalRes.json()
+      const flatData = await flatRes.json()
+      
+      setCategories(hierarchicalData)
+      setFlatCategories(flatData)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      toast.error('Failed to load categories')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const resetNewCategory = () => {
     setNewCategory({
       name: '',
-      parent: null,
+      parentCategoryId: null,
       color: '#3B82F6',
-      icon: '',
-      monthlyBudget: 0
+      icon: null,
+      monthlyBudget: null
     })
   }
 
-  const addCategory = () => {
-    if (newCategory.name.trim()) {
-      const newId = Math.max(...categories.map(c => c.id)) + 1
-      setCategories(prev => [...prev, {
-        id: newId,
-        name: newCategory.name,
-        parent: newCategory.parent,
-        color: newCategory.color,
-        icon: newCategory.icon,
-        monthlyBudget: newCategory.monthlyBudget
-      }])
+  const addCategory = async () => {
+    if (!newCategory.name.trim()) {
+      toast.error('Please enter a category name')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCategory)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create category')
+      }
+
+      await fetchCategories()
       setShowAddModal(false)
       resetNewCategory()
+      toast.success('Category created successfully')
+    } catch (error) {
+      console.error('Error creating category:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create category')
     }
   }
 
-  const editCategory = () => {
-    if (editingCategory) {
-      setCategories(prev => prev.map(c => 
-        c.id === editingCategory.id ? { ...editingCategory } : c
-      ))
+  const updateCategory = async () => {
+    if (!editingCategory) return
+
+    try {
+      const response = await fetch(`/api/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingCategory.name,
+          parentCategoryId: editingCategory.parentCategoryId,
+          color: editingCategory.color,
+          icon: editingCategory.icon,
+          monthlyBudget: editingCategory.monthlyBudget
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update category')
+      }
+
+      await fetchCategories()
       setShowEditModal(false)
       setEditingCategory(null)
+      toast.success('Category updated successfully')
+    } catch (error) {
+      console.error('Error updating category:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update category')
     }
   }
 
-  const deleteCategory = (categoryId: number) => {
-    if (confirm('Are you sure you want to delete this category?')) {
-      setCategories(prev => prev.filter(c => c.id !== categoryId))
+  const confirmDeleteCategory = (id: number) => {
+    setCategoryToDelete(id)
+    setShowDeleteConfirm(true)
+  }
+
+  const deleteCategory = async () => {
+    if (!categoryToDelete) return
+
+    try {
+      setIsDeleting(true)
+      const response = await fetch(`/api/categories/${categoryToDelete}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete category')
+      }
+
+      await fetchCategories()
+      setShowDeleteConfirm(false)
+      setCategoryToDelete(null)
+      toast.success('Category deleted successfully')
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete category')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
-  const updateBudget = (categoryId: number, newBudget: number) => {
-    setCategories(prev => prev.map(c =>
-      c.id === categoryId ? { ...c, monthlyBudget: newBudget } : c
-    ))
+  const updateBudget = async (id: number, budget: number | null) => {
+    try {
+      const response = await fetch(`/api/categories/${id}/budget`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monthlyBudget: budget })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update budget')
+      }
+
+      await fetchCategories()
+      setEditingBudgetId(null)
+      toast.success('Budget updated successfully')
+    } catch (error) {
+      console.error('Error updating budget:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update budget')
+    }
   }
 
-  const getParentCategories = () => {
-    return categories.filter(c => c.parent === null)
+  // Render categories with hierarchy
+  const renderCategoryRow = (category: CategoryWithChildren, level: number = 0) => {
+    const isEditingBudget = editingBudgetId === category.id
+    const displayIcon = category.icon || '📁'
+    
+    return (
+      <>
+        <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+          <td className="px-6 py-4 whitespace-nowrap text-sm">
+            <div className="flex items-center">
+              {level > 0 && (
+                <span className="text-gray-400 dark:text-gray-500 mr-2" style={{ marginLeft: `${(level - 1) * 24}px` }}>
+                  └
+                </span>
+              )}
+              <span className="text-xl mr-2">{displayIcon}</span>
+              <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
+            </div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm">
+            <div className="flex items-center">
+              <div 
+                className="w-4 h-4 rounded mr-2"
+                style={{ backgroundColor: category.color }}
+              />
+              <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                {category.color}
+              </span>
+            </div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm">
+            {isEditingBudget ? (
+              <div className="flex items-center">
+                <span className="text-gray-500 dark:text-gray-400 mr-1">$</span>
+                <input
+                  type="number"
+                  defaultValue={category.monthlyBudget || ''}
+                  onBlur={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : null
+                    updateBudget(category.id, value)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const value = (e.target as HTMLInputElement).value
+                      updateBudget(category.id, value ? parseFloat(value) : null)
+                    }
+                    if (e.key === 'Escape') {
+                      setEditingBudgetId(null)
+                    }
+                  }}
+                  className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  autoFocus
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingBudgetId(category.id)}
+                className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
+              >
+                {category.monthlyBudget ? `$${category.monthlyBudget.toFixed(2)}` : '-'}
+              </button>
+            )}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <div className="inline-flex rounded-md shadow-sm">
+              <button 
+                onClick={() => {
+                  setEditingCategory(category)
+                  setShowEditModal(true)
+                }}
+                className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center cursor-pointer"
+                title="Edit category"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => confirmDeleteCategory(category.id)}
+                className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
+                title="Delete category"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </td>
+        </tr>
+        {category.children?.map(child => renderCategoryRow(child, level + 1))}
+      </>
+    )
   }
 
-  const parentOptions = getParentCategories().map(c => ({ value: c.name, label: c.name }))
+  // Get parent options for dropdowns (excluding current category and its children)
+  const getParentOptions = (excludeId?: number): { value: string; label: string }[] => {
+    const options: { value: string; label: string }[] = []
+    
+    const addOptions = (cats: CategoryWithChildren[], level = 0, shouldExclude = false) => {
+      cats.forEach(cat => {
+        const isExcluded = shouldExclude || cat.id === excludeId
+        
+        if (!isExcluded) {
+          const indent = '  '.repeat(level)
+          options.push({
+            value: cat.id.toString(),
+            label: `${indent}${cat.name}`
+          })
+        }
+        
+        if (cat.children && cat.children.length > 0) {
+          addOptions(cat.children, level + 1, isExcluded)
+        }
+      })
+    }
+    
+    addOptions(categories)
+    return options
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500 dark:text-gray-400">Loading categories...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8 flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Categories</h2>
+    <div className="p-8">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center cursor-pointer"
+          className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Category
         </button>
       </div>
 
-      {/* Categories Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <table className="min-w-full">
-          <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Parent Category</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Color</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monthly Budget</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Color
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Monthly Budget
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {categories.map((category) => (
-              <tr key={category.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  <div className="flex items-center">
-                    {category.parent && (
-                      <span className="ml-6 text-gray-400 dark:text-gray-500 mr-2">└</span>
-                    )}
-                    <span className="mr-2">{category.icon}</span>
-                    <span>{category.name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <span className={category.parent ? '' : 'text-gray-400 dark:text-gray-500'}>
-                    {category.parent || '-'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <div 
-                      className="w-4 h-4 rounded mr-2"
-                      style={{ backgroundColor: category.color }}
-                    ></div>
-                    <span className="text-xs font-mono">{category.color}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  <div className="flex items-center">
-                    <span className="mr-1">$</span>
-                    <input 
-                      type="number" 
-                      value={category.monthlyBudget} 
-                      onChange={(e) => updateBudget(category.id, parseFloat(e.target.value) || 0)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.currentTarget.blur()
-                        }
-                      }}
-                      className="w-20 bg-transparent border-0 border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none px-1 py-0.5 text-right"
-                      placeholder="0"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="inline-flex rounded-md shadow-sm">
-                    <button 
-                      onClick={() => {
-                        setEditingCategory({ ...category })
-                        setShowEditModal(true)
-                      }}
-                      className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center cursor-pointer"
-                      title="Edit category"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => deleteCategory(category.id)}
-                      className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
-                      title="Delete category"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+            {categories.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  No categories yet. Click "Add Category" to create your first one.
                 </td>
               </tr>
-            ))}
+            ) : (
+              categories.map(category => renderCategoryRow(category))
+            )}
           </tbody>
         </table>
       </div>
@@ -219,29 +395,47 @@ export default function CategoriesPage() {
           
           <FormSelect
             label="Parent Category (Optional)"
-            value={newCategory.parent || ''}
-            onChange={(e) => setNewCategory(prev => ({ ...prev, parent: e.target.value || null }))}
+            value={newCategory.parentCategoryId?.toString() || ''}
+            onChange={(e) => setNewCategory(prev => ({ 
+              ...prev, 
+              parentCategoryId: e.target.value ? parseInt(e.target.value) : null 
+            }))}
             options={[
               { value: '', label: 'None' },
-              ...parentOptions
+              ...getParentOptions()
             ]}
           />
           
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-            <input 
-              type="color" 
-              value={newCategory.color}
-              onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
-              className="w-full h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700"
-            />
+            <div className="flex items-center space-x-2">
+              <input 
+                type="color" 
+                value={newCategory.color}
+                onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
+                className="w-20 h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700 cursor-pointer"
+              />
+              <input 
+                type="text" 
+                value={newCategory.color}
+                onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
+                className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="#3B82F6"
+                pattern="^#[0-9A-Fa-f]{6}$"
+              />
+            </div>
           </div>
           
           <FormField
-            label="Icon (Emoji)"
-            value={newCategory.icon}
-            onChange={(e) => setNewCategory(prev => ({ ...prev, icon: e.target.value }))}
+            label="Icon (Single Emoji)"
+            value={newCategory.icon || ''}
+            onChange={(e) => {
+              // Only allow single character (typically emoji)
+              const value = e.target.value.slice(0, 1)
+              setNewCategory(prev => ({ ...prev, icon: value || null }))
+            }}
             placeholder="e.g., 🛒"
+            maxLength={1}
           />
           
           <div className="space-y-1">
@@ -251,7 +445,10 @@ export default function CategoriesPage() {
               <input 
                 type="number" 
                 value={newCategory.monthlyBudget || ''}
-                onChange={(e) => setNewCategory(prev => ({ ...prev, monthlyBudget: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => setNewCategory(prev => ({ 
+                  ...prev, 
+                  monthlyBudget: e.target.value ? parseFloat(e.target.value) : null 
+                }))}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0.00"
                 min="0"
@@ -262,17 +459,19 @@ export default function CategoriesPage() {
           
           <div className="flex justify-end space-x-2 pt-4">
             <button 
+              type="button"
               onClick={() => {
                 setShowAddModal(false)
                 resetNewCategory()
               }}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center cursor-pointer"
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
             >
               Cancel
             </button>
             <button 
+              type="button"
               onClick={addCategory}
-              className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center cursor-pointer"
+              className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
             >
               Add Category
             </button>
@@ -297,32 +496,52 @@ export default function CategoriesPage() {
               required
               value={editingCategory.name}
               onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+              placeholder="e.g., Groceries"
             />
             
             <FormSelect
               label="Parent Category (Optional)"
-              value={editingCategory.parent || ''}
-              onChange={(e) => setEditingCategory(prev => prev ? { ...prev, parent: e.target.value || null } : null)}
+              value={editingCategory.parentCategoryId?.toString() || ''}
+              onChange={(e) => setEditingCategory(prev => prev ? { 
+                ...prev, 
+                parentCategoryId: e.target.value ? parseInt(e.target.value) : null 
+              } : null)}
               options={[
                 { value: '', label: 'None' },
-                ...parentOptions
+                ...getParentOptions(editingCategory.id)
               ]}
             />
             
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-              <input 
-                type="color" 
-                value={editingCategory.color}
-                onChange={(e) => setEditingCategory(prev => prev ? { ...prev, color: e.target.value } : null)}
-                className="w-full h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700"
-              />
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="color" 
+                  value={editingCategory.color}
+                  onChange={(e) => setEditingCategory(prev => prev ? { ...prev, color: e.target.value } : null)}
+                  className="w-20 h-10 border dark:border-gray-600 rounded-lg px-1 py-1 bg-white dark:bg-gray-700 cursor-pointer"
+                />
+                <input 
+                  type="text" 
+                  value={editingCategory.color}
+                  onChange={(e) => setEditingCategory(prev => prev ? { ...prev, color: e.target.value } : null)}
+                  className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="#3B82F6"
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                />
+              </div>
             </div>
             
             <FormField
-              label="Icon (Emoji)"
-              value={editingCategory.icon}
-              onChange={(e) => setEditingCategory(prev => prev ? { ...prev, icon: e.target.value } : null)}
+              label="Icon (Single Emoji)"
+              value={editingCategory.icon || ''}
+              onChange={(e) => {
+                // Only allow single character (typically emoji)
+                const value = e.target.value.slice(0, 1)
+                setEditingCategory(prev => prev ? { ...prev, icon: value || null } : null)
+              }}
+              placeholder="e.g., 🛒"
+              maxLength={1}
             />
             
             <div className="space-y-1">
@@ -332,8 +551,12 @@ export default function CategoriesPage() {
                 <input 
                   type="number" 
                   value={editingCategory.monthlyBudget || ''}
-                  onChange={(e) => setEditingCategory(prev => prev ? { ...prev, monthlyBudget: parseFloat(e.target.value) || 0 } : null)}
+                  onChange={(e) => setEditingCategory(prev => prev ? { 
+                    ...prev, 
+                    monthlyBudget: e.target.value ? parseFloat(e.target.value) : null 
+                  } : null)}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0.00"
                   min="0"
                   step="0.01"
                 />
@@ -342,24 +565,42 @@ export default function CategoriesPage() {
             
             <div className="flex justify-end space-x-2 pt-4">
               <button 
+                type="button"
                 onClick={() => {
                   setShowEditModal(false)
                   setEditingCategory(null)
                 }}
-                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center cursor-pointer"
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
               >
                 Cancel
               </button>
               <button 
-                onClick={editCategory}
-                className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 flex items-center cursor-pointer"
+                type="button"
+                onClick={updateCategory}
+                className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
               >
-                Save Changes
+                Update Category
               </button>
             </div>
           </Form>
         )}
       </Modal>
+
+      {/* Delete Confirmation */}
+      <Confirm
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false)
+          setCategoryToDelete(null)
+        }}
+        onConfirm={deleteCategory}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

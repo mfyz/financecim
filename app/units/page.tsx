@@ -181,7 +181,7 @@ export default function UnitsPage() {
     }
   }
 
-  const getIconComponent = (iconName: string) => {
+  const getIconComponent = (iconName: string | null) => {
     return ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
       <div className={`${className} flex items-center justify-center text-base`} style={style}>
         {iconName || '💼'}

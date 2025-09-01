@@ -53,7 +53,7 @@ export function Modal({
         {/* Backdrop */}
         <div 
           className="fixed inset-0 transition-opacity"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
           onClick={onClose}
           data-testid="modal-backdrop-overlay"
         />

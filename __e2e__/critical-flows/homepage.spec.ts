@@ -8,19 +8,19 @@ test.describe('Homepage', () => {
     // Check if the page loads without errors
     await expect(page).toHaveTitle(/Financecim/);
 
-    // Check if main heading is visible
-    const heading = page.locator('h1');
+    // Check if main content heading is visible
+    const heading = page.locator('main h1');
     await expect(heading).toBeVisible();
-    await expect(heading).toHaveText('Financecim');
+    await expect(heading).toHaveText('Dashboard');
 
     // Check if description text is visible
-    const description = page.locator('text=Personal Finance Tracker');
+    const description = page.locator('text=Overview of your financial activity');
     await expect(description).toBeVisible();
 
     // Verify the page structure
     const mainElement = page.locator('main');
     await expect(mainElement).toBeVisible();
-    await expect(mainElement).toHaveClass(/flex.*min-h-screen/);
+    await expect(mainElement).toHaveClass(/max-w-7xl/);
   });
 
   test('should have correct meta tags', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('Homepage', () => {
 
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    const heading = page.locator('h1');
+    const heading = page.locator('main h1');
     await expect(heading).toBeVisible();
 
     // Test tablet viewport

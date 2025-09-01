@@ -6,7 +6,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 5601",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -15,7 +15,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "visual-check": "node scripts/visual-check.js",
+    "compare-prototype": "node scripts/compare-prototype.js",
+    "kill-server": "ps aux | grep 'next dev -p 5601' | grep -v grep | awk '{print $2}' | xargs -r kill -TERM 2>/dev/null || echo 'No Next.js dev server found'",
+    "restart": "npm run kill-server && npm run dev"
   },
   "repository": {
     "type": "git",
@@ -35,20 +39,20 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.542.0",
     "next": "^15.5.2",
+    "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
-    "autoprefixer": "^10.4.21",
     "eslint": "^9.34.0",
     "eslint-config-next": "^15.5.2",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.12",
+    "puppeteer": "^24.17.1",
     "typescript": "^5.9.2"
   }
 }

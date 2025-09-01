@@ -24,7 +24,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
+.env*
 
 # vercel
 .vercel
@@ -42,3 +42,74 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# visual verification
+screenshots/
+
+# Personal information & sensitive data
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.key
+*.pem
+*.p12
+*.p8
+secrets/
+config/secrets.json
+*.secrets.json
+
+# User data & personal files
+*.personal.*
+*personal*
+*PERSONAL*
+user-data/
+personal-data/
+uploads/
+import-files/
+*.csv
+*.xlsx
+*.xls
+
+# Development artifacts
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs that might contain sensitive info
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development overrides
+local.json
+local.config.js
+local.config.ts
+*.local.json
+
+# Financial data files (just in case)
+transactions.json
+bank-data.*
+financial-records.*

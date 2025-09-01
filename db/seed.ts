@@ -45,14 +45,14 @@ async function seed() {
     
     // Parent categories first
     const parentCategories = await db.insert(categories).values([
-      { name: 'Housing', parentCategoryId: null, color: '#EF4444', icon: 'home', monthlyBudget: 2000.00 },
-      { name: 'Transportation', parentCategoryId: null, color: '#F97316', icon: 'car', monthlyBudget: 800.00 },
-      { name: 'Food & Dining', parentCategoryId: null, color: '#84CC16', icon: 'utensils', monthlyBudget: 600.00 },
-      { name: 'Utilities', parentCategoryId: null, color: '#06B6D4', icon: 'zap', monthlyBudget: 300.00 },
-      { name: 'Entertainment', parentCategoryId: null, color: '#8B5CF6', icon: 'film', monthlyBudget: 200.00 },
-      { name: 'Healthcare', parentCategoryId: null, color: '#EC4899', icon: 'heart', monthlyBudget: 400.00 },
-      { name: 'Shopping', parentCategoryId: null, color: '#F59E0B', icon: 'shopping-bag', monthlyBudget: 500.00 },
-      { name: 'Income', parentCategoryId: null, color: '#10B981', icon: 'trending-up', monthlyBudget: null }
+      { name: 'Housing', parentCategoryId: null, color: '#EF4444', icon: '🏠', monthlyBudget: 2000.00 },
+      { name: 'Transportation', parentCategoryId: null, color: '#F97316', icon: '🚗', monthlyBudget: 800.00 },
+      { name: 'Food & Dining', parentCategoryId: null, color: '#84CC16', icon: '🍴', monthlyBudget: 600.00 },
+      { name: 'Utilities', parentCategoryId: null, color: '#06B6D4', icon: '⚡', monthlyBudget: 300.00 },
+      { name: 'Entertainment', parentCategoryId: null, color: '#8B5CF6', icon: '🎬', monthlyBudget: 200.00 },
+      { name: 'Healthcare', parentCategoryId: null, color: '#EC4899', icon: '❤️', monthlyBudget: 400.00 },
+      { name: 'Shopping', parentCategoryId: null, color: '#F59E0B', icon: '🛍️', monthlyBudget: 500.00 },
+      { name: 'Income', parentCategoryId: null, color: '#10B981', icon: '📈', monthlyBudget: null }
     ]).returning({ id: categories.id, name: categories.name })
 
     // Child categories
@@ -62,14 +62,14 @@ async function seed() {
     const incomeId = parentCategories.find(c => c.name === 'Income')?.id
 
     await db.insert(categories).values([
-      { name: 'Rent', parentCategoryId: housingId, color: '#EF4444', icon: 'key', monthlyBudget: 1500.00 },
-      { name: 'Utilities', parentCategoryId: housingId, color: '#EF4444', icon: 'zap', monthlyBudget: 200.00 },
-      { name: 'Gas', parentCategoryId: transportationId, color: '#F97316', icon: 'fuel', monthlyBudget: 200.00 },
-      { name: 'Public Transit', parentCategoryId: transportationId, color: '#F97316', icon: 'bus', monthlyBudget: 100.00 },
-      { name: 'Groceries', parentCategoryId: foodId, color: '#84CC16', icon: 'shopping-cart', monthlyBudget: 400.00 },
-      { name: 'Restaurants', parentCategoryId: foodId, color: '#84CC16', icon: 'utensils', monthlyBudget: 200.00 },
-      { name: 'Salary', parentCategoryId: incomeId, color: '#10B981', icon: 'dollar-sign', monthlyBudget: null },
-      { name: 'Freelance', parentCategoryId: incomeId, color: '#10B981', icon: 'briefcase', monthlyBudget: null }
+      { name: 'Rent', parentCategoryId: housingId, color: '#EF4444', icon: '🔑', monthlyBudget: 1500.00 },
+      { name: 'Utilities', parentCategoryId: housingId, color: '#EF4444', icon: '⚡', monthlyBudget: 200.00 },
+      { name: 'Gas', parentCategoryId: transportationId, color: '#F97316', icon: '⛽', monthlyBudget: 200.00 },
+      { name: 'Public Transit', parentCategoryId: transportationId, color: '#F97316', icon: '🚌', monthlyBudget: 100.00 },
+      { name: 'Groceries', parentCategoryId: foodId, color: '#84CC16', icon: '🛒', monthlyBudget: 400.00 },
+      { name: 'Restaurants', parentCategoryId: foodId, color: '#84CC16', icon: '🍽️', monthlyBudget: 200.00 },
+      { name: 'Salary', parentCategoryId: incomeId, color: '#10B981', icon: '💰', monthlyBudget: null },
+      { name: 'Freelance', parentCategoryId: incomeId, color: '#10B981', icon: '💼', monthlyBudget: null }
     ])
 
     // Get all categories for transactions

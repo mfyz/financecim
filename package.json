@@ -1,0 +1,54 @@
+{
+  "name": "financecim",
+  "version": "1.0.0",
+  "private": true,
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mfyz/financecim.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mfyz/financecim/issues"
+  },
+  "homepage": "https://github.com/mfyz/financecim#readme",
+  "description": "",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.542.0",
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.34.0",
+    "eslint-config-next": "^15.5.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2"
+  }
+}

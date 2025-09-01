@@ -268,7 +268,7 @@ export default function TransactionsPage() {
   const sourceOptions = [...new Set(transactions.map(t => t.source))]
 
   return (
-    <div className="max-w-none mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="py-8">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Transactions</h2>
         <p className="text-gray-600 dark:text-gray-300">View and manage all your transactions</p>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Play, Pause, Layers } from 'lucide-react'
-import { Modal } from '@/components/ui'
+import { Modal, Confirm } from '@/components/ui'
 import { Form, FormField, FormTextarea } from '@/components/forms'
 import { Unit, NewUnit } from '@/db/schema'
 import { toast } from 'react-hot-toast'
@@ -27,6 +27,9 @@ export default function UnitsPage() {
     icon: '💼'
   })
   const [submitting, setSubmitting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingUnitId, setDeletingUnitId] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch units from API
   const fetchUnits = async () => {
@@ -135,28 +138,46 @@ export default function UnitsPage() {
     }
   }
 
-  const deleteUnit = async (unitId: number) => {
-    if (!confirm('Are you sure you want to delete this unit? This action cannot be undone.')) {
-      return
-    }
+  const handleDeleteClick = (unitId: number) => {
+    setDeletingUnitId(unitId)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingUnitId) return
 
     try {
-      const response = await fetch(`/api/units/${unitId}`, {
+      setIsDeleting(true)
+      const response = await fetch(`/api/units/${deletingUnitId}`, {
         method: 'DELETE',
       })
       
       const result = await response.json()
       
       if (result.success) {
-        setUnits(prev => prev.filter(u => u.id !== unitId))
+        setUnits(prev => prev.filter(u => u.id !== deletingUnitId))
         toast.success('Unit deleted successfully')
+        setShowDeleteConfirm(false)
+        setDeletingUnitId(null)
       } else {
         toast.error(result.message || 'Failed to delete unit')
+        setShowDeleteConfirm(false)
+        setDeletingUnitId(null)
       }
     } catch (error) {
       toast.error('Error deleting unit')
       console.error('Error deleting unit:', error)
+      setShowDeleteConfirm(false)
+      setDeletingUnitId(null)
+    } finally {
+      setIsDeleting(false)
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false)
+    setDeletingUnitId(null)
+    setIsDeleting(false)
   }
 
   const toggleUnitStatus = async (unitId: number) => {
@@ -191,7 +212,7 @@ export default function UnitsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="py-8">
         <div className="animate-pulse">
           <div className="mb-8 flex justify-between items-center">
             <div>
@@ -232,7 +253,7 @@ export default function UnitsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="py-8">
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Units</h2>
@@ -314,7 +335,7 @@ export default function UnitsPage() {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => deleteUnit(unit.id)}
+                      onClick={() => handleDeleteClick(unit.id)}
                       className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
                       title="Delete unit"
                     >
@@ -504,6 +525,19 @@ export default function UnitsPage() {
           </Form>
         )}
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Confirm
+        isOpen={showDeleteConfirm}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Unit"
+        message={`Are you sure you want to delete this unit? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

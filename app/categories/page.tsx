@@ -330,7 +330,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="py-8">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
         <button 

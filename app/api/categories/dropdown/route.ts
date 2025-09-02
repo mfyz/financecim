@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { categoriesModel } from '@/db/models/categories.model'
 
 // GET /api/categories/dropdown - Get categories formatted for dropdown
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const options = await categoriesModel.getForDropdown()
     

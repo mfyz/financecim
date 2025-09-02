@@ -213,11 +213,11 @@ export default function CategoriesPage() {
   }
 
   // Render categories with hierarchy
-  const renderCategoryRow = (category: CategoryWithChildren, level: number = 0): JSX.Element[] => {
+  const renderCategoryRow = (category: CategoryWithChildren, level: number = 0): React.JSX.Element[] => {
     const isEditingBudget = editingBudgetId === category.id
     const displayIcon = category.icon || '📁'
     
-    const rows: JSX.Element[] = []
+    const rows: React.JSX.Element[] = []
     
     // Add the main category row
     rows.push(
@@ -384,7 +384,7 @@ export default function CategoriesPage() {
             {categories.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                  No categories yet. Click "Add Category" to create your first one.
+                  No categories yet. Click &ldquo;Add Category&rdquo; to create your first one.
                 </td>
               </tr>
             ) : (

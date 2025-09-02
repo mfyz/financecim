@@ -10,7 +10,7 @@ const CreateSourceSchema = z.object({
   })
 })
 
-const UpdateSourceSchema = CreateSourceSchema.partial()
+// const UpdateSourceSchema = CreateSourceSchema.partial() // Currently unused
 
 export async function GET() {
   try {

@@ -11,7 +11,7 @@ const CreateUnitSchema = z.object({
   active: z.boolean().optional().default(true)
 })
 
-const UpdateUnitSchema = CreateUnitSchema.partial()
+// const UpdateUnitSchema = CreateUnitSchema.partial() // Currently unused
 
 export async function GET() {
   try {

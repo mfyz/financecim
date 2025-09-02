@@ -29,6 +29,17 @@ interface NewCategory {
   monthlyBudget: number | null
 }
 
+// Helper function to validate and extract single emoji
+const getSingleEmoji = (text: string): string => {
+  if (!text) return ''
+  
+  // Use Array.from to properly handle multi-byte characters like emojis
+  const characters = Array.from(text)
+  
+  // Return just the first character (which could be a multi-byte emoji)
+  return characters[0] || ''
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
   const [flatCategories, setFlatCategories] = useState<Category[]>([])
@@ -202,95 +213,104 @@ export default function CategoriesPage() {
   }
 
   // Render categories with hierarchy
-  const renderCategoryRow = (category: CategoryWithChildren, level: number = 0) => {
+  const renderCategoryRow = (category: CategoryWithChildren, level: number = 0): JSX.Element[] => {
     const isEditingBudget = editingBudgetId === category.id
     const displayIcon = category.icon || '📁'
     
-    return (
-      <>
-        <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-          <td className="px-6 py-4 whitespace-nowrap text-sm">
-            <div className="flex items-center">
-              {level > 0 && (
-                <span className="text-gray-400 dark:text-gray-500 mr-2" style={{ marginLeft: `${(level - 1) * 24}px` }}>
-                  └
-                </span>
-              )}
-              <span className="text-xl mr-2">{displayIcon}</span>
-              <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
-            </div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm">
-            <div className="flex items-center">
-              <div 
-                className="w-4 h-4 rounded mr-2"
-                style={{ backgroundColor: category.color }}
-              />
-              <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                {category.color}
+    const rows: JSX.Element[] = []
+    
+    // Add the main category row
+    rows.push(
+      <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+        <td className="px-6 py-4 whitespace-nowrap text-sm">
+          <div className="flex items-center">
+            {level > 0 && (
+              <span className="text-gray-400 dark:text-gray-500 mr-2" style={{ marginLeft: `${(level - 1) * 24}px` }}>
+                └
               </span>
-            </div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm">
-            {isEditingBudget ? (
-              <div className="flex items-center">
-                <span className="text-gray-500 dark:text-gray-400 mr-1">$</span>
-                <input
-                  type="number"
-                  defaultValue={category.monthlyBudget || ''}
-                  onBlur={(e) => {
-                    const value = e.target.value ? parseFloat(e.target.value) : null
-                    updateBudget(category.id, value)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const value = (e.target as HTMLInputElement).value
-                      updateBudget(category.id, value ? parseFloat(value) : null)
-                    }
-                    if (e.key === 'Escape') {
-                      setEditingBudgetId(null)
-                    }
-                  }}
-                  className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  autoFocus
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setEditingBudgetId(category.id)}
-                className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
-              >
-                {category.monthlyBudget ? `$${category.monthlyBudget.toFixed(2)}` : '-'}
-              </button>
             )}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-            <div className="inline-flex rounded-md shadow-sm">
-              <button 
-                onClick={() => {
-                  setEditingCategory(category)
-                  setShowEditModal(true)
+            <span className="text-xl mr-2">{displayIcon}</span>
+            <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm">
+          <div className="flex items-center">
+            <div 
+              className="w-4 h-4 rounded mr-2"
+              style={{ backgroundColor: category.color }}
+            />
+            <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+              {category.color}
+            </span>
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm">
+          {isEditingBudget ? (
+            <div className="flex items-center">
+              <span className="text-gray-500 dark:text-gray-400 mr-1">$</span>
+              <input
+                type="number"
+                defaultValue={category.monthlyBudget || ''}
+                onBlur={(e) => {
+                  const value = e.target.value ? parseFloat(e.target.value) : null
+                  updateBudget(category.id, value)
                 }}
-                className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center cursor-pointer"
-                title="Edit category"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => confirmDeleteCategory(category.id)}
-                className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
-                title="Delete category"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const value = (e.target as HTMLInputElement).value
+                    updateBudget(category.id, value ? parseFloat(value) : null)
+                  }
+                  if (e.key === 'Escape') {
+                    setEditingBudgetId(null)
+                  }
+                }}
+                className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+                min="0"
+                step="0.01"
+              />
             </div>
-          </td>
-        </tr>
-        {category.children?.map(child => renderCategoryRow(child, level + 1))}
-      </>
+          ) : (
+            <button
+              onClick={() => setEditingBudgetId(category.id)}
+              className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
+            >
+              {category.monthlyBudget ? `$${category.monthlyBudget.toFixed(2)}` : '-'}
+            </button>
+          )}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <div className="inline-flex rounded-md shadow-sm">
+            <button 
+              onClick={() => {
+                setEditingCategory(category)
+                setShowEditModal(true)
+              }}
+              className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-blue-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors flex items-center justify-center cursor-pointer"
+              title="Edit category"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => confirmDeleteCategory(category.id)}
+              className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 border-gray-300 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors flex items-center justify-center cursor-pointer"
+              title="Delete category"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
     )
+    
+    // Add child category rows
+    if (category.children) {
+      category.children.forEach(child => {
+        rows.push(...renderCategoryRow(child, level + 1))
+      })
+    }
+    
+    return rows
   }
 
   // Get parent options for dropdowns (excluding current category and its children)
@@ -368,7 +388,7 @@ export default function CategoriesPage() {
                 </td>
               </tr>
             ) : (
-              categories.map(category => renderCategoryRow(category))
+              categories.flatMap(category => renderCategoryRow(category))
             )}
           </tbody>
         </table>
@@ -430,12 +450,11 @@ export default function CategoriesPage() {
             label="Icon (Single Emoji)"
             value={newCategory.icon || ''}
             onChange={(e) => {
-              // Only allow single character (typically emoji)
-              const value = e.target.value.slice(0, 1)
+              // Only allow single emoji/character using proper Unicode handling
+              const value = getSingleEmoji(e.target.value)
               setNewCategory(prev => ({ ...prev, icon: value || null }))
             }}
             placeholder="e.g., 🛒"
-            maxLength={1}
           />
           
           <div className="space-y-1">
@@ -536,12 +555,11 @@ export default function CategoriesPage() {
               label="Icon (Single Emoji)"
               value={editingCategory.icon || ''}
               onChange={(e) => {
-                // Only allow single character (typically emoji)
-                const value = e.target.value.slice(0, 1)
+                // Only allow single emoji/character using proper Unicode handling
+                const value = getSingleEmoji(e.target.value)
                 setEditingCategory(prev => prev ? { ...prev, icon: value || null } : null)
               }}
               placeholder="e.g., 🛒"
-              maxLength={1}
             />
             
             <div className="space-y-1">

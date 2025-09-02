@@ -24,16 +24,16 @@ const unitOptions = [
   { id: 4, name: 'Test Real Estate', color: '#F59E0B' }
 ]
 
-const categoryOptions = [
-  { id: 1, name: 'Test Food & Dining', parent: null },
-  { id: 2, name: 'Test Groceries', parent: 'Food & Dining' },
-  { id: 3, name: 'Test Restaurants', parent: 'Food & Dining' },
-  { id: 4, name: 'Test Transportation', parent: null },
-  { id: 5, name: 'Test Gas', parent: 'Transportation' },
-  { id: 6, name: 'Test Entertainment', parent: null },
-  { id: 7, name: 'Test Shopping', parent: null },
-  { id: 8, name: 'Test Bills & Utilities', parent: null }
-]
+// const categoryOptions = [
+//   { id: 1, name: 'Test Food & Dining', parent: null },
+//   { id: 2, name: 'Test Groceries', parent: 'Food & Dining' },
+//   { id: 3, name: 'Test Restaurants', parent: 'Food & Dining' },
+//   { id: 4, name: 'Test Transportation', parent: null },
+//   { id: 5, name: 'Test Gas', parent: 'Transportation' },
+//   { id: 6, name: 'Test Entertainment', parent: null },
+//   { id: 7, name: 'Test Shopping', parent: null },
+//   { id: 8, name: 'Test Bills & Utilities', parent: null }
+// ]
 
 const initialTransactions: Transaction[] = [
   { id: 1, source: 'Test Chase Bank', date: '2024-01-20', description: 'WALMART SUPERCENTER #1234', amount: -125.43, source_category: 'Groceries', category: 'Test Groceries', unit: 'Test Personal', ignore: false, notes: '' },

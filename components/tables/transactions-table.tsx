@@ -2,7 +2,7 @@
 
 import { DataTable, Column } from './data-table'
 
-export interface Transaction {
+export interface Transaction extends Record<string, unknown> {
   id: string
   date: string
   description: string

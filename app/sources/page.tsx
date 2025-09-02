@@ -23,7 +23,7 @@ interface APIResponse<T> {
   data?: T
   message?: string
   error?: string
-  details?: any[]
+  details?: unknown[]
 }
 
 const typeOptions = [

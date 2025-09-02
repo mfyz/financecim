@@ -42,7 +42,7 @@ const getSingleEmoji = (text: string): string => {
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
-  const [flatCategories, setFlatCategories] = useState<Category[]>([])
+  const [, setFlatCategories] = useState<Category[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

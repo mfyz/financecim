@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef } from 'react'
-import { Check, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 
 interface FormCheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string

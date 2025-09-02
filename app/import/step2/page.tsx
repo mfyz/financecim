@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Check, AlertCircle, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Eye } from 'lucide-react'
 import Link from 'next/link'
 
 interface ColumnMapping {
@@ -54,22 +54,24 @@ export default function ImportStep2Page() {
   const [autoDetection, setAutoDetection] = useState<Record<string, AutoDetection>>({})
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
-  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
-  const [saveMappingName, setSaveMappingName] = useState('')
-  const [previewData, setPreviewData] = useState<any[]>([])
+  // const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  // const [saveMappingName, setSaveMappingName] = useState('')
+  const [previewData, setPreviewData] = useState<Record<string, string | number | string[]>[]>([])
 
   useEffect(() => {
     autoDetectColumns()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     updatePreview()
     validateMapping()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnMapping])
 
   const autoDetectColumns = () => {
     const headers = csvData[0]
-    const sampleData = csvData.slice(1, 4)
+    // const sampleData = csvData.slice(1, 4)
     const detection: Record<string, AutoDetection> = {}
     const mapping: ColumnMapping = {
       date: '',
@@ -80,7 +82,7 @@ export default function ImportStep2Page() {
 
     headers.forEach((header, index) => {
       const headerLower = header.toLowerCase()
-      const columnData = sampleData.map(row => row[index]).join(' ').toLowerCase()
+      // const columnData = sampleData.map(row => row[index]).join(' ').toLowerCase()
       
       // Date detection
       if (headerLower.includes('date') || headerLower.includes('time')) {
@@ -401,7 +403,7 @@ export default function ImportStep2Page() {
                     <td className="px-3 py-2 text-gray-900 dark:text-white">{row.date}</td>
                     <td className="px-3 py-2 text-gray-900 dark:text-white">{row.description}</td>
                     <td className={`px-3 py-2 font-semibold ${
-                      parseFloat(row.amount) >= 0 
+                      parseFloat(String(row.amount)) >= 0 
                         ? 'text-green-600 dark:text-green-400' 
                         : 'text-red-600 dark:text-red-400'
                     }`}>

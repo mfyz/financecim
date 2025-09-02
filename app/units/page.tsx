@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Play, Pause, Layers } from 'lucide-react'
 import { Modal, Confirm } from '@/components/ui'
 import { Form, FormField, FormTextarea } from '@/components/forms'
-import { Unit, NewUnit } from '@/db/schema'
+import { Unit } from '@/db/schema'
 import { toast } from 'react-hot-toast'
 
 interface NewUnitForm {
@@ -108,14 +108,17 @@ export default function UnitsPage() {
 
     setSubmitting(true)
     try {
-      const { id, createdAt, updatedAt, ...updateData } = editingUnit
+      const { id, ...updateData } = editingUnit
+      const cleanData = { ...updateData }
+      delete (cleanData as Record<string, unknown>).createdAt
+      delete (cleanData as Record<string, unknown>).updatedAt
       
       const response = await fetch(`/api/units/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify(cleanData),
       })
       
       const result = await response.json()
@@ -203,11 +206,13 @@ export default function UnitsPage() {
   }
 
   const getIconComponent = (iconName: string | null) => {
-    return ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+    const IconComponent = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
       <div className={`${className} flex items-center justify-center text-base`} style={style}>
         {iconName || '💼'}
       </div>
     )
+    IconComponent.displayName = 'IconComponent'
+    return IconComponent
   }
 
   if (loading) {

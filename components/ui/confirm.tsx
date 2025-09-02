@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, CheckCircle, XCircle, Info, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react'
 import { Modal } from './modal'
 
 export type ConfirmVariant = 'danger' | 'warning' | 'success' | 'info'

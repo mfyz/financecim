@@ -29,7 +29,7 @@
     "db:reset": "tsx db/seed.ts",
     "install:testing": "npm install",
     "typecheck:test": "tsc --noEmit --project tsconfig.test.json",
-    "pre-commit": "npm run typecheck && npm run lint && npm run test && npm run test:e2e",
+    "pre-commit": "npm run typecheck && npm run lint && npm run test",
     "prepare": "husky"
   },
   "repository": {

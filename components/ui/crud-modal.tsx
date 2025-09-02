@@ -5,14 +5,14 @@ import { Trash2, Edit, Eye } from 'lucide-react'
 
 export type CrudAction = 'create' | 'view' | 'edit' | 'delete'
 
-interface CrudModalProps<T = any> {
+interface CrudModalProps<T = unknown> {
   isOpen: boolean
   onClose: () => void
   action: CrudAction
   item?: T
   title?: string
   children?: React.ReactNode
-  onSave?: (data: any) => void | Promise<void>
+  onSave?: (data: unknown) => void | Promise<void>
   onDelete?: () => void | Promise<void>
   isLoading?: boolean
   size?: 'sm' | 'md' | 'lg' | 'xl'

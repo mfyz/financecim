@@ -224,7 +224,7 @@ export default function RulesPage() {
     ))
   }
 
-  const moveUp = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: any) => {
+  const moveUp = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: React.Dispatch<React.SetStateAction<UnitRule[]>> | React.Dispatch<React.SetStateAction<CategoryRule[]>>) => {
     const index = ruleArray.findIndex(r => r.id === rule.id)
     if (index > 0) {
       const newArray = [...ruleArray]
@@ -232,11 +232,11 @@ export default function RulesPage() {
       newArray[index].priority = newArray[index - 1].priority
       newArray[index - 1].priority = temp
       newArray.sort((a, b) => a.priority - b.priority)
-      setRules(newArray)
+      ;(setRules as React.Dispatch<React.SetStateAction<(UnitRule | CategoryRule)[]>>)(newArray)
     }
   }
 
-  const moveDown = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: any) => {
+  const moveDown = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: React.Dispatch<React.SetStateAction<UnitRule[]>> | React.Dispatch<React.SetStateAction<CategoryRule[]>>) => {
     const index = ruleArray.findIndex(r => r.id === rule.id)
     if (index < ruleArray.length - 1) {
       const newArray = [...ruleArray]
@@ -244,7 +244,7 @@ export default function RulesPage() {
       newArray[index].priority = newArray[index + 1].priority
       newArray[index + 1].priority = temp
       newArray.sort((a, b) => a.priority - b.priority)
-      setRules(newArray)
+      ;(setRules as React.Dispatch<React.SetStateAction<(UnitRule | CategoryRule)[]>>)(newArray)
     }
   }
 
@@ -274,7 +274,7 @@ export default function RulesPage() {
           try {
             const regex = new RegExp(rule.pattern)
             matches = regex.test(text)
-          } catch (e) {
+          } catch {
             setTestResult('Invalid regex pattern')
             return
           }
@@ -299,7 +299,7 @@ export default function RulesPage() {
           try {
             const regex = new RegExp(rule.pattern)
             matches = regex.test(text)
-          } catch (e) {
+          } catch {
             setTestResult('Invalid regex pattern')
             return
           }
@@ -320,7 +320,7 @@ export default function RulesPage() {
           try {
             const regex = new RegExp(rule.pattern)
             matches = regex.test(text)
-          } catch (e) {
+          } catch {
             setTestResult('Invalid regex pattern')
             return
           }

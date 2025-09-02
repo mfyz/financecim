@@ -90,7 +90,7 @@ export default function ImportPage() {
     ]
   }
 
-  const simulateFileProcessing = (fileData: UploadedFile) => {
+  const simulateFileProcessing = useCallback((fileData: UploadedFile) => {
     setUploadingFile(fileData.name)
     setUploadProgress(0)
     
@@ -114,9 +114,9 @@ export default function ImportPage() {
         return newProgress
       })
     }, 200)
-  }
+  }, [])
 
-  const processFiles = (files: FileList) => {
+  const processFiles = useCallback((files: FileList) => {
     setValidationErrors([])
     const newFiles: UploadedFile[] = []
     const errors: ValidationError[] = []
@@ -145,7 +145,7 @@ export default function ImportPage() {
     
     setUploadedFiles(prev => [...prev, ...newFiles])
     setValidationErrors(errors)
-  }
+  }, [simulateFileProcessing])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -177,7 +177,7 @@ export default function ImportPage() {
     event.preventDefault()
     setDragOver(false)
     processFiles(event.dataTransfer.files)
-  }, [])
+  }, [processFiles])
 
   return (
     <div className="py-8">

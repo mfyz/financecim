@@ -229,19 +229,12 @@ export default function CategoriesPage() {
                 └
               </span>
             )}
-            <span className="text-xl mr-2">{displayIcon}</span>
-            <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm">
-          <div className="flex items-center">
             <div 
-              className="w-4 h-4 rounded mr-2"
+              className="w-4 h-4 rounded mr-2 flex-shrink-0"
               style={{ backgroundColor: category.color }}
             />
-            <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-              {category.color}
-            </span>
+            <span className="text-xl mr-2">{displayIcon}</span>
+            <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -267,7 +260,7 @@ export default function CategoriesPage() {
                 className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
                 min="0"
-                step="0.01"
+                step="1"
               />
             </div>
           ) : (
@@ -275,7 +268,7 @@ export default function CategoriesPage() {
               onClick={() => setEditingBudgetId(category.id)}
               className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
             >
-              {category.monthlyBudget ? `$${category.monthlyBudget.toFixed(2)}` : '-'}
+              {category.monthlyBudget ? `$${Math.round(category.monthlyBudget)}` : '-'}
             </button>
           )}
         </td>
@@ -362,15 +355,12 @@ export default function CategoriesPage() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Color
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Monthly Budget
@@ -383,7 +373,7 @@ export default function CategoriesPage() {
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {categories.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={3} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                   No categories yet. Click &ldquo;Add Category&rdquo; to create your first one.
                 </td>
               </tr>
@@ -469,9 +459,9 @@ export default function CategoriesPage() {
                   monthlyBudget: e.target.value ? parseFloat(e.target.value) : null 
                 }))}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0.00"
+                placeholder="0"
                 min="0"
-                step="0.01"
+                step="1"
               />
             </div>
           </div>
@@ -574,9 +564,9 @@ export default function CategoriesPage() {
                     monthlyBudget: e.target.value ? parseFloat(e.target.value) : null 
                   } : null)}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0.00"
+                  placeholder="0"
                   min="0"
-                  step="0.01"
+                  step="1"
                 />
               </div>
             </div>

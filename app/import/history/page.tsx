@@ -199,7 +199,8 @@ export default function ImportHistoryPage() {
 
       {/* Import History Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 overflow-hidden">
-        <table className="min-w-full">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -251,7 +252,8 @@ export default function ImportHistoryPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

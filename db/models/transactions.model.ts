@@ -1,0 +1,462 @@
+import { eq, and, or, like, desc, asc, sql, count, sum, gte, lte, ne, isNull, isNotNull } from 'drizzle-orm'
+import { getDatabase } from '../connection'
+import { transactions, units, sources, categories, type Transaction, type NewTransaction } from '../schema'
+
+export interface TransactionWithRelations extends Transaction {
+  unit?: { id: number; name: string; color: string } | null
+  source: { id: number; name: string; type: string }
+  category?: { id: number; name: string; color: string } | null
+}
+
+export interface TransactionFilters {
+  search?: string
+  unitId?: number
+  sourceId?: number
+  categoryId?: number
+  dateFrom?: string
+  dateTo?: string
+  amountMin?: number
+  amountMax?: number
+  showIgnored?: boolean
+  tags?: string[]
+}
+
+export interface BulkUpdateData {
+  unitId?: number
+  categoryId?: number
+  ignore?: boolean
+  notes?: string
+}
+
+export const transactionsModel = {
+  /**
+   * Get all transactions with pagination and filters
+   */
+  async getAll(
+    page = 1, 
+    limit = 50, 
+    sortBy = 'date', 
+    sortOrder: 'asc' | 'desc' = 'desc',
+    filters: TransactionFilters = {}
+  ): Promise<{ data: TransactionWithRelations[]; total: number; totalPages: number }> {
+    const db = getDatabase()
+    const offset = (page - 1) * limit
+
+    // Build where conditions
+    const whereConditions = []
+
+    if (filters.search) {
+      whereConditions.push(like(transactions.description, `%${filters.search}%`))
+    }
+
+    if (filters.unitId) {
+      whereConditions.push(eq(transactions.unitId, filters.unitId))
+    }
+
+    if (filters.sourceId) {
+      whereConditions.push(eq(transactions.sourceId, filters.sourceId))
+    }
+
+    if (filters.categoryId) {
+      whereConditions.push(eq(transactions.categoryId, filters.categoryId))
+    }
+
+    if (filters.dateFrom) {
+      whereConditions.push(gte(transactions.date, filters.dateFrom))
+    }
+
+    if (filters.dateTo) {
+      whereConditions.push(lte(transactions.date, filters.dateTo))
+    }
+
+    if (filters.amountMin !== undefined) {
+      whereConditions.push(gte(transactions.amount, filters.amountMin))
+    }
+
+    if (filters.amountMax !== undefined) {
+      whereConditions.push(lte(transactions.amount, filters.amountMax))
+    }
+
+    if (filters.showIgnored === false) {
+      whereConditions.push(eq(transactions.ignore, false))
+    } else if (filters.showIgnored === true) {
+      whereConditions.push(eq(transactions.ignore, true))
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      const tagConditions = filters.tags.map(tag => like(transactions.tags, `%${tag}%`))
+      whereConditions.push(or(...tagConditions))
+    }
+
+    // Build sort order
+    const sortColumn = {
+      date: transactions.date,
+      amount: transactions.amount,
+      description: transactions.description,
+      created_at: transactions.createdAt,
+    }[sortBy] || transactions.date
+
+    const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
+
+    // Get total count
+    const totalResult = await db
+      .select({ count: count() })
+      .from(transactions)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+
+    const total = totalResult[0]?.count || 0
+    const totalPages = Math.ceil(total / limit)
+
+    // Get data with relations
+    const data = await db
+      .select({
+        // Transaction fields
+        id: transactions.id,
+        sourceId: transactions.sourceId,
+        unitId: transactions.unitId,
+        date: transactions.date,
+        description: transactions.description,
+        amount: transactions.amount,
+        sourceCategory: transactions.sourceCategory,
+        categoryId: transactions.categoryId,
+        ignore: transactions.ignore,
+        notes: transactions.notes,
+        tags: transactions.tags,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        // Unit relation
+        unitName: units.name,
+        unitColor: units.color,
+        // Source relation
+        sourceName: sources.name,
+        sourceType: sources.type,
+        // Category relation
+        categoryName: categories.name,
+        categoryColor: categories.color,
+      })
+      .from(transactions)
+      .leftJoin(units, eq(transactions.unitId, units.id))
+      .innerJoin(sources, eq(transactions.sourceId, sources.id))
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset)
+
+    // Transform to include nested objects
+    const transformedData: TransactionWithRelations[] = data.map(row => ({
+      id: row.id,
+      sourceId: row.sourceId,
+      unitId: row.unitId,
+      date: row.date,
+      description: row.description,
+      amount: row.amount,
+      sourceCategory: row.sourceCategory,
+      categoryId: row.categoryId,
+      ignore: row.ignore,
+      notes: row.notes,
+      tags: row.tags,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      unit: row.unitId ? {
+        id: row.unitId,
+        name: row.unitName!,
+        color: row.unitColor!
+      } : null,
+      source: {
+        id: row.sourceId,
+        name: row.sourceName,
+        type: row.sourceType
+      },
+      category: row.categoryId ? {
+        id: row.categoryId,
+        name: row.categoryName!,
+        color: row.categoryColor!
+      } : null
+    }))
+
+    return { data: transformedData, total, totalPages }
+  },
+
+  /**
+   * Get transaction by ID with relations
+   */
+  async getById(id: number): Promise<TransactionWithRelations | null> {
+    const db = getDatabase()
+    
+    const result = await db
+      .select({
+        // Transaction fields
+        id: transactions.id,
+        sourceId: transactions.sourceId,
+        unitId: transactions.unitId,
+        date: transactions.date,
+        description: transactions.description,
+        amount: transactions.amount,
+        sourceCategory: transactions.sourceCategory,
+        categoryId: transactions.categoryId,
+        ignore: transactions.ignore,
+        notes: transactions.notes,
+        tags: transactions.tags,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        // Unit relation
+        unitName: units.name,
+        unitColor: units.color,
+        // Source relation
+        sourceName: sources.name,
+        sourceType: sources.type,
+        // Category relation
+        categoryName: categories.name,
+        categoryColor: categories.color,
+      })
+      .from(transactions)
+      .leftJoin(units, eq(transactions.unitId, units.id))
+      .innerJoin(sources, eq(transactions.sourceId, sources.id))
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(eq(transactions.id, id))
+
+    if (!result[0]) return null
+
+    const row = result[0]
+    return {
+      id: row.id,
+      sourceId: row.sourceId,
+      unitId: row.unitId,
+      date: row.date,
+      description: row.description,
+      amount: row.amount,
+      sourceCategory: row.sourceCategory,
+      categoryId: row.categoryId,
+      ignore: row.ignore,
+      notes: row.notes,
+      tags: row.tags,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      unit: row.unitId ? {
+        id: row.unitId,
+        name: row.unitName!,
+        color: row.unitColor!
+      } : null,
+      source: {
+        id: row.sourceId,
+        name: row.sourceName,
+        type: row.sourceType
+      },
+      category: row.categoryId ? {
+        id: row.categoryId,
+        name: row.categoryName!,
+        color: row.categoryColor!
+      } : null
+    }
+  },
+
+  /**
+   * Create new transaction
+   */
+  async create(data: NewTransaction): Promise<Transaction> {
+    const db = getDatabase()
+    const result = await db.insert(transactions).values(data).returning()
+    return result[0]
+  },
+
+  /**
+   * Update existing transaction
+   */
+  async update(id: number, data: Partial<NewTransaction>): Promise<Transaction> {
+    const db = getDatabase()
+    
+    // Check if transaction exists
+    const existing = await this.getById(id)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    const result = await db
+      .update(transactions)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(transactions.id, id))
+      .returning()
+    
+    return result[0]
+  },
+
+  /**
+   * Delete transaction by ID
+   */
+  async delete(id: number): Promise<void> {
+    const db = getDatabase()
+    
+    // Check if transaction exists
+    const existing = await this.getById(id)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    await db.delete(transactions).where(eq(transactions.id, id))
+  },
+
+  /**
+   * Bulk update transactions
+   */
+  async bulkUpdate(ids: number[], data: BulkUpdateData): Promise<number> {
+    const db = getDatabase()
+    
+    if (ids.length === 0) return 0
+
+    const updateData: Partial<NewTransaction> = {
+      ...data,
+      updatedAt: new Date().toISOString()
+    }
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key as keyof typeof updateData] === undefined) {
+        delete updateData[key as keyof typeof updateData]
+      }
+    })
+
+    const result = await db
+      .update(transactions)
+      .set(updateData)
+      .where(or(...ids.map(id => eq(transactions.id, id))))
+
+    return ids.length // Return number of affected rows
+  },
+
+  /**
+   * Bulk delete transactions
+   */
+  async bulkDelete(ids: number[]): Promise<number> {
+    const db = getDatabase()
+    
+    if (ids.length === 0) return 0
+
+    await db
+      .delete(transactions)
+      .where(or(...ids.map(id => eq(transactions.id, id))))
+
+    return ids.length
+  },
+
+  /**
+   * Get transaction statistics
+   */
+  async getStats(filters: TransactionFilters = {}): Promise<{
+    totalTransactions: number
+    totalIncome: number
+    totalExpenses: number
+    averageTransaction: number
+    categorizedCount: number
+    uncategorizedCount: number
+    ignoredCount: number
+  }> {
+    const db = getDatabase()
+
+    // Build where conditions (reuse from getAll)
+    const whereConditions = []
+
+    if (filters.search) {
+      whereConditions.push(like(transactions.description, `%${filters.search}%`))
+    }
+    if (filters.unitId) {
+      whereConditions.push(eq(transactions.unitId, filters.unitId))
+    }
+    if (filters.sourceId) {
+      whereConditions.push(eq(transactions.sourceId, filters.sourceId))
+    }
+    if (filters.categoryId) {
+      whereConditions.push(eq(transactions.categoryId, filters.categoryId))
+    }
+    if (filters.dateFrom) {
+      whereConditions.push(gte(transactions.date, filters.dateFrom))
+    }
+    if (filters.dateTo) {
+      whereConditions.push(lte(transactions.date, filters.dateTo))
+    }
+    if (filters.amountMin !== undefined) {
+      whereConditions.push(gte(transactions.amount, filters.amountMin))
+    }
+    if (filters.amountMax !== undefined) {
+      whereConditions.push(lte(transactions.amount, filters.amountMax))
+    }
+
+    const baseWhere = whereConditions.length > 0 ? and(...whereConditions) : undefined
+
+    // Get basic stats
+    const basicStats = await db
+      .select({
+        totalTransactions: count(),
+        totalAmount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        averageTransaction: sql<number>`COALESCE(AVG(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(baseWhere)
+
+    // Get income/expense breakdown
+    const incomeExpenseStats = await db
+      .select({
+        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalExpenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
+      })
+      .from(transactions)
+      .where(baseWhere)
+
+    // Get categorization stats
+    const categorizationStats = await db
+      .select({
+        categorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NOT NULL THEN 1 END)`,
+        uncategorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NULL THEN 1 END)`,
+        ignoredCount: sql<number>`COUNT(CASE WHEN ${transactions.ignore} = true THEN 1 END)`,
+      })
+      .from(transactions)
+      .where(baseWhere)
+
+    const basic = basicStats[0]
+    const incomeExpense = incomeExpenseStats[0]
+    const categorization = categorizationStats[0]
+
+    return {
+      totalTransactions: basic?.totalTransactions || 0,
+      totalIncome: incomeExpense?.totalIncome || 0,
+      totalExpenses: incomeExpense?.totalExpenses || 0,
+      averageTransaction: basic?.averageTransaction || 0,
+      categorizedCount: categorization?.categorizedCount || 0,
+      uncategorizedCount: categorization?.uncategorizedCount || 0,
+      ignoredCount: categorization?.ignoredCount || 0,
+    }
+  },
+
+  /**
+   * Get unique tags from all transactions
+   */
+  async getAllTags(): Promise<string[]> {
+    const db = getDatabase()
+    
+    const result = await db
+      .select({ tags: transactions.tags })
+      .from(transactions)
+      .where(isNotNull(transactions.tags))
+
+    const allTags = new Set<string>()
+    
+    result.forEach(row => {
+      if (row.tags) {
+        const tags = row.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+        tags.forEach(tag => allTags.add(tag))
+      }
+    })
+
+    return Array.from(allTags).sort()
+  },
+
+  /**
+   * Search transactions by description
+   */
+  async search(query: string, limit = 20): Promise<TransactionWithRelations[]> {
+    if (!query.trim()) return []
+
+    const result = await this.getAll(1, limit, 'date', 'desc', { search: query })
+    return result.data
+  }
+}

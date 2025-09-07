@@ -1,152 +1,221 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw } from 'lucide-react'
+import { TransactionWithRelations } from '@/db/models/transactions.model'
 
-interface Transaction {
+interface Unit {
   id: number
-  source: string
-  date: string
-  description: string
-  amount: number
-  source_category: string
-  category: string | null
-  unit: string
-  ignore: boolean
-  notes: string
+  name: string
+  color: string
+  active?: boolean
 }
 
-// Mock data matching the prototype with "Test" prefix
-const unitOptions = [
-  { id: 1, name: 'Test Personal', color: '#6B7280' },
-  { id: 2, name: 'Test Main Business', color: '#3B82F6' },
-  { id: 3, name: 'Test Side Hustle', color: '#10B981' },
-  { id: 4, name: 'Test Real Estate', color: '#F59E0B' }
-]
+interface Source {
+  id: number
+  name: string
+  type: string
+}
 
-// const categoryOptions = [
-//   { id: 1, name: 'Test Food & Dining', parent: null },
-//   { id: 2, name: 'Test Groceries', parent: 'Food & Dining' },
-//   { id: 3, name: 'Test Restaurants', parent: 'Food & Dining' },
-//   { id: 4, name: 'Test Transportation', parent: null },
-//   { id: 5, name: 'Test Gas', parent: 'Transportation' },
-//   { id: 6, name: 'Test Entertainment', parent: null },
-//   { id: 7, name: 'Test Shopping', parent: null },
-//   { id: 8, name: 'Test Bills & Utilities', parent: null }
-// ]
+interface Category {
+  id: number
+  name: string
+  color: string
+  parentCategoryId?: number | null
+}
 
-const initialTransactions: Transaction[] = [
-  { id: 1, source: 'Test Chase Bank', date: '2024-01-20', description: 'WALMART SUPERCENTER #1234', amount: -125.43, source_category: 'Groceries', category: 'Test Groceries', unit: 'Test Personal', ignore: false, notes: '' },
-  { id: 2, source: 'Test Chase Bank', date: '2024-01-19', description: 'SHELL GAS STATION', amount: -45.00, source_category: 'Gas & Fuel', category: 'Test Gas', unit: 'Test Personal', ignore: false, notes: 'Fill up' },
-  { id: 3, source: 'Test Capital One', date: '2024-01-19', description: 'STARBUCKS STORE #5678', amount: -6.75, source_category: 'Food & Dining', category: 'Test Restaurants', unit: 'Test Main Business', ignore: false, notes: '' },
-  { id: 4, source: 'Test Chase Bank', date: '2024-01-18', description: 'TARGET STORE #9012', amount: -89.23, source_category: 'General Merchandise', category: 'Test Shopping', unit: 'Test Personal', ignore: false, notes: '' },
-  { id: 5, source: 'Test Capital One', date: '2024-01-18', description: 'NETFLIX.COM', amount: -15.99, source_category: 'Travel & Entertainment', category: 'Test Entertainment', unit: 'Test Personal', ignore: false, notes: 'Monthly subscription' },
-  { id: 6, source: 'Test Chase Bank', date: '2024-01-17', description: 'COMCAST CABLE', amount: -120.00, source_category: 'Bills & Utilities', category: 'Test Bills & Utilities', unit: 'Test Main Business', ignore: false, notes: '' },
-  { id: 7, source: 'Test Chase Bank', date: '2024-01-17', description: 'PAYCHECK DEPOSIT', amount: 3500.00, source_category: 'Income', category: null, unit: 'Test Main Business', ignore: true, notes: 'Salary' },
-  { id: 8, source: 'Test Capital One', date: '2024-01-16', description: 'AMAZON.COM', amount: -42.99, source_category: 'General Merchandise', category: 'Test Shopping', unit: 'Test Side Hustle', ignore: false, notes: '' },
-  { id: 9, source: 'Test Chase Bank', date: '2024-01-16', description: 'WHOLE FOODS MARKET', amount: -78.65, source_category: 'Groceries', category: 'Test Groceries', unit: 'Test Personal', ignore: false, notes: '' },
-  { id: 10, source: 'Test Capital One', date: '2024-01-15', description: 'UBER EATS', amount: -32.45, source_category: 'Food & Dining', category: 'Test Restaurants', unit: 'Test Main Business', ignore: false, notes: 'Dinner delivery' },
-  { id: 11, source: 'Test Chase Bank', date: '2024-01-14', description: 'DIVIDEND PAYMENT', amount: 250.00, source_category: 'Investment', category: null, unit: 'Test Real Estate', ignore: false, notes: 'Quarterly dividend' },
-  { id: 12, source: 'Test Capital One', date: '2024-01-13', description: 'CASHBACK REWARD', amount: 45.67, source_category: 'Rewards', category: null, unit: 'Test Personal', ignore: false, notes: '' },
-  { id: 13, source: 'Test Chase Bank', date: '2024-01-12', description: 'VENMO PAYMENT FROM FRIEND', amount: 25.00, source_category: 'Transfer', category: null, unit: 'Test Personal', ignore: false, notes: 'Dinner split' },
-  { id: 14, source: 'Test Chase Bank', date: '2024-01-11', description: 'INTEREST EARNED', amount: 15.32, source_category: 'Interest', category: null, unit: 'Test Personal', ignore: false, notes: 'Savings account' }
-]
+interface TransactionsResponse {
+  data: TransactionWithRelations[]
+  total: number
+  totalPages: number
+}
+
+interface TransactionStats {
+  totalTransactions: number
+  totalIncome: number
+  totalExpenses: number
+  averageTransaction: number
+  categorizedCount: number
+  uncategorizedCount: number
+  ignoredCount: number
+}
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions)
+  const [transactions, setTransactions] = useState<TransactionWithRelations[]>([])
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([])
   const [showBulkActions, setShowBulkActions] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<TransactionStats | null>(null)
+  const [units, setUnits] = useState<Unit[]>([])
+  const [sources, setSources] = useState<Source[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<string[]>([])
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalTransactions, setTotalTransactions] = useState(0)
+  const [limit] = useState(50)
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [datePreset, setDatePreset] = useState('')
-  const [selectedSource, setSelectedSource] = useState('all')
-  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedSource, setSelectedSource] = useState<string>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [amountMin, setAmountMin] = useState('')
   const [amountMax, setAmountMax] = useState('')
-  const [showIgnored, setShowIgnored] = useState(false)
-  const [selectedUnit, setSelectedUnit] = useState('all')
+  const [showIgnored, setShowIgnored] = useState<boolean | undefined>(false)
+  const [selectedUnit, setSelectedUnit] = useState<string>('all')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   
   // Sort states
-  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description'>('date')
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description' | 'created_at'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const filteredTransactions = useMemo(() => {
-    let filtered = [...transactions]
-    
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(t => 
-        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.notes.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+  // Fetch initial data
+  useEffect(() => {
+    fetchUnits()
+    fetchSources()
+    fetchCategories()
+    fetchTags()
+  }, [])
+
+  // Fetch transactions when filters change
+  useEffect(() => {
+    fetchTransactions()
+  }, [currentPage, sortBy, sortOrder, searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
+
+  // Fetch stats when filters change
+  useEffect(() => {
+    fetchStats()
+  }, [searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, selectedTags])
+
+  const fetchUnits = async () => {
+    try {
+      const response = await fetch('/api/units')
+      const result = await response.json()
+      const data = result.data || result // Handle both response formats
+      setUnits(Array.isArray(data) ? data.filter((unit: Unit) => unit.active) : [])
+    } catch (error) {
+      console.error('Error fetching units:', error)
     }
-    
-    // Date filters
-    if (dateFrom) {
-      filtered = filtered.filter(t => t.date >= dateFrom)
+  }
+
+  const fetchSources = async () => {
+    try {
+      const response = await fetch('/api/sources')
+      const result = await response.json()
+      const data = result.data || result // Handle both response formats
+      setSources(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching sources:', error)
     }
-    if (dateTo) {
-      filtered = filtered.filter(t => t.date <= dateTo)
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      const result = await response.json()
+      const data = result.data || result // Handle both response formats
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching categories:', error)
     }
-    
-    // Unit filter
-    if (selectedUnit !== 'all') {
-      filtered = filtered.filter(t => t.unit === selectedUnit)
+  }
+
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/transactions/tags')
+      const data = await response.json()
+      setTags(data.tags || [])
+    } catch (error) {
+      console.error('Error fetching tags:', error)
     }
+  }
+
+  const buildQueryParams = () => {
+    const params = new URLSearchParams()
     
-    // Source filter
-    if (selectedSource !== 'all') {
-      filtered = filtered.filter(t => t.source === selectedSource)
-    }
+    params.set('page', currentPage.toString())
+    params.set('limit', limit.toString())
+    params.set('sortBy', sortBy)
+    params.set('sortOrder', sortOrder)
     
-    // Category filter
+    if (searchTerm) params.set('search', searchTerm)
+    if (selectedUnit !== 'all') params.set('unitId', selectedUnit)
+    if (selectedSource !== 'all') params.set('sourceId', selectedSource)
     if (selectedCategory !== 'all') {
       if (selectedCategory === 'uncategorized') {
-        filtered = filtered.filter(t => !t.category)
+        // Handle uncategorized filter on frontend
       } else {
-        filtered = filtered.filter(t => t.category === selectedCategory)
+        params.set('categoryId', selectedCategory)
       }
     }
+    if (dateFrom) params.set('dateFrom', dateFrom)
+    if (dateTo) params.set('dateTo', dateTo)
+    if (amountMin) params.set('amountMin', amountMin)
+    if (amountMax) params.set('amountMax', amountMax)
+    if (showIgnored !== undefined) params.set('showIgnored', showIgnored.toString())
+    if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
     
-    // Amount filters
-    if (amountMin) {
-      filtered = filtered.filter(t => Math.abs(t.amount) >= parseFloat(amountMin))
-    }
-    if (amountMax) {
-      filtered = filtered.filter(t => Math.abs(t.amount) <= parseFloat(amountMax))
-    }
-    
-    // Ignored filter
-    if (!showIgnored) {
-      filtered = filtered.filter(t => !t.ignore)
-    }
-    
-    // Sorting
-    filtered.sort((a, b) => {
-      let comparison = 0
-      if (sortBy === 'date') {
-        comparison = a.date.localeCompare(b.date)
-      } else if (sortBy === 'amount') {
-        comparison = a.amount - b.amount
-      } else if (sortBy === 'description') {
-        comparison = a.description.localeCompare(b.description)
-      }
-      return sortOrder === 'asc' ? comparison : -comparison
-    })
-    
-    return filtered
-  }, [transactions, searchTerm, dateFrom, dateTo, selectedUnit, selectedSource, selectedCategory, amountMin, amountMax, showIgnored, sortBy, sortOrder])
+    return params
+  }
 
-  const toggleSort = (field: 'date' | 'amount' | 'description') => {
+  const fetchTransactions = async () => {
+    setLoading(true)
+    try {
+      const params = buildQueryParams()
+      const response = await fetch(`/api/transactions?${params}`)
+      const data: TransactionsResponse = await response.json()
+      
+      // Handle uncategorized filter on frontend if needed
+      let filteredData = data.data
+      if (selectedCategory === 'uncategorized') {
+        filteredData = data.data.filter(t => !t.categoryId)
+      }
+      
+      setTransactions(filteredData)
+      setTotalPages(data.totalPages)
+      setTotalTransactions(data.total)
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchStats = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (searchTerm) params.set('search', searchTerm)
+      if (selectedUnit !== 'all') params.set('unitId', selectedUnit)
+      if (selectedSource !== 'all') params.set('sourceId', selectedSource)
+      if (selectedCategory !== 'all' && selectedCategory !== 'uncategorized') params.set('categoryId', selectedCategory)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
+      if (amountMin) params.set('amountMin', amountMin)
+      if (amountMax) params.set('amountMax', amountMax)
+      if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
+      
+      const response = await fetch(`/api/transactions/stats?${params}`)
+      const data = await response.json()
+      setStats(data)
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
+  }
+
+  const toggleSort = (field: 'date' | 'amount' | 'description' | 'created_at') => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
       setSortBy(field)
       setSortOrder('desc')
     }
+    setCurrentPage(1)
   }
 
   const toggleTransaction = (id: number) => {
@@ -159,37 +228,106 @@ export default function TransactionsPage() {
   }
 
   const selectAll = () => {
-    if (selectedTransactions.length === filteredTransactions.length) {
+    if (selectedTransactions.length === transactions.length) {
       setSelectedTransactions([])
       setShowBulkActions(false)
     } else {
-      setSelectedTransactions(filteredTransactions.map(t => t.id))
+      setSelectedTransactions(transactions.map(t => t.id))
       setShowBulkActions(true)
     }
   }
 
-  const bulkCategorize = (category: string) => {
-    setTransactions(prev => prev.map(t => 
-      selectedTransactions.includes(t.id) ? { ...t, category } : t
-    ))
-    setSelectedTransactions([])
-    setShowBulkActions(false)
+  const bulkUpdate = async (updateData: { unitId?: number; categoryId?: number; ignore?: boolean; notes?: string }) => {
+    if (selectedTransactions.length === 0) return
+
+    try {
+      const response = await fetch('/api/transactions/bulk', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedTransactions,
+          data: updateData
+        })
+      })
+
+      if (response.ok) {
+        await fetchTransactions()
+        await fetchStats()
+        setSelectedTransactions([])
+        setShowBulkActions(false)
+      } else {
+        console.error('Bulk update failed')
+      }
+    } catch (error) {
+      console.error('Error performing bulk update:', error)
+    }
   }
 
-  const bulkAssignUnit = (unit: string) => {
-    setTransactions(prev => prev.map(t => 
-      selectedTransactions.includes(t.id) ? { ...t, unit } : t
-    ))
-    setSelectedTransactions([])
-    setShowBulkActions(false)
+  const bulkDelete = async () => {
+    if (selectedTransactions.length === 0) return
+    
+    if (!confirm(`Are you sure you want to delete ${selectedTransactions.length} transaction${selectedTransactions.length === 1 ? '' : 's'}?`)) return
+
+    try {
+      const response = await fetch('/api/transactions/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedTransactions })
+      })
+
+      if (response.ok) {
+        await fetchTransactions()
+        await fetchStats()
+        setSelectedTransactions([])
+        setShowBulkActions(false)
+      } else {
+        console.error('Bulk delete failed')
+      }
+    } catch (error) {
+      console.error('Error performing bulk delete:', error)
+    }
   }
 
-  const bulkIgnore = () => {
-    setTransactions(prev => prev.map(t => 
-      selectedTransactions.includes(t.id) ? { ...t, ignore: !t.ignore } : t
-    ))
-    setSelectedTransactions([])
-    setShowBulkActions(false)
+  const updateTransaction = async (id: number, updates: { unitId?: number; categoryId?: number; ignore?: boolean; notes?: string }) => {
+    try {
+      const response = await fetch(`/api/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+
+      if (response.ok) {
+        await fetchTransactions()
+        await fetchStats()
+      } else {
+        console.error('Update failed')
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+    }
+  }
+
+  const deleteTransaction = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this transaction?')) return
+
+    try {
+      const response = await fetch(`/api/transactions/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        await fetchTransactions()
+        await fetchStats()
+        setSelectedTransactions(prev => prev.filter(tid => tid !== id))
+        if (selectedTransactions.length <= 1) {
+          setShowBulkActions(false)
+        }
+      } else {
+        console.error('Delete failed')
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error)
+    }
   }
 
   const applyDatePreset = (preset: string) => {
@@ -240,38 +378,76 @@ export default function TransactionsPage() {
         setDateTo('')
         break
     }
+    setCurrentPage(1)
   }
 
-  const updateTransaction = (id: number, updates: Partial<Transaction>) => {
-    setTransactions(prev => prev.map(t => 
-      t.id === id ? { ...t, ...updates } : t
-    ))
+  const clearFilters = () => {
+    setSearchTerm('')
+    setDateFrom('')
+    setDateTo('')
+    setDatePreset('')
+    setSelectedSource('all')
+    setSelectedCategory('all')
+    setAmountMin('')
+    setAmountMax('')
+    setShowIgnored(false)
+    setSelectedUnit('all')
+    setSelectedTags([])
+    setCurrentPage(1)
   }
 
-  const editTransaction = (id: number) => {
-    const transaction = transactions.find(t => t.id === id)
-    if (transaction) {
-      console.log('Edit transaction:', transaction)
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(Math.abs(amount))
   }
 
-  const deleteTransaction = (id: number) => {
-    if (confirm('Are you sure you want to delete this transaction?')) {
-      setTransactions(prev => prev.filter(t => t.id !== id))
-      setSelectedTransactions(prev => prev.filter(tid => tid !== id))
-      if (selectedTransactions.length <= 1) {
-        setShowBulkActions(false)
-      }
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
-  const sourceOptions = [...new Set(transactions.map(t => t.source))]
+  // Create hierarchical categories for display
+  const categoriesHierarchical = useMemo(() => {
+    const parentCategories = categories.filter(cat => !cat.parentCategoryId)
+    const childCategories = categories.filter(cat => cat.parentCategoryId)
+    
+    return parentCategories.map(parent => ({
+      ...parent,
+      children: childCategories.filter(child => child.parentCategoryId === parent.id)
+    }))
+  }, [categories])
 
   return (
     <div className="py-8">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Transactions</h2>
-        <p className="text-gray-600 dark:text-gray-300">View and manage all your transactions</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Transactions</h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            {stats && `${stats.totalTransactions.toLocaleString()} transactions • ${formatCurrency(stats.totalIncome)} income • ${formatCurrency(stats.totalExpenses)} expenses`}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <button 
+            onClick={clearFilters}
+            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Clear Filters
+          </button>
+          <button 
+            onClick={fetchTransactions}
+            disabled={loading}
+            className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -282,7 +458,10 @@ export default function TransactionsPage() {
             <input 
               type="text" 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Search transactions..."
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -315,7 +494,10 @@ export default function TransactionsPage() {
             <input 
               type="date" 
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -323,7 +505,10 @@ export default function TransactionsPage() {
             <input 
               type="date" 
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -332,12 +517,15 @@ export default function TransactionsPage() {
           <div>
             <select 
               value={selectedUnit} 
-              onChange={(e) => setSelectedUnit(e.target.value)}
+              onChange={(e) => {
+                setSelectedUnit(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Units</option>
-              {unitOptions.map(unit => (
-                <option key={unit.id} value={unit.name}>{unit.name}</option>
+              {units.map(unit => (
+                <option key={unit.id} value={unit.id.toString()}>{unit.name}</option>
               ))}
             </select>
           </div>
@@ -346,12 +534,15 @@ export default function TransactionsPage() {
           <div>
             <select 
               value={selectedSource} 
-              onChange={(e) => setSelectedSource(e.target.value)}
+              onChange={(e) => {
+                setSelectedSource(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Sources</option>
-              {sourceOptions.map(source => (
-                <option key={source} value={source}>{source}</option>
+              {sources.map(source => (
+                <option key={source.id} value={source.id.toString()}>{source.name}</option>
               ))}
             </select>
           </div>
@@ -360,18 +551,22 @@ export default function TransactionsPage() {
           <div>
             <select 
               value={selectedCategory} 
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Categories</option>
               <option value="uncategorized">Uncategorized</option>
-              <option value="Test Groceries">Test Groceries</option>
-              <option value="Test Restaurants">Test Restaurants</option>
-              <option value="Test Gas">Test Gas</option>
-              <option value="Test Transportation">Test Transportation</option>
-              <option value="Test Entertainment">Test Entertainment</option>
-              <option value="Test Shopping">Test Shopping</option>
-              <option value="Test Bills & Utilities">Test Bills & Utilities</option>
+              {categoriesHierarchical.map(parent => (
+                <optgroup key={parent.id} label={parent.name}>
+                  <option value={parent.id.toString()}>{parent.name} (General)</option>
+                  {parent.children.map(child => (
+                    <option key={child.id} value={child.id.toString()}>└ {child.name}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
           
@@ -380,14 +575,20 @@ export default function TransactionsPage() {
             <input 
               type="number" 
               value={amountMin}
-              onChange={(e) => setAmountMin(e.target.value)}
+              onChange={(e) => {
+                setAmountMin(e.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Min $"
               className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <input 
               type="number" 
               value={amountMax}
-              onChange={(e) => setAmountMax(e.target.value)}
+              onChange={(e) => {
+                setAmountMax(e.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Max $"
               className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -398,8 +599,11 @@ export default function TransactionsPage() {
             <label className="flex items-center text-sm text-gray-700 dark:text-gray-300">
               <input 
                 type="checkbox" 
-                checked={showIgnored}
-                onChange={(e) => setShowIgnored(e.target.checked)}
+                checked={showIgnored === true}
+                onChange={(e) => {
+                  setShowIgnored(e.target.checked ? true : false)
+                  setCurrentPage(1)
+                }}
                 className="mr-2"
               />
               Show ignored
@@ -419,45 +623,49 @@ export default function TransactionsPage() {
               <select 
                 onChange={(e) => {
                   if (e.target.value) {
-                    bulkAssignUnit(e.target.value)
+                    bulkUpdate({ unitId: parseInt(e.target.value) })
                     e.target.value = ''
                   }
                 }}
                 className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
               >
                 <option value="">Bulk assign unit...</option>
-                {unitOptions.map(unit => (
-                  <option key={unit.id} value={unit.name}>{unit.name}</option>
+                {units.map(unit => (
+                  <option key={unit.id} value={unit.id}>{unit.name}</option>
                 ))}
               </select>
               <select 
                 onChange={(e) => {
                   if (e.target.value) {
-                    bulkCategorize(e.target.value)
+                    bulkUpdate({ categoryId: parseInt(e.target.value) })
                     e.target.value = ''
                   }
                 }}
                 className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
               >
                 <option value="">Bulk categorize as...</option>
-                <optgroup label="Food & Dining">
-                  <option value="Test Groceries">└ Test Groceries</option>
-                  <option value="Test Restaurants">└ Test Restaurants</option>
-                </optgroup>
-                <optgroup label="Transportation">
-                  <option value="Test Transportation">Test Transportation (General)</option>
-                  <option value="Test Gas">└ Test Gas</option>
-                </optgroup>
-                <option value="Test Entertainment">Test Entertainment</option>
-                <option value="Test Shopping">Test Shopping</option>
-                <option value="Test Bills & Utilities">Test Bills & Utilities</option>
+                {categoriesHierarchical.map(parent => (
+                  <optgroup key={parent.id} label={parent.name}>
+                    <option value={parent.id}>{parent.name} (General)</option>
+                    {parent.children.map(child => (
+                      <option key={child.id} value={child.id}>└ {child.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
               <button 
-                onClick={bulkIgnore}
+                onClick={() => bulkUpdate({ ignore: true })}
                 className="bg-gray-500 dark:bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 dark:hover:bg-gray-700 flex items-center"
               >
                 <EyeOff className="w-3 h-3 mr-1" />
-                Toggle Ignore
+                Ignore
+              </button>
+              <button 
+                onClick={bulkDelete}
+                className="bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-600 dark:hover:bg-red-700 flex items-center"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                Delete
               </button>
               <button 
                 onClick={() => {
@@ -476,227 +684,279 @@ export default function TransactionsPage() {
 
       {/* Transactions Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20">
-        <div className="overflow-x-auto">
-          <table className="min-w-full lg:w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <tr>
-                <th className="px-4 py-3">
-                  <input 
-                    type="checkbox" 
-                    onClick={selectAll}
-                    checked={selectedTransactions.length === filteredTransactions.length && filteredTransactions.length > 0}
-                    readOnly
-                  />
-                </th>
-                <th 
-                  onClick={() => toggleSort('date')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[100px]"
-                >
-                  <div className="flex items-center">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    Date
-                    {sortBy === 'date' && (
-                      <span className="ml-1">
-                        {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-                      </span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
-                  <div className="flex items-center">
-                    <Building2 className="w-3 h-3 mr-1" />
-                    Source
-                  </div>
-                </th>
-                <th 
-                  onClick={() => toggleSort('description')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[200px]"
-                >
-                  <div className="flex items-center">
-                    <FileText className="w-3 h-3 mr-1" />
-                    Description
-                    {sortBy === 'description' && (
-                      <span className="ml-1">
-                        {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-                      </span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
-                  <div className="flex items-center">
-                    <Tag className="w-3 h-3 mr-1" />
-                    Source Category
-                  </div>
-                </th>
-                <th 
-                  onClick={() => toggleSort('amount')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[100px]"
-                >
-                  <div className="flex items-center">
-                    <DollarSign className="w-3 h-3 mr-1" />
-                    Amount
-                    {sortBy === 'amount' && (
-                      <span className="ml-1">
-                        {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-                      </span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
-                  <div className="flex items-center">
-                    <Layers className="w-3 h-3 mr-1" />
-                    Unit
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
-                  <div className="flex items-center">
-                    <Tags className="w-3 h-3 mr-1" />
-                    Category
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[80px]">
-                  <div className="flex items-center">
-                    <EyeOff className="w-3 h-3 mr-1" />
-                    Ignore
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
-                  <div className="flex items-center">
-                    <StickyNote className="w-3 h-3 mr-1" />
-                    Notes
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
-                  <div className="flex items-center">
-                    <Settings className="w-3 h-3 mr-1" />
-                    Actions
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredTransactions.map((transaction) => (
-                <tr 
-                  key={transaction.id} 
-                  className={transaction.ignore ? 'opacity-50 bg-gray-50 dark:bg-gray-700/50' : ''}
-                >
-                  <td className="px-4 py-3">
+        {loading && (
+          <div className="p-8 text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-gray-400" />
+            <p className="text-gray-500 dark:text-gray-400">Loading transactions...</p>
+          </div>
+        )}
+        
+        {!loading && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full lg:w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                  <th className="px-4 py-3">
                     <input 
                       type="checkbox" 
-                      checked={selectedTransactions.includes(transaction.id)}
-                      onChange={() => toggleTransaction(transaction.id)}
+                      onClick={selectAll}
+                      checked={selectedTransactions.length === transactions.length && transactions.length > 0}
+                      readOnly
                     />
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {transaction.date}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {transaction.source}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">
-                    {transaction.description}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {transaction.source_category}
-                  </td>
-                  <td className={`px-6 py-3 whitespace-nowrap text-sm font-semibold ${
-                    transaction.amount > 0 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {transaction.amount > 0 ? '+' : ''}
-                    ${Math.abs(transaction.amount).toFixed(2)}
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm">
-                    <select 
-                      value={transaction.unit}
-                      onChange={(e) => updateTransaction(transaction.id, { unit: e.target.value })}
-                      className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[100px] ${
-                        !transaction.unit 
-                          ? 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/30' 
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Not Set</option>
-                      {unitOptions.map(unit => (
-                        <option key={unit.id} value={unit.name}>{unit.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm">
-                    <select 
-                      value={transaction.category || ''}
-                      onChange={(e) => updateTransaction(transaction.id, { category: e.target.value || null })}
-                      className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[120px] ${
-                        !transaction.category 
-                          ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30' 
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Uncategorized</option>
-                      <optgroup label="Food & Dining">
-                        <option value="Test Groceries">└ Test Groceries</option>
-                        <option value="Test Restaurants">└ Test Restaurants</option>
-                      </optgroup>
-                      <optgroup label="Transportation">
-                        <option value="Test Transportation">Test Transportation (General)</option>
-                        <option value="Test Gas">└ Test Gas</option>
-                      </optgroup>
-                      <option value="Test Entertainment">Test Entertainment</option>
-                      <option value="Test Shopping">Test Shopping</option>
-                      <option value="Test Bills & Utilities">Test Bills & Utilities</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-3 whitespace-nowrap text-sm">
-                    <input 
-                      type="checkbox" 
-                      checked={transaction.ignore}
-                      onChange={(e) => updateTransaction(transaction.id, { ignore: e.target.checked })}
-                    />
-                  </td>
-                  <td className="px-6 py-3 text-sm">
-                    <input 
-                      type="text" 
-                      value={transaction.notes}
-                      onChange={(e) => updateTransaction(transaction.id, { notes: e.target.value })}
-                      placeholder="Add notes..."
-                      className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded px-2 py-1 text-xs w-32 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </td>
-                  <td className="px-6 py-3 text-sm whitespace-nowrap">
-                    <div className="inline-flex rounded-md shadow-sm">
-                      <button 
-                        onClick={() => editTransaction(transaction.id)}
-                        className="px-2 py-1.5 rounded-r-none border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
-                        title="Edit transaction"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => deleteTransaction(transaction.id)}
-                        className="px-2 py-1.5 rounded-l-none -ml-px border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors"
-                        title="Delete transaction"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('date')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[100px]"
+                  >
+                    <div className="flex items-center">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      Date
+                      {sortBy === 'date' && (
+                        <span className="ml-1">
+                          {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                        </span>
+                      )}
                     </div>
-                  </td>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
+                    <div className="flex items-center">
+                      <Building2 className="w-3 h-3 mr-1" />
+                      Source
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('description')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[200px]"
+                  >
+                    <div className="flex items-center">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Description
+                      {sortBy === 'description' && (
+                        <span className="ml-1">
+                          {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
+                    <div className="flex items-center">
+                      <Tag className="w-3 h-3 mr-1" />
+                      Source Category
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => toggleSort('amount')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[100px]"
+                  >
+                    <div className="flex items-center">
+                      <DollarSign className="w-3 h-3 mr-1" />
+                      Amount
+                      {sortBy === 'amount' && (
+                        <span className="ml-1">
+                          {sortOrder === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
+                    <div className="flex items-center">
+                      <Layers className="w-3 h-3 mr-1" />
+                      Unit
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
+                    <div className="flex items-center">
+                      <Tags className="w-3 h-3 mr-1" />
+                      Category
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[80px]">
+                    <div className="flex items-center">
+                      <EyeOff className="w-3 h-3 mr-1" />
+                      Ignore
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
+                    <div className="flex items-center">
+                      <StickyNote className="w-3 h-3 mr-1" />
+                      Notes
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
+                    <div className="flex items-center">
+                      <Settings className="w-3 h-3 mr-1" />
+                      Actions
+                    </div>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filteredTransactions.length === 0 && (
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {transactions.map((transaction) => (
+                  <tr 
+                    key={transaction.id} 
+                    className={transaction.ignore ? 'opacity-50 bg-gray-50 dark:bg-gray-700/50' : ''}
+                  >
+                    <td className="px-4 py-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedTransactions.includes(transaction.id)}
+                        onChange={() => toggleTransaction(transaction.id)}
+                      />
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                      {formatDate(transaction.date)}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {transaction.source.name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {transaction.description}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {transaction.sourceCategory || '-'}
+                    </td>
+                    <td className={`px-6 py-3 whitespace-nowrap text-sm font-semibold ${
+                      transaction.amount > 0 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {transaction.amount > 0 ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      <select 
+                        value={transaction.unitId || ''}
+                        onChange={(e) => updateTransaction(transaction.id, { unitId: e.target.value ? parseInt(e.target.value) : undefined })}
+                        className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[100px] ${
+                          !transaction.unitId 
+                            ? 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/30' 
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">Not Set</option>
+                        {units.map(unit => (
+                          <option key={unit.id} value={unit.id}>{unit.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      <select 
+                        value={transaction.categoryId || ''}
+                        onChange={(e) => updateTransaction(transaction.id, { categoryId: e.target.value ? parseInt(e.target.value) : undefined })}
+                        className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[120px] ${
+                          !transaction.categoryId 
+                            ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30' 
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        <option value="">Uncategorized</option>
+                        {categoriesHierarchical.map(parent => (
+                          <optgroup key={parent.id} label={parent.name}>
+                            <option value={parent.id}>{parent.name} (General)</option>
+                            {parent.children.map(child => (
+                              <option key={child.id} value={child.id}>└ {child.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={transaction.ignore || false}
+                        onChange={(e) => updateTransaction(transaction.id, { ignore: e.target.checked })}
+                      />
+                    </td>
+                    <td className="px-6 py-3 text-sm">
+                      <input 
+                        type="text" 
+                        value={transaction.notes || ''}
+                        onChange={(e) => updateTransaction(transaction.id, { notes: e.target.value })}
+                        placeholder="Add notes..."
+                        className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded px-2 py-1 text-xs w-32 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </td>
+                    <td className="px-6 py-3 text-sm whitespace-nowrap">
+                      <div className="inline-flex rounded-md shadow-sm">
+                        <button 
+                          onClick={() => deleteTransaction(transaction.id)}
+                          className="px-2 py-1.5 border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors rounded"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        
+        {!loading && transactions.length === 0 && (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No transactions found
           </div>
         )}
       </div>
 
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="mt-4 flex justify-between items-center">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing page {currentPage} of {totalPages} ({totalTransactions.toLocaleString()} total)
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+              {currentPage} of {totalPages}
+            </span>
+            <button 
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Summary Stats */}
-      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-        Showing {filteredTransactions.length} of {transactions.length} transactions
-      </div>
+      {!loading && stats && (
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border">
+            <div className="text-gray-500 dark:text-gray-400">Categorized</div>
+            <div className="font-semibold text-green-600 dark:text-green-400">
+              {stats.categorizedCount} ({Math.round((stats.categorizedCount / (stats.totalTransactions || 1)) * 100)}%)
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border">
+            <div className="text-gray-500 dark:text-gray-400">Uncategorized</div>
+            <div className="font-semibold text-red-600 dark:text-red-400">
+              {stats.uncategorizedCount} ({Math.round((stats.uncategorizedCount / (stats.totalTransactions || 1)) * 100)}%)
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border">
+            <div className="text-gray-500 dark:text-gray-400">Ignored</div>
+            <div className="font-semibold text-gray-600 dark:text-gray-400">
+              {stats.ignoredCount}
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border">
+            <div className="text-gray-500 dark:text-gray-400">Average</div>
+            <div className="font-semibold text-gray-900 dark:text-gray-100">
+              {formatCurrency(stats.averageTransaction)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

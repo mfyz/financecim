@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Modal, Confirm } from '@/components/ui'
-import { Form, FormField, FormSelect } from '@/components/forms'
+import { Form, FormField } from '@/components/forms'
+import { CategoryDropdown } from '@/components/forms/CategoryDropdown'
 import toast from 'react-hot-toast'
 
 interface Category {
@@ -306,31 +307,6 @@ export default function CategoriesPage() {
     return rows
   }
 
-  // Get parent options for dropdowns (excluding current category and its children)
-  const getParentOptions = (excludeId?: number): { value: string; label: string }[] => {
-    const options: { value: string; label: string }[] = []
-    
-    const addOptions = (cats: CategoryWithChildren[], level = 0, shouldExclude = false) => {
-      cats.forEach(cat => {
-        const isExcluded = shouldExclude || cat.id === excludeId
-        
-        if (!isExcluded) {
-          const indent = '  '.repeat(level)
-          options.push({
-            value: cat.id.toString(),
-            label: `${indent}${cat.name}`
-          })
-        }
-        
-        if (cat.children && cat.children.length > 0) {
-          addOptions(cat.children, level + 1, isExcluded)
-        }
-      })
-    }
-    
-    addOptions(categories)
-    return options
-  }
 
   if (loading) {
     return (
@@ -403,17 +379,15 @@ export default function CategoriesPage() {
             placeholder="e.g., Groceries"
           />
           
-          <FormSelect
+          <CategoryDropdown
             label="Parent Category (Optional)"
             value={newCategory.parentCategoryId?.toString() || ''}
-            onChange={(e) => setNewCategory(prev => ({ 
+            onChange={(value) => setNewCategory(prev => ({ 
               ...prev, 
-              parentCategoryId: e.target.value ? parseInt(e.target.value) : null 
+              parentCategoryId: value ? parseInt(value) : null 
             }))}
-            options={[
-              { value: '', label: 'None' },
-              ...getParentOptions()
-            ]}
+            emptyLabel="None"
+            includeEmpty={true}
           />
           
           <div className="space-y-1">
@@ -508,17 +482,16 @@ export default function CategoriesPage() {
               placeholder="e.g., Groceries"
             />
             
-            <FormSelect
+            <CategoryDropdown
               label="Parent Category (Optional)"
               value={editingCategory.parentCategoryId?.toString() || ''}
-              onChange={(e) => setEditingCategory(prev => prev ? { 
+              onChange={(value) => setEditingCategory(prev => prev ? { 
                 ...prev, 
-                parentCategoryId: e.target.value ? parseInt(e.target.value) : null 
+                parentCategoryId: value ? parseInt(value) : null 
               } : null)}
-              options={[
-                { value: '', label: 'None' },
-                ...getParentOptions(editingCategory.id)
-              ]}
+              emptyLabel="None"
+              includeEmpty={true}
+              excludeId={editingCategory.id}
             />
             
             <div className="space-y-1">

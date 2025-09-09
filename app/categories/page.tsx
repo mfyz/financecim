@@ -379,16 +379,20 @@ export default function CategoriesPage() {
             placeholder="e.g., Groceries"
           />
           
-          <CategoryDropdown
-            label="Parent Category (Optional)"
-            value={newCategory.parentCategoryId?.toString() || ''}
-            onChange={(value) => setNewCategory(prev => ({ 
-              ...prev, 
-              parentCategoryId: value ? parseInt(value) : null 
-            }))}
-            emptyLabel="None"
-            includeEmpty={true}
-          />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Parent Category (Optional)
+            </label>
+            <CategoryDropdown
+              value={newCategory.parentCategoryId?.toString() || ''}
+              onChange={(value) => setNewCategory(prev => ({ 
+                ...prev, 
+                parentCategoryId: value ? parseInt(value) : null 
+              }))}
+              emptyLabel="None"
+              includeEmpty={true}
+            />
+          </div>
           
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
@@ -482,17 +486,21 @@ export default function CategoriesPage() {
               placeholder="e.g., Groceries"
             />
             
-            <CategoryDropdown
-              label="Parent Category (Optional)"
-              value={editingCategory.parentCategoryId?.toString() || ''}
-              onChange={(value) => setEditingCategory(prev => prev ? { 
-                ...prev, 
-                parentCategoryId: value ? parseInt(value) : null 
-              } : null)}
-              emptyLabel="None"
-              includeEmpty={true}
-              excludeId={editingCategory.id}
-            />
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Parent Category (Optional)
+              </label>
+              <CategoryDropdown
+                value={editingCategory.parentCategoryId?.toString() || ''}
+                onChange={(value) => setEditingCategory(prev => prev ? { 
+                  ...prev, 
+                  parentCategoryId: value ? parseInt(value) : null 
+                } : null)}
+                emptyLabel="None"
+                includeEmpty={true}
+                excludeId={editingCategory.id}
+              />
+            </div>
             
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>

@@ -27,18 +27,26 @@ interface CategoryDropdownProps {
   excludeId?: number
   className?: string
   required?: boolean
+  includeAll?: boolean
+  allLabel?: string
+  includeUncategorized?: boolean
+  uncategorizedLabel?: string
 }
 
 export function CategoryDropdown({
   value,
   onChange,
-  label = "Category",
+  label,
   placeholder = "Select category...",
   includeEmpty = true,
   emptyLabel = "None",
   excludeId,
   className = "",
-  required = false
+  required = false,
+  includeAll = false,
+  allLabel = "All Categories",
+  includeUncategorized = false,
+  uncategorizedLabel = "Uncategorized"
 }: CategoryDropdownProps) {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,6 +77,15 @@ export function CategoryDropdown({
   // Format categories with tree structure
   const formatCategoryOptions = (): { value: string; label: string }[] => {
     const options: { value: string; label: string }[] = []
+    
+    // Add special options for filters
+    if (includeAll) {
+      options.push({ value: 'all', label: allLabel })
+    }
+    
+    if (includeUncategorized) {
+      options.push({ value: 'uncategorized', label: uncategorizedLabel })
+    }
     
     if (includeEmpty) {
       options.push({ value: '', label: emptyLabel })
@@ -123,31 +140,52 @@ export function CategoryDropdown({
     )
   }
 
-  return (
-    <div className="space-y-1">
-      {label && (
+  if (label) {
+    return (
+      <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
+          required={required}
+        >
+          {!includeEmpty && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
+  // Inline version without label
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
+      required={required}
+    >
+      {!includeEmpty && (
+        <option value="" disabled>
+          {placeholder}
+        </option>
       )}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-        required={required}
-      >
-        {!includeEmpty && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+      {options.map(option => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   )
 }

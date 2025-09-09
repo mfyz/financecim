@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw } from 'lucide-react'
 import { TransactionWithRelations } from '@/db/models/transactions.model'
+import { CategoryDropdown } from '@/components/forms'
 
 interface Unit {
   id: number
@@ -17,12 +18,6 @@ interface Source {
   type: string
 }
 
-interface Category {
-  id: number
-  name: string
-  color: string
-  parentCategoryId?: number | null
-}
 
 interface TransactionsResponse {
   data: TransactionWithRelations[]
@@ -48,7 +43,6 @@ export default function TransactionsPage() {
   const [stats, setStats] = useState<TransactionStats | null>(null)
   const [units, setUnits] = useState<Unit[]>([])
   const [sources, setSources] = useState<Source[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<string[]>([])
   
   // Pagination
@@ -78,7 +72,6 @@ export default function TransactionsPage() {
   useEffect(() => {
     fetchUnits()
     fetchSources()
-    fetchCategories()
     fetchTags()
   }, [])
 
@@ -114,16 +107,6 @@ export default function TransactionsPage() {
     }
   }
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/categories')
-      const result = await response.json()
-      const data = result.data || result // Handle both response formats
-      setCategories(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-    }
-  }
 
   const fetchTags = async () => {
     try {
@@ -411,16 +394,6 @@ export default function TransactionsPage() {
     })
   }
 
-  // Create hierarchical categories for display
-  const categoriesHierarchical = useMemo(() => {
-    const parentCategories = categories.filter(cat => !cat.parentCategoryId)
-    const childCategories = categories.filter(cat => cat.parentCategoryId)
-    
-    return parentCategories.map(parent => ({
-      ...parent,
-      children: childCategories.filter(child => child.parentCategoryId === parent.id)
-    }))
-  }, [categories])
 
   return (
     <div className="py-8">
@@ -549,25 +522,17 @@ export default function TransactionsPage() {
           
           {/* Category */}
           <div>
-            <select 
-              value={selectedCategory} 
-              onChange={(e) => {
-                setSelectedCategory(e.target.value)
+            <CategoryDropdown
+              value={selectedCategory}
+              onChange={(value) => {
+                setSelectedCategory(value)
                 setCurrentPage(1)
               }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Categories</option>
-              <option value="uncategorized">Uncategorized</option>
-              {categoriesHierarchical.map(parent => (
-                <optgroup key={parent.id} label={parent.name}>
-                  <option value={parent.id.toString()}>{parent.name} (General)</option>
-                  {parent.children.map(child => (
-                    <option key={child.id} value={child.id.toString()}>└ {child.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              includeEmpty={false}
+              includeAll={true}
+              includeUncategorized={true}
+              className="text-sm"
+            />
           </div>
           
           {/* Amount Range */}
@@ -634,25 +599,21 @@ export default function TransactionsPage() {
                   <option key={unit.id} value={unit.id}>{unit.name}</option>
                 ))}
               </select>
-              <select 
-                onChange={(e) => {
-                  if (e.target.value) {
-                    bulkUpdate({ categoryId: parseInt(e.target.value) })
-                    e.target.value = ''
-                  }
-                }}
-                className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
-              >
-                <option value="">Bulk categorize as...</option>
-                {categoriesHierarchical.map(parent => (
-                  <optgroup key={parent.id} label={parent.name}>
-                    <option value={parent.id}>{parent.name} (General)</option>
-                    {parent.children.map(child => (
-                      <option key={child.id} value={child.id}>└ {child.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              <div className="inline-block">
+                <CategoryDropdown
+                  value=""
+                  onChange={(value) => {
+                    if (value) {
+                      bulkUpdate({ categoryId: parseInt(value) })
+                    }
+                  }}
+                  includeEmpty={true}
+                  emptyLabel="Bulk categorize as..."
+                  includeAll={false}
+                  includeUncategorized={false}
+                  className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
+                />
+              </div>
               <button 
                 onClick={() => bulkUpdate({ ignore: true })}
                 className="bg-gray-500 dark:bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 dark:hover:bg-gray-700 flex items-center"
@@ -839,25 +800,19 @@ export default function TransactionsPage() {
                       </select>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm">
-                      <select 
-                        value={transaction.categoryId || ''}
-                        onChange={(e) => updateTransaction(transaction.id, { categoryId: e.target.value ? parseInt(e.target.value) : undefined })}
-                        className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[120px] ${
+                      <CategoryDropdown
+                        value={transaction.categoryId?.toString() || ''}
+                        onChange={(value) => updateTransaction(transaction.id, { categoryId: value ? parseInt(value) : undefined })}
+                        includeEmpty={true}
+                        emptyLabel="Uncategorized"
+                        includeAll={false}
+                        includeUncategorized={false}
+                        className={`text-xs min-w-[120px] ${
                           !transaction.categoryId 
                             ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30' 
-                            : 'border-gray-300'
+                            : ''
                         }`}
-                      >
-                        <option value="">Uncategorized</option>
-                        {categoriesHierarchical.map(parent => (
-                          <optgroup key={parent.id} label={parent.name}>
-                            <option value={parent.id}>{parent.name} (General)</option>
-                            {parent.children.map(child => (
-                              <option key={child.id} value={child.id}>└ {child.name}</option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                      />
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm">
                       <input 

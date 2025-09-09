@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CustomDropdown, DropdownOption } from '@/components/ui'
+import { CategoryLabel, CategoryTextLabel } from '@/components/ui'
 
 export interface Category {
   id: number
@@ -31,6 +33,7 @@ interface CategoryDropdownProps {
   allLabel?: string
   includeUncategorized?: boolean
   uncategorizedLabel?: string
+  size?: 'sm' | 'md' | 'lg'
 }
 
 export function CategoryDropdown({
@@ -46,7 +49,8 @@ export function CategoryDropdown({
   includeAll = false,
   allLabel = "All Categories",
   includeUncategorized = false,
-  uncategorizedLabel = "Uncategorized"
+  uncategorizedLabel = "Uncategorized",
+  size = 'md'
 }: CategoryDropdownProps) {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,21 +78,33 @@ export function CategoryDropdown({
     }
   }
 
-  // Format categories with tree structure
-  const formatCategoryOptions = (): { value: string; label: string }[] => {
-    const options: { value: string; label: string }[] = []
+  // Format categories as dropdown options with rich data
+  const formatCategoryOptions = (): DropdownOption[] => {
+    const options: DropdownOption[] = []
     
     // Add special options for filters
     if (includeAll) {
-      options.push({ value: 'all', label: allLabel })
+      options.push({ 
+        value: 'all', 
+        label: allLabel, 
+        isSpecial: true 
+      })
     }
     
     if (includeUncategorized) {
-      options.push({ value: 'uncategorized', label: uncategorizedLabel })
+      options.push({ 
+        value: 'uncategorized', 
+        label: uncategorizedLabel, 
+        isSpecial: true 
+      })
     }
     
     if (includeEmpty) {
-      options.push({ value: '', label: emptyLabel })
+      options.push({ 
+        value: '', 
+        label: emptyLabel, 
+        isSpecial: true 
+      })
     }
     
     const addOptions = (cats: CategoryWithChildren[], level = 0, shouldExclude = false) => {
@@ -96,16 +112,19 @@ export function CategoryDropdown({
         const isExcluded = shouldExclude || cat.id === excludeId
         
         if (!isExcluded) {
-          let prefix = ''
+          let indent = ''
           
           // Add non-breaking spaces for indentation with L-bracket and space before label
           if (level > 0) {
-            prefix = '\u00A0\u00A0\u00A0\u00A0'.repeat(level) + '└ '
+            indent = '\u00A0\u00A0\u00A0\u00A0'.repeat(level) + '└ '
           }
           
           options.push({
             value: cat.id.toString(),
-            label: `${prefix}${cat.name}`
+            label: cat.name,
+            category: cat,
+            isSpecial: false,
+            indent
           })
         }
         
@@ -120,6 +139,49 @@ export function CategoryDropdown({
   }
 
   const options = formatCategoryOptions()
+  const selectedOption = options.find(opt => opt.value === value)
+
+  // Custom render functions for rich display
+  const renderTrigger = (selectedOption: DropdownOption | null, isOpen: boolean) => {
+    if (!selectedOption) {
+      return <CategoryTextLabel text={placeholder} variant="input" />
+    }
+
+    if (selectedOption.isSpecial) {
+      return <CategoryTextLabel text={selectedOption.label} variant="input" />
+    }
+
+    return <CategoryLabel category={selectedOption.category} variant="input" size={size} />
+  }
+
+  const renderOption = (option: DropdownOption, isSelected: boolean) => {
+    const baseClasses = `px-3 py-2 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`
+    
+    if (option.isSpecial) {
+      return (
+        <div className={baseClasses}>
+          <CategoryTextLabel text={option.label} variant="inline" />
+        </div>
+      )
+    }
+
+    return (
+      <div className={baseClasses}>
+        <div className="flex items-center">
+          {option.indent && (
+            <span className="text-gray-400 dark:text-gray-500">
+              {option.indent}
+            </span>
+          )}
+          <CategoryLabel 
+            category={option.category} 
+            variant="inline" 
+            size={size}
+          />
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -130,12 +192,9 @@ export function CategoryDropdown({
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
-        <select 
-          disabled 
-          className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 ${className}`}
-        >
-          <option>Loading categories...</option>
-        </select>
+        <div className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 ${className}`}>
+          Loading categories...
+        </div>
       </div>
     )
   }
@@ -147,45 +206,29 @@ export function CategoryDropdown({
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        <select
+        <CustomDropdown
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-          required={required}
-        >
-          {!includeEmpty && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {options.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={onChange}
+          options={options}
+          placeholder={placeholder}
+          className={className}
+          renderTrigger={renderTrigger}
+          renderOption={renderOption}
+        />
       </div>
     )
   }
 
   // Inline version without label
   return (
-    <select
+    <CustomDropdown
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-      required={required}
-    >
-      {!includeEmpty && (
-        <option value="" disabled>
-          {placeholder}
-        </option>
-      )}
-      {options.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      className={className}
+      renderTrigger={renderTrigger}
+      renderOption={renderOption}
+    />
   )
 }

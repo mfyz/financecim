@@ -425,154 +425,162 @@ export default function TransactionsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-8 gap-4">
-          {/* Search */}
-          <div className="lg:col-span-2">
-            <input 
-              type="text" 
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
-              }}
-              placeholder="Search transactions..."
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          {/* Date Preset */}
-          <div>
-            <select 
-              value={datePreset} 
-              onChange={(e) => {
-                setDatePreset(e.target.value)
-                applyDatePreset(e.target.value)
-              }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Quick dates...</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="last7days">Last 7 days</option>
-              <option value="last30days">Last 30 days</option>
-              <option value="thismonth">This month</option>
-              <option value="lastmonth">Last month</option>
-              <option value="thisyear">This year</option>
-              <option value="all">All time</option>
-            </select>
-          </div>
-          
-          {/* Date Range */}
-          <div>
-            <input 
-              type="date" 
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <input 
-              type="date" 
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          {/* Unit */}
-          <div>
-            <select 
-              value={selectedUnit} 
-              onChange={(e) => {
-                setSelectedUnit(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Units</option>
-              {units.map(unit => (
-                <option key={unit.id} value={unit.id.toString()}>{unit.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Source */}
-          <div>
-            <select 
-              value={selectedSource} 
-              onChange={(e) => {
-                setSelectedSource(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Sources</option>
-              {sources.map(source => (
-                <option key={source.id} value={source.id.toString()}>{source.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Category */}
-          <div>
-            <CategoryDropdown
-              value={selectedCategory}
-              onChange={(value) => {
-                setSelectedCategory(value)
-                setCurrentPage(1)
-              }}
-              includeEmpty={false}
-              includeAll={true}
-              includeUncategorized={true}
-              className="text-sm"
-            />
-          </div>
-          
-          {/* Amount Range */}
-          <div className="flex space-x-2">
-            <input 
-              type="number" 
-              value={amountMin}
-              onChange={(e) => {
-                setAmountMin(e.target.value)
-                setCurrentPage(1)
-              }}
-              placeholder="Min $"
-              className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <input 
-              type="number" 
-              value={amountMax}
-              onChange={(e) => {
-                setAmountMax(e.target.value)
-                setCurrentPage(1)
-              }}
-              placeholder="Max $"
-              className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          {/* Show Ignored */}
-          <div className="flex items-center">
-            <label className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+        <div className="space-y-4">
+          {/* Row 1: Search, Date Preset, Date Range, Amount Range, Show Ignored */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {/* Search */}
+            <div className="lg:col-span-2">
               <input 
-                type="checkbox" 
-                checked={showIgnored === true}
+                type="text" 
+                value={searchTerm}
                 onChange={(e) => {
-                  setShowIgnored(e.target.checked ? true : false)
+                  setSearchTerm(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="mr-2"
+                placeholder="Search transactions..."
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              Show ignored
-            </label>
+            </div>
+            
+            {/* Date Preset */}
+            <div>
+              <select 
+                value={datePreset} 
+                onChange={(e) => {
+                  setDatePreset(e.target.value)
+                  applyDatePreset(e.target.value)
+                }}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Quick dates...</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 days</option>
+                <option value="last30days">Last 30 days</option>
+                <option value="thismonth">This month</option>
+                <option value="lastmonth">Last month</option>
+                <option value="thisyear">This year</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
+            
+            {/* Date From */}
+            <div>
+              <input 
+                type="date" 
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            {/* Date To */}
+            <div>
+              <input 
+                type="date" 
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            {/* Show Ignored */}
+            <div className="flex items-center">
+              <label className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                <input 
+                  type="checkbox" 
+                  checked={showIgnored === true}
+                  onChange={(e) => {
+                    setShowIgnored(e.target.checked ? true : false)
+                    setCurrentPage(1)
+                  }}
+                  className="mr-2"
+                />
+                Show ignored
+              </label>
+            </div>
+          </div>
+
+          {/* Row 2: Unit, Source, Category, Amount Range */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Unit */}
+            <div>
+              <select 
+                value={selectedUnit} 
+                onChange={(e) => {
+                  setSelectedUnit(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Units</option>
+                {units.map(unit => (
+                  <option key={unit.id} value={unit.id.toString()}>{unit.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Source */}
+            <div>
+              <select 
+                value={selectedSource} 
+                onChange={(e) => {
+                  setSelectedSource(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Sources</option>
+                {sources.map(source => (
+                  <option key={source.id} value={source.id.toString()}>{source.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Category */}
+            <div>
+              <CategoryDropdown
+                value={selectedCategory}
+                onChange={(value) => {
+                  setSelectedCategory(value)
+                  setCurrentPage(1)
+                }}
+                includeEmpty={false}
+                includeAll={true}
+                includeUncategorized={true}
+                className="text-sm"
+              />
+            </div>
+            
+            {/* Amount Range */}
+            <div className="flex space-x-2">
+              <input 
+                type="number" 
+                value={amountMin}
+                onChange={(e) => {
+                  setAmountMin(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Min $"
+                className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <input 
+                type="number" 
+                value={amountMax}
+                onChange={(e) => {
+                  setAmountMax(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Max $"
+                className="w-1/2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -807,6 +815,7 @@ export default function TransactionsPage() {
                         emptyLabel="Uncategorized"
                         includeAll={false}
                         includeUncategorized={false}
+                        size="sm"
                         className={`text-xs min-w-[120px] ${
                           !transaction.categoryId 
                             ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30' 

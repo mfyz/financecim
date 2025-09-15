@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, ArrowRight, Check, AlertCircle, Eye } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Eye, X } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface ColumnMapping {
   date: string
@@ -16,63 +17,261 @@ interface ValidationError {
   message: string
 }
 
-interface AutoDetection {
-  column: number
-  confidence: number
-  reason: string
-}
-
-interface MappingTemplate {
+interface Source {
+  id: number
   name: string
-  mapping: ColumnMapping
+  type: 'bank' | 'credit_card' | 'manual'
+  createdAt: string
+  updatedAt: string
 }
 
-const mockCsvData = [
-  ['Date', 'Description', 'Amount', 'Category', 'Balance', 'Reference', 'Type'],
-  ['2024-01-20', 'WALMART SUPERCENTER #1234', '-125.43', 'FOOD_GROCERY', '2345.67', 'TXN001', 'PURCHASE'],
-  ['2024-01-19', 'SHELL GAS STATION #5678', '-45.00', 'GAS_STATION', '2470.67', 'TXN002', 'PURCHASE'],
-  ['2024-01-19', 'STARBUCKS STORE #9012', '-6.75', 'RESTAURANT', '2515.67', 'TXN003', 'PURCHASE'],
-  ['2024-01-18', 'TARGET STORE #3456', '-89.23', 'SHOPPING_GENERAL', '2522.42', 'TXN004', 'PURCHASE'],
-  ['2024-01-18', 'NETFLIX.COM MONTHLY', '-15.99', 'ENTERTAINMENT', '2611.65', 'TXN005', 'SUBSCRIPTION'],
-  ['2024-01-17', 'PAYCHECK DEPOSIT', '2500.00', 'INCOME', '2127.64', 'TXN006', 'DEPOSIT']
-]
+// Configuration for smart header matching
+const headerMappingConfig = {
+  date: [
+    'date', 'transaction date', 'posted date', 'effective date', 'trans date',
+    'time', 'timestamp', 'date posted', 'settlement date', 'booking date'
+  ],
+  description: [
+    'description', 'desc', 'merchant', 'payee', 'transaction description',
+    'details', 'memo', 'reference', 'vendor', 'transaction details'
+  ],
+  amount: [
+    'amount', 'debit', 'credit', 'transaction amount', 'net amount',
+    'total', 'sum', 'value', 'charge', 'payment', 'amount (usd)'
+  ],
+  source_category: [
+    'category', 'type', 'classification', 'class', 'merchant category',
+    'transaction type', 'trans type', 'category code', 'mcc'
+  ]
+}
 
-const mappingTemplates: MappingTemplate[] = [
-  { name: 'Test Chase Bank Standard', mapping: { date: '0', description: '1', amount: '2', source_category: '3' } },
-  { name: 'Test Capital One Export', mapping: { date: '0', description: '1', amount: '4', source_category: '2' } },
-  { name: 'Test Wells Fargo CSV', mapping: { date: '1', description: '2', amount: '3', source_category: '5' } }
-]
 
 export default function ImportStep2Page() {
-  const [csvData] = useState(mockCsvData)
+  const router = useRouter()
+  const [csvData, setCsvData] = useState<string[][]>([])
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
     date: '',
     description: '',
     amount: '',
     source_category: ''
   })
-  const [autoDetection, setAutoDetection] = useState<Record<string, AutoDetection>>({})
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
-  const [selectedTemplate, setSelectedTemplate] = useState('')
-  // const [showSaveTemplate, setShowSaveTemplate] = useState(false)
-  // const [saveMappingName, setSaveMappingName] = useState('')
   const [previewData, setPreviewData] = useState<Record<string, string | number | string[]>[]>([])
+  const [sources, setSources] = useState<Source[]>([])
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('')
+  const [sourcesLoading, setSourcesLoading] = useState(true)
+  const [checkingStep1, setCheckingStep1] = useState(true)
+  const [reversePurchases, setReversePurchases] = useState(false)
+  const [showReverseSuggestion, setShowReverseSuggestion] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [columnWidths, setColumnWidths] = useState<Record<number, 'narrow' | 'medium' | 'wide' | 'wider'>>({})
 
   useEffect(() => {
-    autoDetectColumns()
+    fetchSources()
+    loadCsvDataFromStorage()
+    // Load saved state first, then auto-detect only if no saved mapping exists
+    loadSavedState()
+
+    // Auto-detect only if no saved mapping exists
+    const savedColumnMapping = sessionStorage.getItem('columnMapping')
+    if (!savedColumnMapping) {
+      // Use setTimeout to ensure csvData is loaded first
+      setTimeout(() => {
+        autoDetectColumns()
+      }, 100)
+    }
+
+    // Column width analysis will happen in the csvData useEffect
+
+    // Mark as initialized after loading saved state
+    setIsInitialized(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     updatePreview()
     validateMapping()
+    analyzeAmountData()
+    analyzeColumnWidths() // Re-analyze whenever data changes
+
+    // Only save to sessionStorage after initial load is complete
+    if (isInitialized) {
+      // Save to sessionStorage whenever mapping or source changes
+      if (columnMapping.date || columnMapping.description || columnMapping.amount) {
+        sessionStorage.setItem('columnMapping', JSON.stringify(columnMapping))
+      }
+      if (selectedSourceId) {
+        sessionStorage.setItem('selectedSourceId', selectedSourceId)
+      }
+      sessionStorage.setItem('reversePurchases', JSON.stringify(reversePurchases))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnMapping])
+  }, [columnMapping, selectedSourceId, reversePurchases, isInitialized, csvData])
+
+  const fetchSources = async () => {
+    try {
+      setSourcesLoading(true)
+      const response = await fetch('/api/sources')
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch sources')
+      }
+
+      const response_data = await response.json()
+      // Extract the actual sources array from the API response
+      const sources_array = response_data.success && response_data.data ? response_data.data : []
+      // Ensure data is an array
+      setSources(Array.isArray(sources_array) ? sources_array : [])
+    } catch (error) {
+      console.error('Error fetching sources:', error)
+      setSources([])
+    } finally {
+      setSourcesLoading(false)
+    }
+  }
+
+  const loadCsvDataFromStorage = () => {
+    try {
+      const storedData = sessionStorage.getItem('csvData')
+      if (storedData) {
+        const parsedData = JSON.parse(storedData)
+        setCsvData(parsedData)
+        setCheckingStep1(false)
+      } else {
+        // No CSV data found, redirect to step 1
+        router.push('/import')
+        return
+      }
+    } catch (error) {
+      console.error('Error loading CSV data from storage:', error)
+      // If there's an error parsing data, redirect to step 1
+      router.push('/import')
+      return
+    }
+  }
+
+  const loadSavedState = () => {
+    try {
+      // Load saved column mapping
+      const savedColumnMapping = sessionStorage.getItem('columnMapping')
+      if (savedColumnMapping) {
+        const parsedMapping = JSON.parse(savedColumnMapping)
+        setColumnMapping(parsedMapping)
+      }
+
+      // Load saved source selection
+      const savedSourceId = sessionStorage.getItem('selectedSourceId')
+      if (savedSourceId) {
+        setSelectedSourceId(savedSourceId)
+      }
+
+      // Load saved reverse purchases setting
+      const savedReversePurchases = sessionStorage.getItem('reversePurchases')
+      if (savedReversePurchases) {
+        setReversePurchases(JSON.parse(savedReversePurchases))
+      }
+    } catch (error) {
+      console.error('Error loading saved state:', error)
+    }
+  }
+
+  const analyzeAmountData = () => {
+    if (!columnMapping.amount || csvData.length <= 1) return
+
+    try {
+      const amountColumnIndex = parseInt(columnMapping.amount)
+      const dataRows = csvData.slice(1) // Skip header
+
+      let positiveCount = 0
+      let negativeCount = 0
+      let validAmountCount = 0
+
+      dataRows.forEach(row => {
+        const amountStr = row[amountColumnIndex]
+        if (amountStr && amountStr.trim()) {
+          const amount = parseFloat(amountStr)
+          if (!isNaN(amount) && amount !== 0) {
+            validAmountCount++
+            if (amount > 0) {
+              positiveCount++
+            } else {
+              negativeCount++
+            }
+          }
+        }
+      })
+
+      // If more than 70% of amounts are positive, suggest reversing
+      if (validAmountCount > 0 && (positiveCount / validAmountCount) > 0.7) {
+        setShowReverseSuggestion(true)
+      } else {
+        setShowReverseSuggestion(false)
+      }
+    } catch (error) {
+      console.error('Error analyzing amount data:', error)
+    }
+  }
+
+  const analyzeColumnWidths = () => {
+    if (!csvData || csvData.length <= 1) return
+
+    const widths: Record<number, 'narrow' | 'medium' | 'wide' | 'wider'> = {}
+    const headers = csvData[0]
+
+    headers.forEach((header, index) => {
+      // Calculate average and max content length for this column
+      let totalLength = header.length
+      let maxLength = header.length
+      let sampleCount = 1
+
+      // Sample first 20 rows to get a good representation
+      const sampleRows = csvData.slice(1, Math.min(21, csvData.length))
+
+      sampleRows.forEach(row => {
+        if (row[index]) {
+          const cellLength = row[index].length
+          totalLength += cellLength
+          maxLength = Math.max(maxLength, cellLength)
+          sampleCount++
+        }
+      })
+
+      const avgLength = totalLength / sampleCount
+
+      // Determine width category based on content analysis
+      if (maxLength >= 40 || avgLength >= 25) {
+        widths[index] = 'wider'  // Very long content like descriptions
+      } else if (maxLength >= 25 || avgLength >= 15) {
+        widths[index] = 'wide'   // Long content like merchant names
+      } else if (maxLength >= 12 || avgLength >= 8) {
+        widths[index] = 'medium' // Medium content like categories
+      } else {
+        widths[index] = 'narrow' // Short content like dates, amounts
+      }
+
+      console.log(`Column ${index} (${header}): maxLength=${maxLength}, avgLength=${avgLength.toFixed(1)}, width=${widths[index]}`)
+    })
+
+    console.log('All CSV headers:', csvData[0])
+    console.log('Column widths mapping:', widths)
+
+    setColumnWidths(widths)
+  }
+
+  const getColumnWidth = (index: number): string => {
+    const widthType = columnWidths[index] || 'medium'
+
+    switch (widthType) {
+      case 'narrow': return '120px'   // Short content like dates, amounts
+      case 'medium': return '160px'   // Medium content
+      case 'wide': return '280px'     // Long content
+      case 'wider': return '500px'    // Very long content like descriptions
+      default: return '160px'
+    }
+  }
 
   const autoDetectColumns = () => {
     const headers = csvData[0]
-    // const sampleData = csvData.slice(1, 4)
-    const detection: Record<string, AutoDetection> = {}
     const mapping: ColumnMapping = {
       date: '',
       description: '',
@@ -80,53 +279,70 @@ export default function ImportStep2Page() {
       source_category: ''
     }
 
+    // First pass: exact matches (highest priority)
     headers.forEach((header, index) => {
-      const headerLower = header.toLowerCase()
-      // const columnData = sampleData.map(row => row[index]).join(' ').toLowerCase()
-      
-      // Date detection
-      if (headerLower.includes('date') || headerLower.includes('time')) {
-        detection.date = { column: index, confidence: 95, reason: `Header contains '${header}'` }
-        mapping.date = index.toString()
-      }
-      // Description detection
-      else if (headerLower.includes('desc') || headerLower.includes('merchant') || headerLower.includes('payee')) {
-        detection.description = { column: index, confidence: 90, reason: `Header contains '${header}'` }
-        mapping.description = index.toString()
-      }
-      // Amount detection
-      else if (headerLower.includes('amount') || headerLower.includes('debit') || headerLower.includes('credit')) {
-        detection.amount = { column: index, confidence: 88, reason: `Header contains '${header}'` }
-        mapping.amount = index.toString()
-      }
-      // Category detection
-      else if (headerLower.includes('categ') || headerLower.includes('type') || headerLower.includes('class')) {
-        detection.source_category = { column: index, confidence: 75, reason: `Header contains '${header}'` }
-        mapping.source_category = index.toString()
-      }
+      const headerLower = header.toLowerCase().trim()
+
+      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+        variations.forEach(variation => {
+          if (headerLower === variation.toLowerCase()) {
+            if (!mapping[fieldType as keyof ColumnMapping]) { // Only set if not already mapped
+              mapping[fieldType as keyof ColumnMapping] = index.toString()
+            }
+          }
+        })
+      })
     })
 
-    setAutoDetection(detection)
+    // Second pass: partial matches for unmapped fields
+    headers.forEach((header, index) => {
+      const headerLower = header.toLowerCase().trim()
+
+      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+        variations.forEach(variation => {
+          if (headerLower.includes(variation.toLowerCase()) && headerLower !== variation.toLowerCase()) {
+            if (!mapping[fieldType as keyof ColumnMapping]) { // Only set if not already mapped
+              mapping[fieldType as keyof ColumnMapping] = index.toString()
+            }
+          }
+        })
+      })
+    })
+
     setColumnMapping(mapping)
   }
 
   const updatePreview = () => {
-    const preview = csvData.slice(1, 6).map((row, index) => ({
-      rowIndex: index + 1,
-      date: row[parseInt(columnMapping.date)] || '',
-      description: row[parseInt(columnMapping.description)] || '',
-      amount: row[parseInt(columnMapping.amount)] || '',
-      source_category: row[parseInt(columnMapping.source_category)] || '',
-      auto_category: getAutoCategory(row[parseInt(columnMapping.description)] || ''),
-      raw_row: row
-    }))
-    
+    const preview = csvData.slice(1, 6).map((row, index) => {
+      let amount = row[parseInt(columnMapping.amount)] || ''
+
+      // Apply amount reversal if enabled
+      if (reversePurchases && amount) {
+        const numAmount = parseFloat(amount)
+        if (!isNaN(numAmount)) {
+          amount = (-numAmount).toString()
+        }
+      }
+
+      return {
+        rowIndex: index + 1,
+        date: row[parseInt(columnMapping.date)] || '',
+        description: row[parseInt(columnMapping.description)] || '',
+        amount: amount,
+        source_category: row[parseInt(columnMapping.source_category)] || '',
+        raw_row: row
+      }
+    })
+
     setPreviewData(preview)
   }
 
   const validateMapping = () => {
     const errors: ValidationError[] = []
-    
+
+    if (!selectedSourceId) {
+      errors.push({ field: 'source', message: 'Source selection is required' })
+    }
     if (!columnMapping.date) {
       errors.push({ field: 'date', message: 'Date column is required' })
     }
@@ -136,38 +352,48 @@ export default function ImportStep2Page() {
     if (!columnMapping.amount) {
       errors.push({ field: 'amount', message: 'Amount column is required' })
     }
-    
+
     setValidationErrors(errors)
   }
 
-  const getAutoCategory = (description: string): string => {
-    const desc = description.toUpperCase()
-    if (desc.includes('WALMART')) return 'Test Groceries'
-    if (desc.includes('SHELL') || desc.includes('GAS')) return 'Test Gas'
-    if (desc.includes('STARBUCKS')) return 'Test Restaurants'
-    if (desc.includes('TARGET')) return 'Test Shopping'
-    if (desc.includes('NETFLIX')) return 'Test Entertainment'
-    if (desc.includes('AMAZON')) return 'Test Shopping'
-    if (desc.includes('PAYCHECK') || desc.includes('SALARY')) return 'Income'
-    return 'Uncategorized'
-  }
+  const handleColumnMappingChange = (columnIndex: number, mappingType: string) => {
+    // Clear any existing mapping for this type
+    const newMapping = { ...columnMapping }
 
-  const applyTemplate = (template: MappingTemplate) => {
-    setColumnMapping({ ...template.mapping })
-    setSelectedTemplate(template.name)
-  }
+    // If setting to empty, just clear it
+    if (mappingType === '') {
+      // Find which field was mapped to this column and clear it
+      Object.entries(columnMapping).forEach(([key, value]) => {
+        if (value === columnIndex.toString()) {
+          newMapping[key as keyof ColumnMapping] = ''
+        }
+      })
+    } else {
+      // Set the new mapping
+      newMapping[mappingType as keyof ColumnMapping] = columnIndex.toString()
+    }
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 85) return 'text-green-600 dark:text-green-400'
-    if (confidence >= 70) return 'text-yellow-600 dark:text-yellow-400'
-    return 'text-red-600 dark:text-red-400'
+    setColumnMapping(newMapping)
   }
 
   const canProceedToStep3 = () => {
-    return validationErrors.length === 0 && 
-           columnMapping.date && 
-           columnMapping.description && 
+    return validationErrors.length === 0 &&
+           selectedSourceId &&
+           columnMapping.date &&
+           columnMapping.description &&
            columnMapping.amount
+  }
+
+  // Show loading while checking if step 1 is completed
+  if (checkingStep1) {
+    return (
+      <div className="py-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Checking import progress...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -219,202 +445,297 @@ export default function ImportStep2Page() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column - Mapping Configuration */}
-        <div className="space-y-6">
-          {/* Templates */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Quick Templates</h3>
-            <div className="space-y-2">
-              {mappingTemplates.map((template, index) => (
-                <button
-                  key={index}
-                  onClick={() => applyTemplate(template)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedTemplate === template.name
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+      {/* Import Configuration */}
+      <div className="mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Import Configuration</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Source Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Data Source *
+              </label>
+              {sourcesLoading ? (
+                <div className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  Loading sources...
+                </div>
+              ) : (
+                <select
+                  value={selectedSourceId}
+                  onChange={(e) => setSelectedSourceId(e.target.value)}
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white ${
+                    validationErrors.some(e => e.field === 'source')
+                      ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/30'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                   }`}
                 >
-                  <div className="font-medium text-gray-900 dark:text-white">{template.name}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Date: Col {parseInt(template.mapping.date) + 1}, 
-                    Amount: Col {parseInt(template.mapping.amount) + 1}
-                  </div>
-                </button>
-              ))}
+                  <option value="">-- Select a source --</option>
+                  {Array.isArray(sources) && sources.map((source) => (
+                    <option key={source.id} value={source.id.toString()}>
+                      {source.name} ({source.type.replace('_', ' ')})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {validationErrors.find(e => e.field === 'source') && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {validationErrors.find(e => e.field === 'source')?.message}
+                </p>
+              )}
+            </div>
+
+            {/* File Info */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                File Information
+              </label>
+              <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2">
+                <div>Rows: {csvData.length - 1} transactions</div>
+                <div>Columns: {csvData[0]?.length || 0} fields</div>
+              </div>
             </div>
           </div>
 
-          {/* Column Mapping */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Column Mapping</h3>
-            
-            <div className="space-y-4">
-              {/* Date Column */}
+          {/* Amount Processing Options */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+            <label className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                checked={reversePurchases}
+                onChange={(e) => setReversePurchases(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Date Column *
-                </label>
-                <select
-                  value={columnMapping.date}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select column...</option>
-                  {csvData[0].map((header, index) => (
-                    <option key={index} value={index}>
-                      Column {index + 1}: {header}
-                    </option>
-                  ))}
-                </select>
-                {autoDetection.date && (
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span className={getConfidenceColor(autoDetection.date.confidence)}>
-                      {autoDetection.date.confidence}% confidence
-                    </span>
-                    <span className="ml-1">- {autoDetection.date.reason}</span>
-                  </div>
-                )}
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Purchases are noted with positive amounts
+                </span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Check this if your bank shows expenses as positive numbers. We'll reverse them to show expenses as negative.
+                </p>
               </div>
+            </label>
+          </div>
+        </div>
+      </div>
 
-              {/* Description Column */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Description Column *
-                </label>
-                <select
-                  value={columnMapping.description}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select column...</option>
-                  {csvData[0].map((header, index) => (
-                    <option key={index} value={index}>
-                      Column {index + 1}: {header}
-                    </option>
-                  ))}
-                </select>
-                {autoDetection.description && (
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span className={getConfidenceColor(autoDetection.description.confidence)}>
-                      {autoDetection.description.confidence}% confidence
-                    </span>
-                    <span className="ml-1">- {autoDetection.description.reason}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Amount Column */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount Column *
-                </label>
-                <select
-                  value={columnMapping.amount}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, amount: e.target.value }))}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select column...</option>
-                  {csvData[0].map((header, index) => (
-                    <option key={index} value={index}>
-                      Column {index + 1}: {header}
-                    </option>
-                  ))}
-                </select>
-                {autoDetection.amount && (
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span className={getConfidenceColor(autoDetection.amount.confidence)}>
-                      {autoDetection.amount.confidence}% confidence
-                    </span>
-                    <span className="ml-1">- {autoDetection.amount.reason}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Source Category Column */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Source Category Column (Optional)
-                </label>
-                <select
-                  value={columnMapping.source_category}
-                  onChange={(e) => setColumnMapping(prev => ({ ...prev, source_category: e.target.value }))}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select column...</option>
-                  {csvData[0].map((header, index) => (
-                    <option key={index} value={index}>
-                      Column {index + 1}: {header}
-                    </option>
-                  ))}
-                </select>
-                {autoDetection.source_category && (
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span className={getConfidenceColor(autoDetection.source_category.confidence)}>
-                      {autoDetection.source_category.confidence}% confidence
-                    </span>
-                    <span className="ml-1">- {autoDetection.source_category.reason}</span>
-                  </div>
-                )}
-              </div>
+      {/* Amount Reversal Suggestion Banner */}
+      {showReverseSuggestion && !reversePurchases && (
+        <div className="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
+                Most amounts appear to be positive
+              </h4>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                It looks like your bank shows expenses as positive numbers. For consistency, we recommend reversing amounts so expenses show as negative in the system.
+              </p>
+              <button
+                onClick={() => setReversePurchases(true)}
+                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors"
+              >
+                Enable Amount Reversal
+              </button>
             </div>
+            <button
+              onClick={() => setShowReverseSuggestion(false)}
+              className="p-1 text-orange-400 hover:text-orange-600 dark:hover:text-orange-200 ml-2"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
-            {/* Validation Errors */}
+      {/* CSV File Contents with Inline Column Mapping */}
+      <div className="space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              <Eye className="w-5 h-5 mr-2" />
+              CSV File Contents & Column Mapping
+            </h3>
             {validationErrors.length > 0 && (
-              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
-                <div className="flex">
-                  <AlertCircle className="w-5 h-5 text-red-400 mr-2 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-semibold text-red-800 dark:text-red-300">Validation Errors:</h4>
-                    <ul className="mt-1 list-disc list-inside text-sm text-red-600 dark:text-red-300">
-                      {validationErrors.map((error, index) => (
-                        <li key={index}>{error.message}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+              <div className="flex items-center text-red-600 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                <span className="text-sm">Missing required mappings</span>
               </div>
             )}
           </div>
+
+          <div className="overflow-x-auto">
+            <table
+              className="text-sm"
+              style={{
+                minWidth: `${80 + csvData[0].reduce((sum, _, index) => {
+                  const width = parseInt(getColumnWidth(index))
+                  return sum + width
+                }, 0)}px`,
+                tableLayout: 'fixed'
+              }}
+            >
+              <thead>
+                {/* Original Header Row */}
+                <tr className="bg-gray-50 dark:bg-gray-700">
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase border-r border-gray-200 dark:border-gray-600"
+                    style={{ width: '80px' }}
+                  >
+                    Original
+                  </th>
+                  {csvData[0].map((header, index) => {
+                    const mappedTo = Object.entries(columnMapping).find(([_, value]) => value === index.toString())?.[0] || ''
+                    const isMapper = Object.values(columnMapping).includes(index.toString())
+
+                    return (
+                      <th
+                        key={index}
+                        className={`px-3 py-3 text-left text-xs font-semibold ${
+                          isMapper
+                            ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                            : 'text-gray-900 dark:text-white'
+                        }`}
+                        style={{
+                          width: getColumnWidth(index)
+                        }}
+                      >
+                        <div className="whitespace-nowrap overflow-hidden text-ellipsis" title={header}>
+                          {header}
+                        </div>
+                      </th>
+                    )
+                  })}
+                </tr>
+
+                {/* Map To Row with Dropdowns */}
+                <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-750 border-r border-gray-200 dark:border-gray-600"
+                    style={{ width: '80px' }}
+                  >
+                    Map To
+                  </th>
+                  {csvData[0].map((_, index) => {
+                    const mappedTo = Object.entries(columnMapping).find(([_, value]) => value === index.toString())?.[0] || ''
+                    const isRequired = ['date', 'description', 'amount'].includes(mappedTo)
+                    const isMapper = Object.values(columnMapping).includes(index.toString())
+
+                    return (
+                      <td
+                        key={index}
+                        className={`px-3 py-3 bg-gray-100 dark:bg-gray-750 ${
+                          isMapper
+                            ? 'bg-blue-50 dark:bg-blue-900/10'
+                            : ''
+                        }`}
+                      >
+                        <select
+                          value={mappedTo}
+                          onChange={(e) => handleColumnMappingChange(index, e.target.value)}
+                          className={`w-full text-xs border rounded px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            isMapper
+                              ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30'
+                              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+                          } dark:text-white`}
+                        >
+                          <option value="">-- Not mapped --</option>
+                          <option value="date">📅 Date *</option>
+                          <option value="description">📝 Description *</option>
+                          <option value="amount">💰 Amount *</option>
+                          <option value="source_category">🏷️ Source Category</option>
+                        </select>
+                      </td>
+                    )
+                  })}
+                </tr>
+              </thead>
+
+              {/* Data rows */}
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {csvData.slice(1, 11).map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td
+                      className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono border-r border-gray-200 dark:border-gray-600"
+                      style={{ width: '80px' }}
+                    >
+                      {rowIndex + 2}
+                    </td>
+                    {row.map((cell, cellIndex) => {
+                      const isMapper = Object.values(columnMapping).includes(cellIndex.toString())
+                      const isLongContent = cell && cell.length > 30
+
+                      return (
+                        <td
+                          key={cellIndex}
+                          className={`px-3 py-2 text-gray-900 dark:text-white ${
+                            isMapper
+                              ? 'bg-blue-50/50 dark:bg-blue-900/10'
+                              : ''
+                          }`}
+                          style={{
+                            width: getColumnWidth(cellIndex)
+                          }}
+                        >
+                          <div className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} title={cell}>
+                            {cell}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {csvData.length > 11 && (
+            <div className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+              Showing first 10 data rows of {csvData.length - 1} total rows
+            </div>
+          )}
         </div>
 
-        {/* Right Column - Preview */}
+        {/* Preview Mapped Data */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
             <Eye className="w-5 h-5 mr-2" />
             Preview Mapped Data
           </h3>
-          
+
           <div className="overflow-x-auto">
-            <table className="min-w-full">
+            <table
+              className="text-sm"
+              style={{
+                minWidth: '100%',
+                tableLayout: 'fixed'
+              }}
+            >
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Amount</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Source Category</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Auto Category</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '140px' }}>Date</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: getColumnWidth(parseInt(columnMapping.description) || 1) }}>Description</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '120px' }}>Amount</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '160px' }}>Source Category</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {previewData.map((row, index) => (
                   <tr key={index} className="text-sm">
-                    <td className="px-3 py-2 text-gray-900 dark:text-white">{row.date}</td>
-                    <td className="px-3 py-2 text-gray-900 dark:text-white">{row.description}</td>
-                    <td className={`px-3 py-2 font-semibold ${
-                      parseFloat(String(row.amount)) >= 0 
-                        ? 'text-green-600 dark:text-green-400' 
+                    <td className="px-3 py-2 text-gray-900 dark:text-white" style={{ width: '140px' }}>{row.date}</td>
+                    <td className="px-3 py-2 text-gray-900 dark:text-white" style={{ width: getColumnWidth(parseInt(columnMapping.description) || 1) }}>
+                      <div className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                        {row.description}
+                      </div>
+                    </td>
+                    <td className={`px-3 py-2 font-semibold text-right ${
+                      parseFloat(String(row.amount)) >= 0
+                        ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {row.amount}
+                    }`} style={{ width: '120px' }}>
+                      ${Math.abs(parseFloat(String(row.amount))).toFixed(2)}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row.source_category}</td>
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded">
-                        {row.auto_category}
-                      </span>
-                    </td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400" style={{ width: '160px' }}>{row.source_category}</td>
                   </tr>
                 ))}
               </tbody>

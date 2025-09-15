@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { UploadCloud, FileText, X, Check, ArrowRight, History } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { UploadCloud, FileText, X, Check, ArrowRight, History, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 
 interface UploadedFile {
@@ -24,6 +24,47 @@ export default function ImportPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadingFile, setUploadingFile] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
+  const [resumeStep, setResumeStep] = useState<2 | 3 | null>(null)
+
+  useEffect(() => {
+    checkForIncompleteImport()
+  }, [])
+
+  const checkForIncompleteImport = () => {
+    try {
+      const csvData = sessionStorage.getItem('csvData')
+      const columnMapping = sessionStorage.getItem('columnMapping')
+      const selectedSourceId = sessionStorage.getItem('selectedSourceId')
+
+      if (csvData) {
+        if (columnMapping && selectedSourceId) {
+          // User has completed step 2, can resume from step 3
+          setResumeStep(3)
+          setShowResumeBanner(true)
+        } else {
+          // User has uploaded file, can resume from step 2
+          setResumeStep(2)
+          setShowResumeBanner(true)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for incomplete import:', error)
+    }
+  }
+
+  const dismissResumeBanner = () => {
+    setShowResumeBanner(false)
+  }
+
+  const clearImportSession = () => {
+    sessionStorage.removeItem('csvData')
+    sessionStorage.removeItem('columnMapping')
+    sessionStorage.removeItem('selectedSourceId')
+    sessionStorage.removeItem('reversePurchases')
+    setShowResumeBanner(false)
+    setResumeStep(null)
+  }
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
@@ -121,6 +162,9 @@ export default function ImportPage() {
       clearInterval(progressInterval)
       setUploadProgress(100)
 
+      // Store CSV data in sessionStorage for next step
+      sessionStorage.setItem('csvData', JSON.stringify(csvData))
+
       // Complete processing
       setTimeout(() => {
         fileData.status = 'completed'
@@ -144,6 +188,9 @@ export default function ImportPage() {
   }, [])
 
   const processFiles = useCallback((files: FileList) => {
+    // Clear any existing import session when uploading new files
+    clearImportSession()
+
     setValidationErrors([])
     const newFiles: UploadedFile[] = []
     const errors: ValidationError[] = []
@@ -172,7 +219,7 @@ export default function ImportPage() {
 
     setUploadedFiles(prev => [...prev, ...newFiles])
     setValidationErrors(errors)
-  }, [processFileData])
+  }, [processFileData, clearImportSession])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -272,6 +319,43 @@ export default function ImportPage() {
           </div>
         </div>
       </div>
+
+      {/* Resume Import Banner */}
+      {showResumeBanner && (
+        <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Resume Previous Import
+                </h3>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                  {resumeStep === 2
+                    ? "You have an uploaded file ready for column mapping. Continue where you left off."
+                    : "You have a configured import ready for preview. Continue to final step."
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Link
+                href={resumeStep === 2 ? '/import/step2' : '/import/step3'}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center"
+              >
+                Resume Import
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+              <button
+                onClick={dismissResumeBanner}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step 1: CSV Upload Interface */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-8">

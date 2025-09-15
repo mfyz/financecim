@@ -35,15 +35,34 @@ jest.mock('@/components/ui', () => ({
   },
 }))
 
+// Mock CategoryDropdown to avoid complex component interaction issues
+jest.mock('@/components/forms/CategoryDropdown', () => ({
+  CategoryDropdown: ({ value, onChange, label, placeholder }: any) => (
+    <div>
+      {label && <label>{label}</label>}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label || placeholder}
+      >
+        <option value="">None</option>
+        <option value="1">Food & Dining</option>
+        <option value="2">Groceries</option>
+        <option value="3">Transportation</option>
+      </select>
+    </div>
+  )
+}))
+
 // Mock FormField, FormSelect, and FormTextarea to simplify label association issues
 jest.mock('@/components/forms', () => ({
   Form: ({ children, onSubmit }: any) => <form onSubmit={onSubmit}>{children}</form>,
   FormField: ({ label, value, onChange, placeholder, required, ...props }: any) => (
     <div>
       {label && <label>{label}{required && '*'}</label>}
-      <input 
-        value={value} 
-        onChange={onChange} 
+      <input
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
         aria-label={label}
         {...props}
@@ -152,17 +171,12 @@ describe('Categories Page', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
-    // Mock successful API responses by default
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockCategories),
-      } as Response) // First call for hierarchical categories
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockFlatCategories),
-      } as Response) // Second call for flat categories
+
+    // Mock successful API responses for all fetch calls
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockCategories),
+    } as Response)
   })
 
   it('should render categories page with data', async () => {

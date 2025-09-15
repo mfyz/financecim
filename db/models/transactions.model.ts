@@ -99,16 +99,19 @@ export const transactionsModel = {
     const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
 
     // Get total count
-    const totalResult = await db
-      .select({ count: count() })
-      .from(transactions)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+    let totalQuery = db.select({ count: count() }).from(transactions)
+
+    if (whereConditions.length > 0) {
+      totalQuery = totalQuery.where(and(...whereConditions))
+    }
+
+    const totalResult = await totalQuery
 
     const total = totalResult[0]?.count || 0
     const totalPages = Math.ceil(total / limit)
 
     // Get data with relations
-    const data = await db
+    let dataQuery = db
       .select({
         // Transaction fields
         id: transactions.id,
@@ -138,7 +141,12 @@ export const transactionsModel = {
       .leftJoin(units, eq(transactions.unitId, units.id))
       .innerJoin(sources, eq(transactions.sourceId, sources.id))
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+
+    if (whereConditions.length > 0) {
+      dataQuery = dataQuery.where(and(...whereConditions))
+    }
+
+    const data = await dataQuery
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset)
@@ -381,36 +389,49 @@ export const transactionsModel = {
       whereConditions.push(lte(transactions.amount, filters.amountMax))
     }
 
-    const baseWhere = whereConditions.length > 0 ? and(...whereConditions) : undefined
-
     // Get basic stats
-    const basicStats = await db
+    let basicStatsQuery = db
       .select({
         totalTransactions: count(),
         totalAmount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
         averageTransaction: sql<number>`COALESCE(AVG(${transactions.amount}), 0)`,
       })
       .from(transactions)
-      .where(baseWhere)
+
+    if (whereConditions.length > 0) {
+      basicStatsQuery = basicStatsQuery.where(and(...whereConditions))
+    }
+
+    const basicStats = await basicStatsQuery
 
     // Get income/expense breakdown
-    const incomeExpenseStats = await db
+    let incomeExpenseQuery = db
       .select({
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalExpenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
       })
       .from(transactions)
-      .where(baseWhere)
+
+    if (whereConditions.length > 0) {
+      incomeExpenseQuery = incomeExpenseQuery.where(and(...whereConditions))
+    }
+
+    const incomeExpenseStats = await incomeExpenseQuery
 
     // Get categorization stats
-    const categorizationStats = await db
+    let categorizationQuery = db
       .select({
         categorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NOT NULL THEN 1 END)`,
         uncategorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NULL THEN 1 END)`,
         ignoredCount: sql<number>`COUNT(CASE WHEN ${transactions.ignore} = true THEN 1 END)`,
       })
       .from(transactions)
-      .where(baseWhere)
+
+    if (whereConditions.length > 0) {
+      categorizationQuery = categorizationQuery.where(and(...whereConditions))
+    }
+
+    const categorizationStats = await categorizationQuery
 
     const basic = basicStats[0]
     const incomeExpense = incomeExpenseStats[0]
@@ -432,15 +453,16 @@ export const transactionsModel = {
    */
   async getAllTags(): Promise<string[]> {
     const db = getDatabase()
-    
+
     const result = await db
       .select({ tags: transactions.tags })
       .from(transactions)
       .where(isNotNull(transactions.tags))
 
     const allTags = new Set<string>()
-    
-    result.forEach(row => {
+
+    const rows = Array.isArray(result) ? result : []
+    rows.forEach(row => {
       if (row.tags) {
         const tags = row.tags.split(',').map(tag => tag.trim()).filter(Boolean)
         tags.forEach(tag => allTags.add(tag))

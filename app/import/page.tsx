@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { UploadCloud, FileText, X, Check, ArrowRight, History, Building2, CreditCard, Edit } from 'lucide-react'
+import { UploadCloud, FileText, X, Check, ArrowRight, History } from 'lucide-react'
 import Link from 'next/link'
 
 interface UploadedFile {
@@ -18,29 +18,7 @@ interface ValidationError {
   errors: string[]
 }
 
-const sourceOptions = [
-  {
-    value: 'chase',
-    label: 'Chase Bank',
-    description: 'Personal & Business accounts',
-    icon: Building2
-  },
-  {
-    value: 'capital_one',
-    label: 'Capital One',
-    description: 'Credit cards & checking',
-    icon: CreditCard
-  },
-  {
-    value: 'manual',
-    label: 'Manual Entry',
-    description: 'Custom CSV format',
-    icon: Edit
-  }
-]
-
 export default function ImportPage() {
-  const [selectedSource, setSelectedSource] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -80,47 +58,96 @@ export default function ImportPage() {
     }
   }
 
-  const generateFilePreview = (): string[][] => {
-    return [
-      ['01/20/2024', 'WALMART SUPERCENTER', '-125.43', 'FOOD_GROCERY'],
-      ['01/19/2024', 'SHELL GAS STATION', '-45.00', 'GAS_STATION'],
-      ['01/19/2024', 'STARBUCKS', '-6.75', 'RESTAURANT'],
-      ['01/18/2024', 'TARGET', '-89.23', 'SHOPPING_GENERAL'],
-      ['01/18/2024', 'NETFLIX.COM', '-15.99', 'ENTERTAINMENT']
-    ]
+  const parseCSVFile = async (file: File): Promise<string[][]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string
+          const lines = text.split('\n').filter(line => line.trim())
+          const data = lines.map(line => {
+            // Simple CSV parsing - handles basic quotes and commas
+            const result = []
+            let current = ''
+            let inQuotes = false
+
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i]
+              if (char === '"' && (i === 0 || line[i-1] === ',')) {
+                inQuotes = true
+              } else if (char === '"' && inQuotes) {
+                inQuotes = false
+              } else if (char === ',' && !inQuotes) {
+                result.push(current.trim())
+                current = ''
+              } else {
+                current += char
+              }
+            }
+            result.push(current.trim())
+            return result
+          })
+          resolve(data)
+        } catch (error) {
+          reject(error)
+        }
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsText(file)
+    })
   }
 
-  const simulateFileProcessing = useCallback((fileData: UploadedFile) => {
+  const generateFilePreview = (csvData: string[][]): string[][] => {
+    // Skip header row and return first 5 data rows
+    return csvData.slice(1, 6)
+  }
+
+  const processFileData = useCallback(async (file: File, fileData: UploadedFile) => {
     setUploadingFile(fileData.name)
     setUploadProgress(0)
-    
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        const newProgress = prev + Math.random() * 15
-        if (newProgress >= 100) {
-          clearInterval(progressInterval)
-          
-          // Complete processing
-          setTimeout(() => {
-            fileData.status = 'completed'
-            fileData.preview = generateFilePreview()
-            setUploadingFile(null)
-            setUploadProgress(0)
-            setUploadedFiles(prev => [...prev])
-          }, 500)
-          
-          return 100
-        }
-        return newProgress
-      })
-    }, 200)
+
+    try {
+      // Simulate processing with progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const newProgress = prev + Math.random() * 20 + 10
+          return Math.min(newProgress, 90)
+        })
+      }, 100)
+
+      // Parse the actual CSV file
+      const csvData = await parseCSVFile(file)
+
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+
+      // Complete processing
+      setTimeout(() => {
+        fileData.status = 'completed'
+        fileData.rows = csvData.length - 1 // Subtract header row
+        fileData.preview = generateFilePreview(csvData)
+        setUploadingFile(null)
+        setUploadProgress(0)
+        setUploadedFiles(prev => [...prev])
+      }, 500)
+
+    } catch (error) {
+      setValidationErrors(prev => [...prev, {
+        file: file.name,
+        errors: ['Failed to parse CSV file. Please check the format.']
+      }])
+      setUploadingFile(null)
+      setUploadProgress(0)
+      // Remove failed file from uploaded files
+      setUploadedFiles(prev => prev.filter(f => f.name !== file.name))
+    }
   }, [])
 
   const processFiles = useCallback((files: FileList) => {
     setValidationErrors([])
     const newFiles: UploadedFile[] = []
     const errors: ValidationError[] = []
-    
+
     Array.from(files).forEach(file => {
       const validation = validateFile(file)
       if (validation.valid) {
@@ -128,12 +155,12 @@ export default function ImportPage() {
           name: file.name,
           size: formatFileSize(file.size),
           sizeBytes: file.size,
-          rows: Math.floor(Math.random() * 500) + 100,
+          rows: 0, // Will be updated after parsing
           status: 'processing',
           preview: []
         }
-        
-        simulateFileProcessing(fileData)
+
+        processFileData(file, fileData)
         newFiles.push(fileData)
       } else {
         errors.push({
@@ -142,10 +169,10 @@ export default function ImportPage() {
         })
       }
     })
-    
+
     setUploadedFiles(prev => [...prev, ...newFiles])
     setValidationErrors(errors)
-  }, [simulateFileProcessing])
+  }, [processFileData])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -159,24 +186,40 @@ export default function ImportPage() {
   }
 
   const canProceedToStep2 = () => {
-    return selectedSource && uploadedFiles.length > 0 && 
+    return uploadedFiles.length > 0 &&
            uploadedFiles.every(f => f.status === 'completed')
   }
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
+    event.stopPropagation()
+    setDragOver(true)
+  }, [])
+
+  const handleDragEnter = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
     setDragOver(true)
   }, [])
 
   const handleDragLeave = useCallback((event: React.DragEvent) => {
     event.preventDefault()
-    setDragOver(false)
+    event.stopPropagation()
+    // Only set dragOver to false if we're leaving the dropzone completely
+    if (event.currentTarget === event.target) {
+      setDragOver(false)
+    }
   }, [])
 
   const handleDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault()
+    event.stopPropagation()
     setDragOver(false)
-    processFiles(event.dataTransfer.files)
+
+    const files = event.dataTransfer.files
+    if (files && files.length > 0) {
+      processFiles(files)
+    }
   }, [processFiles])
 
   return (
@@ -230,78 +273,55 @@ export default function ImportPage() {
         </div>
       </div>
 
-      {/* Step 1: Enhanced Upload Interface */}
+      {/* Step 1: CSV Upload Interface */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-8">
-        <h3 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Upload Your Transaction Files</h3>
-        
-        {/* Source Selection */}
-        <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Select Data Source *</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {sourceOptions.map(source => {
-              const IconComponent = source.icon
-              return (
-                <label key={source.value} className="relative">
-                  <input 
-                    type="radio" 
-                    value={source.value}
-                    checked={selectedSource === source.value}
-                    onChange={(e) => setSelectedSource(e.target.value)}
-                    className="peer sr-only"
-                  />
-                  <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-colors">
-                    <div className="flex items-center">
-                      <IconComponent className="w-5 h-5 text-blue-500 mr-3" />
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{source.label}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{source.description}</div>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-              )
-            })}
-          </div>
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Upload Your CSV Files</h3>
+          <p className="text-gray-600 dark:text-gray-400">Upload one or more CSV files containing your transaction data. Files will be automatically merged into a single dataset.</p>
         </div>
 
         {/* File Upload Area */}
-        {selectedSource && (
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Upload CSV Files *</label>
-            <div 
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                dragOver 
-                  ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' 
-                  : 'border-gray-300 dark:border-gray-600'
-              }`}
-            >
-              <div className="flex flex-col items-center">
-                <UploadCloud className="w-16 h-16 text-gray-400 dark:text-gray-500 mb-4" />
-                
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Drop your files here</h4>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">or</p>
-                
-                <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors">
-                  <span>Browse Files</span>
-                  <input 
-                    type="file" 
-                    onChange={handleFileUpload}
-                    multiple 
-                    accept=".csv" 
-                    className="hidden"
-                  />
-                </label>
-                
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                  Supports multiple CSV files • Max 50MB per file
-                </p>
-              </div>
+        <div className="mb-8">
+          <div
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200 ${
+              dragOver
+                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 scale-[1.01] shadow-lg'
+                : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <UploadCloud className={`w-16 h-16 mb-4 transition-colors ${
+                dragOver
+                  ? 'text-blue-500'
+                  : 'text-gray-400 dark:text-gray-500'
+              }`} />
+
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                {dragOver ? 'Drop your files here!' : 'Drag & drop your CSV files'}
+              </h4>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">or</p>
+
+              <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center">
+                <span>Choose Files</span>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  multiple
+                  accept=".csv"
+                  className="hidden"
+                />
+              </label>
+
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                Supports multiple CSV files • Max 50MB per file
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Upload Progress */}
         {uploadingFile && (
@@ -345,7 +365,17 @@ export default function ImportPage() {
         {/* Uploaded Files */}
         {uploadedFiles.length > 0 && (
           <div className="mb-8">
-            <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">Uploaded Files</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                Uploaded Files ({uploadedFiles.length})
+              </h4>
+              {uploadedFiles.length > 1 && (
+                <div className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">
+                  Multiple files will be merged
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="border dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
@@ -355,11 +385,11 @@ export default function ImportPage() {
                       <div>
                         <div className="font-medium text-gray-900 dark:text-white">{file.name}</div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <span>{file.size}</span> • 
-                          <span> {file.rows} rows</span> • 
+                          <span>{file.size}</span> •
+                          <span> {file.rows.toLocaleString()} rows</span> •
                           <span className={
-                            file.status === 'completed' 
-                              ? 'text-green-600 dark:text-green-400' 
+                            file.status === 'completed'
+                              ? 'text-green-600 dark:text-green-400'
                               : 'text-yellow-600 dark:text-yellow-400'
                           }>
                             {file.status === 'completed' ? 'Ready' : 'Processing...'}
@@ -367,14 +397,15 @@ export default function ImportPage() {
                         </div>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => removeFile(file.name)}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1"
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      title="Remove file"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  
+
                   {/* File Preview */}
                   {file.status === 'completed' && file.preview.length > 0 && (
                     <div className="mt-3">
@@ -397,7 +428,7 @@ export default function ImportPage() {
                         </div>
                         {file.preview.length > 3 && (
                           <div className="px-3 py-2 bg-gray-50 dark:bg-gray-600 text-xs text-gray-500 dark:text-gray-400 text-center">
-                            ... and {file.rows - 3} more rows
+                            ... and {(file.rows - 3).toLocaleString()} more rows
                           </div>
                         )}
                       </div>
@@ -406,30 +437,68 @@ export default function ImportPage() {
                 </div>
               ))}
             </div>
+
+            {/* Total Summary */}
+            {uploadedFiles.length > 1 && (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <div className="text-sm font-medium text-blue-900 dark:text-blue-300">
+                  Total: {uploadedFiles.reduce((sum, file) => sum + file.rows, 0).toLocaleString()} rows from {uploadedFiles.length} files
+                </div>
+                <div className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                  All files will be combined into a single dataset for processing
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Requirements Info */}
         <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">CSV File Requirements:</h4>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <li className="flex items-center">
-              <Check className="w-4 h-4 text-green-500 mr-2" />
-              Must contain columns for date, description, and amount
-            </li>
-            <li className="flex items-center">
-              <Check className="w-4 h-4 text-green-500 mr-2" />
-              Date format: MM/DD/YYYY, YYYY-MM-DD, or DD/MM/YYYY
-            </li>
-            <li className="flex items-center">
-              <Check className="w-4 h-4 text-green-500 mr-2" />
-              Amount can be positive/negative numbers
-            </li>
-            <li className="flex items-center">
-              <Check className="w-4 h-4 text-green-500 mr-2" />
-              Multiple files must have the same column structure
-            </li>
-          </ul>
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">CSV File Requirements:</h4>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Required Fields</h5>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                  <span>Date column (any common format)</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                  <span>Description/memo column</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                  <span>Amount column (positive/negative)</span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">Multiple Files</h5>
+              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" />
+                  <span>Files will be automatically merged</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" />
+                  <span>Column mapping applied to all files</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" />
+                  <span>Duplicates detected and flagged</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              <strong>Optional fields:</strong> Category, Account, Balance, Reference Number
+            </p>
+          </div>
         </div>
 
         {/* Action Buttons */}

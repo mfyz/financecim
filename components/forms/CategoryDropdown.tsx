@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CustomDropdown, DropdownOption } from '@/components/ui'
-import { CategoryLabel, CategoryTextLabel } from '@/components/ui'
+import { CustomDropdown, CategoryLabel, CategoryTextLabel } from '@/components/ui'
+import type { DropdownOption } from '@/components/ui'
 
 export interface Category {
   id: number

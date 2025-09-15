@@ -1,6 +1,15 @@
 'use client'
 
-import { Category } from '@/components/forms/CategoryDropdown'
+interface Category {
+  id: number
+  name: string
+  parentCategoryId: number | null
+  color: string
+  icon: string | null
+  monthlyBudget: number | null
+  createdAt: string
+  updatedAt: string
+}
 
 interface CategoryLabelProps {
   category?: Category | null

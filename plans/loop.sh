@@ -1,7 +1,4 @@
 #!/usr/bin/env sh
-# claude-pretty-loop.sh
-# Streams Claude Code output nicely, separates “thought blocks”, shows tool calls,
-# and avoids crashing on EPIPE when a pipe closes — without bash-only features.
 
 set -eu
 
@@ -14,7 +11,6 @@ PROMPT_FILE="${1:-plans/prompt.md}"
 LOG_FILE="plans/loop.log"
 # Empty the log file if it exists
 echo -n > "$LOG_FILE"
-echo "Logging raw JSON output to $LOG_FILE"
 
 run_once() {
   # Run claude and tee output to log file and pipe to jq
@@ -26,50 +22,47 @@ run_once() {
     < "$PROMPT_FILE" \
   | tee -a "$LOG_FILE" \
   | jq -rj --unbuffered '
-      # Handle message blocks to separate thoughts
-      if (.type=="stream_event" and .event.type=="message_start") then 
-        "\n\n" 
-      # Handle text deltas (actual content)
-      elif (.type=="stream_event" and .event.type=="content_block_delta" and .event.delta.type=="text_delta") then
+      # Simplest possible approach to filter and format the stream
+      # Text blocks
+      if (.type=="stream_event" and .event.type=="content_block_delta" and .event.delta.type=="text_delta") then
+        # Handle actual text content
         (.event.delta.text | gsub("\\r?\\n"; "\n"))
-      # Handle tool use start (prints name of tool)
+      
+      # New message block for spacing
+      elif (.type=="stream_event" and .event.type=="message_start") then
+        "\n\n💬 "
+      
+      # Tool start
       elif (.type=="stream_event" and .event.type=="content_block_start" and .event.content_block.type=="tool_use") then
-        "\n\nTool call: " + .event.content_block.name + " "
-      # Handle tool input JSON deltas for parameter extraction
-      elif (.type=="stream_event" and .event.type=="content_block_delta" and .event.delta.type=="input_json_delta") then
-        # Extract file paths if present
-        if (.event.delta.partial_json | tostring | test("file_path")) then
-          "(" + ((.event.delta.partial_json | match("\"file_path\"\s*:\s*\"([^\"]+)\""; "g").captures[0].string) // "file") + ") "
-        # Extract search queries
-        elif (.event.delta.partial_json | tostring | test("[qQ]uery")) then
-          "(search: " + ((.event.delta.partial_json | match("\"[qQ]uery\"\s*:\s*\"([^\"]+)\""; "g").captures[0].string) // "term") + ") "
-        # Extract URLs if present
-        elif (.event.delta.partial_json | tostring | test("url")) then
-          "(url: " + ((.event.delta.partial_json | match("\"[uU]rl\"\s*:\s*\"([^\"]+)\""; "g").captures[0].string) // "url") + ") "
-        # Extract command strings if present
-        elif (.event.delta.partial_json | tostring | test("[cC]ommand")) then
-          "(cmd: " + ((.event.delta.partial_json | match("\"[cC]ommand\"\s*:\s*\"([^\"]+)\""; "g").captures[0].string) // "command") + ") "
-        else
-          empty
-        end
-      else 
-        empty 
+        "\n\n\u001b[33m🛠  Tool: " + .event.content_block.name + " \u001b[0m"
+      
+      # Skip all other event types
+      else
+        empty
       end
     '
-  printf '\n'
+  printf '\n\n'
 }
 
 i=1
 while [ "$i" -le 2 ]; do
-  printf '\n\n\n'
+  printf '\n\n'
   printf '%0.s▄' $(seq 1 80)
-  printf '\n\n\n'
-  figlet -f doh "$i" || true
+  printf '\n\n\n\n'
+  (figlet -f doh "$i" | sed -E '/^[[:space:]]*$/d' | sed 's/^/    /') || true
+  printf '\n'
 
   # Add JSON formatted log header with iteration number
-  echo "{\"type\":\"log_marker\", \"message\":\"==================== New Claude Run $i - $(date) ====================\"}" >> "$LOG_FILE"
+  echo "{\"type\":\"loop_start_marker\", \"message\":\"==================== New Claude Run $i - $(date) ====================\"}" >> "$LOG_FILE"
 
   run_once
 
   i=$((i+1))
 done
+
+# Done message
+printf '\n\n'
+printf '%0.s▄' $(seq 1 80)
+printf '\n\n\n'
+(printf '\033[32m'; figlet -f doh "Done" | sed -E '/^[[:space:]]*$/d' | sed 's/^/  /'; printf '\033[0m') || true
+printf '\n\n'

@@ -53,6 +53,11 @@ export default function ImportStep3Page() {
   const [previewData, setPreviewData] = useState<PreviewTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [source, setSource] = useState<Source | null>(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState(0)
+  const [importComplete, setImportComplete] = useState(false)
+  const [importedCount, setImportedCount] = useState(0)
 
   useEffect(() => {
     loadImportData()
@@ -220,6 +225,77 @@ export default function ImportStep3Page() {
       router.push('/import')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleImportConfirm = async () => {
+    setShowConfirmModal(false)
+    setIsImporting(true)
+    setImportProgress(0)
+    setImportedCount(0)
+
+    try {
+      // Filter out transactions with errors and duplicates
+      const validTransactions = previewData.filter(t => !t.hasError && !t.isDuplicate)
+      const total = validTransactions.length
+      let successCount = 0
+
+      // Process transactions in batches for better performance
+      const batchSize = 10
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = validTransactions.slice(i, Math.min(i + batchSize, total))
+
+        // Create transaction objects for this batch
+        const transactionBatch = batch.map(transaction => ({
+          date: new Date(transaction.date).toISOString(),
+          description: transaction.description,
+          amount: parseFloat(transaction.amount),
+          source_id: parseInt(sessionStorage.getItem('selectedSourceId') || '0'),
+          category_id: null, // Will be auto-categorized later
+          unit_id: 1, // Default unit, should be from user profile
+          source_data: transaction.source_data || {},
+          hash: transaction.hash
+        }))
+
+        // Send batch to API
+        const response = await fetch('/api/transactions/import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ transactions: transactionBatch })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Import failed: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        successCount += result.imported || batch.length
+
+        // Update progress
+        const progress = ((i + batch.length) / total) * 100
+        setImportProgress(Math.min(progress, 100))
+        setImportedCount(Math.min(i + batch.length, total))
+
+        // Small delay to show progress
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      setImportComplete(true)
+      setIsImporting(false)
+      setImportedCount(successCount)
+
+      // Clear session storage after successful import
+      sessionStorage.removeItem('csvData')
+      sessionStorage.removeItem('columnMapping')
+      sessionStorage.removeItem('selectedSourceId')
+      sessionStorage.removeItem('reversePurchases')
+
+    } catch (error) {
+      console.error('Import failed:', error)
+      setIsImporting(false)
+      alert('Import failed. Please try again.')
     }
   }
 
@@ -594,12 +670,103 @@ export default function ImportStep3Page() {
         
         <button
           className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors flex items-center"
-          onClick={() => alert('Import complete! (Step 4 implementation pending)')}
+          onClick={() => setShowConfirmModal(true)}
         >
           <span>Complete Import</span>
           <ArrowRight className="w-4 h-4 ml-2" />
         </button>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertCircle className="w-6 h-6 text-orange-500 mr-3" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Confirm Import
+              </h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to import {stats.clean} transactions? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportConfirm}
+                className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Modal */}
+      {isImporting && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Importing Transactions
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                {importedCount} of {stats.clean} transactions imported
+              </p>
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {Math.round(importProgress)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {importComplete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Import Complete!
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Successfully imported {importedCount} transactions to your account.
+              </p>
+              <div className="flex space-x-3">
+                <Link
+                  href="/"
+                  className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-center"
+                >
+                  View Dashboard
+                </Link>
+                <Link
+                  href="/import"
+                  className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-lg transition-colors text-center"
+                  onClick={() => setImportComplete(false)}
+                >
+                  Import More
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

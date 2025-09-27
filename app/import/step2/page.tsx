@@ -56,7 +56,7 @@ export default function ImportStep2Page() {
     source_category: ''
   })
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
-  const [previewData, setPreviewData] = useState<Record<string, string | number | string[]>[]>([])
+  const [previewData, setPreviewData] = useState<{[key: string]: string | number | string[]}[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string>('')
   const [sourcesLoading, setSourcesLoading] = useState(true)
@@ -64,29 +64,29 @@ export default function ImportStep2Page() {
   const [reversePurchases, setReversePurchases] = useState(false)
   const [showReverseSuggestion, setShowReverseSuggestion] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [columnWidths, setColumnWidths] = useState<Record<number, 'narrow' | 'medium' | 'wide' | 'wider'>>({})
+  const [columnWidths, setColumnWidths] = useState<{[key: number]: 'narrow' | 'medium' | 'wide' | 'wider'}>({})
 
   useEffect(() => {
     fetchSources()
     loadCsvDataFromStorage()
-    // Load saved state first, then auto-detect only if no saved mapping exists
+    // Load saved state first
     loadSavedState()
-
-    // Auto-detect only if no saved mapping exists
-    const savedColumnMapping = sessionStorage.getItem('columnMapping')
-    if (!savedColumnMapping) {
-      // Use setTimeout to ensure csvData is loaded first
-      setTimeout(() => {
-        autoDetectColumns()
-      }, 100)
-    }
-
-    // Column width analysis will happen in the csvData useEffect
 
     // Mark as initialized after loading saved state
     setIsInitialized(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-detect columns when CSV data changes and no mapping exists
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Only auto-detect if no columns are mapped yet
+      if (!columnMapping.date && !columnMapping.description && !columnMapping.amount) {
+        autoDetectColumns()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csvData])
 
   useEffect(() => {
     updatePreview()
@@ -215,7 +215,7 @@ export default function ImportStep2Page() {
   const analyzeColumnWidths = () => {
     if (!csvData || csvData.length <= 1) return
 
-    const widths: Record<number, 'narrow' | 'medium' | 'wide' | 'wider'> = {}
+    const widths: {[key: number]: 'narrow' | 'medium' | 'wide' | 'wider'} = {}
     const headers = csvData[0]
 
     headers.forEach((header, index) => {
@@ -271,7 +271,11 @@ export default function ImportStep2Page() {
   }
 
   const autoDetectColumns = () => {
+    if (!csvData || csvData.length === 0) return
+
     const headers = csvData[0]
+    console.log('Auto-detecting columns for headers:', headers)
+
     const mapping: ColumnMapping = {
       date: '',
       description: '',
@@ -309,6 +313,7 @@ export default function ImportStep2Page() {
       })
     })
 
+    console.log('Auto-detected mapping:', mapping)
     setColumnMapping(mapping)
   }
 
@@ -729,11 +734,15 @@ export default function ImportStep2Page() {
                       </div>
                     </td>
                     <td className={`px-3 py-2 font-semibold text-right ${
-                      parseFloat(String(row.amount)) >= 0
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
+                      row.amount && !isNaN(parseFloat(String(row.amount)))
+                        ? (parseFloat(String(row.amount)) >= 0
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-red-600 dark:text-red-400')
+                        : 'text-gray-400 dark:text-gray-500'
                     }`} style={{ width: '120px' }}>
-                      ${Math.abs(parseFloat(String(row.amount))).toFixed(2)}
+                      {row.amount && !isNaN(parseFloat(String(row.amount)))
+                        ? `$${Math.abs(parseFloat(String(row.amount))).toFixed(2)}`
+                        : ''}
                     </td>
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400" style={{ width: '160px' }}>{row.source_category}</td>
                   </tr>

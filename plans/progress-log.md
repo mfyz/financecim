@@ -43,3 +43,53 @@ Both Categories and Transactions APIs have:
 - Continue with remaining Phase 2.2 integrations (Rules, Import Log)
 - Add E2E tests for critical user journeys
 - Performance optimization and indexing
+
+------------------------------
+
+## 2025-09-27 - Rules and ImportLog Integration
+
+### Changes Made
+- **Implemented Rules Data Model** (`db/models/rules.model.ts`)
+  - Complete CRUD operations for both Unit Rules and Category Rules
+  - Auto-categorization engine with pattern matching (contains, starts_with, exact, regex)
+  - Priority-based rule application system
+  - Rule testing functionality for validation
+
+- **Created Rules API Endpoints**
+  - Unit Rules: GET/POST `/api/rules/unit`, GET/PUT/DELETE `/api/rules/unit/[id]`
+  - Toggle status: POST `/api/rules/unit/[id]/toggle`
+  - Update priorities: PUT `/api/rules/unit/priorities`
+  - Category Rules: GET/POST `/api/rules/category`, GET/PUT/DELETE `/api/rules/category/[id]`
+  - Toggle status: POST `/api/rules/category/[id]/toggle`
+  - Update priorities: PUT `/api/rules/category/priorities`
+  - Test rules: POST `/api/rules/test`
+
+- **Implemented ImportLog Data Model** (`db/models/import-log.model.ts`)
+  - Complete CRUD operations for import logging
+  - Helper methods for logging successful, failed, and partial imports
+  - Import statistics calculation
+  - Recent imports retrieval with filtering by source
+
+- **Created ImportLog API Endpoints**
+  - GET/POST `/api/import-log` (with query params for sourceId and limit)
+  - GET/PUT/DELETE `/api/import-log/[id]`
+  - GET `/api/import-log/stats` for import statistics
+
+- **Unit Test Coverage**
+  - Added comprehensive unit tests for Rules API endpoints (13 tests)
+  - Added comprehensive unit tests for ImportLog API endpoints (8 tests)
+  - All tests passing with proper mocking and error handling
+
+### Status Update
+Phase 2.2 Real Database Integration progress:
+- ✅ Units Integration - Complete with tests
+- ✅ Sources Integration - Complete with tests
+- ✅ Categories Integration - Complete with tests
+- ✅ Transactions Integration - Complete with tests
+- ✅ Rules Integration - Complete with tests
+- ✅ ImportLog Integration - Complete with tests
+
+### Next Steps
+- Implement CSV import functionality with auto-categorization
+- Add E2E tests for critical user journeys
+- Performance optimization and database indexing

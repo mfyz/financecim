@@ -37,7 +37,7 @@ const mockTransaction = {
   category: { id: 1, name: 'Test Groceries', color: '#10B981' }
 }
 
-const mockRouteParams = { params: { id: '1' } }
+const mockRouteParams = { params: Promise.resolve({ id: '1' }) }
 
 describe('/api/transactions/[id]', () => {
   beforeEach(() => {
@@ -61,7 +61,7 @@ describe('/api/transactions/[id]', () => {
       mockTransactionsModel.getById.mockResolvedValue(null)
 
       const request = new NextRequest('http://localhost:3000/api/transactions/999')
-      const response = await GET(request, { params: { id: '999' } })
+      const response = await GET(request, { params: Promise.resolve({ id: '999' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -71,7 +71,7 @@ describe('/api/transactions/[id]', () => {
 
     it('should return 400 for invalid ID', async () => {
       const request = new NextRequest('http://localhost:3000/api/transactions/invalid')
-      const response = await GET(request, { params: { id: 'invalid' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'invalid' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -147,7 +147,7 @@ describe('/api/transactions/[id]', () => {
         body: JSON.stringify(validUpdateData)
       })
 
-      const response = await PUT(request, { params: { id: 'invalid' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'invalid' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -206,7 +206,7 @@ describe('/api/transactions/[id]', () => {
         body: JSON.stringify(validUpdateData)
       })
 
-      const response = await PUT(request, { params: { id: '999' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '999' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -276,7 +276,7 @@ describe('/api/transactions/[id]', () => {
         method: 'DELETE'
       })
 
-      const response = await DELETE(request, { params: { id: 'invalid' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'invalid' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -292,7 +292,7 @@ describe('/api/transactions/[id]', () => {
         method: 'DELETE'
       })
 
-      const response = await DELETE(request, { params: { id: '999' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: '999' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)

@@ -103,7 +103,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
         body: JSON.stringify(updateData)
       })
 
-      const response = await PUT(request, { params: { id: '1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -149,7 +149,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
         body: JSON.stringify(selfParentData)
       })
 
-      const response = await PUT(request, { params: { id: '1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -165,7 +165,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
         body: JSON.stringify(circularData)
       })
 
-      const response = await PUT(request, { params: { id: '1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -183,7 +183,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
         body: JSON.stringify(invalidData)
       })
 
-      const response = await PUT(request, { params: { id: '1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -201,7 +201,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
         body: JSON.stringify(updateData)
       })
 
-      const response = await PUT(request, { params: { id: '1' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)
@@ -216,7 +216,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
       mockCategoriesModel.delete.mockResolvedValue(undefined)
 
       const request = new NextRequest('http://localhost:3000/api/categories/1')
-      const response = await DELETE(request, { params: { id: '1' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -249,7 +249,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
       mockCategoriesModel.delete.mockRejectedValue(new Error('Cannot delete category with subcategories'))
 
       const request = new NextRequest('http://localhost:3000/api/categories/1')
-      const response = await DELETE(request, { params: { id: '1' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -261,7 +261,7 @@ describe('Categories Dynamic Route API Endpoints', () => {
       mockCategoriesModel.delete.mockRejectedValue(new Error('Database error'))
 
       const request = new NextRequest('http://localhost:3000/api/categories/1')
-      const response = await DELETE(request, { params: { id: '1' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: '1' }) })
       const data = await response.json()
 
       expect(response.status).toBe(500)

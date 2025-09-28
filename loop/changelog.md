@@ -5,6 +5,16 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Rules Toggle API Tests
+
+- Added unit tests for `POST /api/rules/unit/[id]/toggle` endpoint
+- Added unit tests for `POST /api/rules/category/[id]/toggle` endpoint
+- Covered success, invalid ID, not found, and error cases
+- Fixed date serialization expectations in tests
+- All tests passing (638/638)
+
+------------------------------
+
 ## 2025-09-28 - Import API Refactor + Tests
 
 - Refactored `POST /api/transactions/import` to use `transactionsModel` and proper schema
@@ -526,3 +536,15 @@ CODEX
 - Added unit tests for `PUT /api/import/csv` preview (headers, mapping, suggestions)
 - Added validation tests for `POST /api/import/csv` (no file, invalid sourceId)
 - Mocked models per CLAUDE.md conventions; all tests passing locally
+
+
+------------------------------
+------------------------------
+------------------------------
+
+CLAUDE
+
+------------------------------
+------------------------------
+------------------------------
+

@@ -5,6 +5,12 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Units Toggle API Tests
+
+- Added unit tests for `POST /api/units/[id]/toggle` covering success, invalid ID, not found, and unexpected errors
+- Ensured tests follow CLAUDE.md conventions (Node env, model mocking, precise assertions)
+
+
 ## 2025-09-28 - Transactions CSV Export API
 
 - Added `GET /api/transactions/export` to export filtered transactions as CSV with proper headers

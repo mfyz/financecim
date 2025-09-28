@@ -2,9 +2,9 @@
 import { getDatabase } from './connection'
 import { units, sources, categories, transactions, unitRules, categoryRules, importLog } from './schema'
 
-async function seed() {
+export async function seed() {
   console.log('🌱 Starting database seeding...')
-  
+
   try {
     const db = getDatabase()
 
@@ -183,7 +183,11 @@ async function seed() {
 
   } catch (error) {
     console.error('❌ Seeding failed:', error)
-    process.exit(1)
+    // Only exit if running directly, not when imported
+    if (require.main === module) {
+      process.exit(1)
+    }
+    throw error // Re-throw for tests
   }
 }
 

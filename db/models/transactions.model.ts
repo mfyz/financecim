@@ -260,6 +260,20 @@ export const transactionsModel = {
   },
 
   /**
+   * Get transaction by hash
+   */
+  async getByHash(hash: string): Promise<Transaction | null> {
+    const db = getDatabase()
+    const result = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.hash, hash))
+      .limit(1)
+
+    return result[0] || null
+  },
+
+  /**
    * Create new transaction
    */
   async create(data: NewTransaction): Promise<Transaction> {

@@ -498,5 +498,17 @@ describe('transactionsModel', () => {
       expect(result).toEqual([])
       expect(transactionsModel.getAll).not.toHaveBeenCalled()
     })
+
+    it('should pass custom limit to getAll', async () => {
+      const spy = jest.spyOn(transactionsModel, 'getAll').mockResolvedValue({
+        data: mockTransactionsWithRelations.slice(0, 5),
+        total: 5,
+        totalPages: 1,
+      } as any)
+
+      await transactionsModel.search('TEST', 5)
+      expect(spy).toHaveBeenCalledWith(1, 5, 'date', 'desc', { search: 'TEST' })
+      spy.mockRestore()
+    })
   })
 })

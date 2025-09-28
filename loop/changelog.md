@@ -15,6 +15,14 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Transactions Search API
+
+- Added `GET /api/transactions/search` endpoint with `q` and `limit` validation
+- Integrated `transactionsModel.search` with trimmed query and clamped limits (1–100)
+- Returned `{ data: TransactionWithRelations[] }` for lightweight search results
+- Wrote unit tests for search route: params parsing, empty query, limit bounds, error handling
+
+
 ## 2025-09-28 - Validation Utilities + Tests
 
 - Added `lib/validations.ts` with Zod schemas for `Transaction` and `Tag`
@@ -439,4 +447,3 @@ CODEX
 - Adjusted update mapping to keep string dates as-is; avoided local TZ drift
 - Added unit test to ensure string date preservation in normalization
 - All unit tests pass locally
-

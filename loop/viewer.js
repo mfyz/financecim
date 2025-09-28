@@ -82,27 +82,6 @@ const HTML_TEMPLATE = `
         </div>
     </header>
 
-    <!-- Filters -->
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-                <label class="text-sm font-medium">Filter:</label>
-                <select id="type-filter" class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm">
-                    <option value="">All Types</option>
-                    <option value="loop_start_marker">Loop Start</option>
-                    <option value="system">System</option>
-                    <option value="stream_event">Stream Events</option>
-                    <option value="assistant">Assistant</option>
-                    <option value="user">User</option>
-                </select>
-            </div>
-            <div class="flex items-center space-x-2">
-                <label class="text-sm font-medium">Search:</label>
-                <input id="search-input" type="text" placeholder="Search in messages..."
-                       class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm w-64">
-            </div>
-        </div>
-    </div>
 
     <!-- Log Container -->
     <main class="flex-1 overflow-hidden">
@@ -133,8 +112,6 @@ const HTML_TEMPLATE = `
                 this.statusIndicator = document.getElementById('status-indicator');
                 this.statusText = document.getElementById('status-text');
                 this.entryCount = document.getElementById('entry-count');
-                this.typeFilter = document.getElementById('type-filter');
-                this.searchInput = document.getElementById('search-input');
                 this.themeToggle = document.getElementById('theme-toggle');
                 this.clearButton = document.getElementById('clear-logs');
                 this.autoScrollButton = document.getElementById('auto-scroll-toggle');
@@ -150,8 +127,6 @@ const HTML_TEMPLATE = `
                 this.themeToggle.addEventListener('click', () => this.toggleTheme());
                 this.clearButton.addEventListener('click', () => this.clearLogs());
                 this.autoScrollButton.addEventListener('click', () => this.toggleAutoScroll());
-                this.typeFilter.addEventListener('change', (e) => this.setFilter(e.target.value));
-                this.searchInput.addEventListener('input', (e) => this.setSearch(e.target.value));
 
                 // Auto-scroll detection
                 this.logContainer.addEventListener('scroll', () => {
@@ -261,18 +236,18 @@ const HTML_TEMPLATE = `
                     const eventType = log.event?.type || 'unknown';
                     const pillColor = this.getStreamEventColor(eventType);
 
-                    return '<div class="inline-block mr-2 mb-2">' +
+                    return '<div class="inline-block mr-1 mb-1">' +
                         '<button onclick="logViewer.expandStreamEvent(' + index + ')" ' +
-                        'class="inline-block w-3 h-3 rounded-full hover:scale-110 transition-transform cursor-pointer ' + pillColor + '" ' +
+                        'class="inline-block w-2 h-2 rounded-full hover:scale-110 transition-transform cursor-pointer opacity-50 ' + pillColor + '" ' +
                         'title="' + eventType + '"></button>' +
                     '</div>';
                 }
 
                 // Handle user messages specially - render as mini pills like stream events
                 if (log.type === 'user') {
-                    return '<div class="inline-block mr-2 mb-2">' +
+                    return '<div class="inline-block mr-1 mb-1">' +
                         '<button onclick="logViewer.expandUserMessage(' + index + ')" ' +
-                        'class="inline-block w-3 h-3 rounded-full hover:scale-110 transition-transform cursor-pointer bg-indigo-400" ' +
+                        'class="inline-block w-2 h-2 rounded-full hover:scale-110 transition-transform cursor-pointer opacity-50 bg-indigo-400" ' +
                         'title="User message"></button>' +
                     '</div>';
                 }
@@ -301,7 +276,7 @@ const HTML_TEMPLATE = `
                                 timestamp +
                             '</span>' +
                             (this.hasRawJson(log) ?
-                                '<button onclick="logViewer.toggleRawJson(' + index + ')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors opacity-100">' +
+                                '<button onclick="logViewer.showRawJsonModal(' + index + ')" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors opacity-100">' +
                                     'Show raw JSON' +
                                 '</button>' : '') +
                         '</div>' +
@@ -311,9 +286,6 @@ const HTML_TEMPLATE = `
                                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>' +
                             '</svg>' +
                         '</button>' +
-                    '</div>' +
-                    '<div id="raw-json-' + index + '" class="hidden mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded">' +
-                        '<pre class="text-sm whitespace-pre-wrap break-words">' + formattedContent + '</pre>' +
                     '</div>' +
                 '</div>';
             }
@@ -338,6 +310,22 @@ const HTML_TEMPLATE = `
                     '</div>';
                 }
 
+                if (log.type === 'loop_end_summary') {
+                    const summaryText = log.summary || '';
+                    const markdownHtml = this.parseMarkdown(summaryText);
+                    return '<div class="prose prose-lg max-w-none text-gray-800 dark:text-gray-200">' +
+                        '<div class="font-semibold text-blue-600 dark:text-blue-400 mb-2">📋 Loop Summary</div>' +
+                        markdownHtml +
+                    '</div>';
+                }
+
+                if (log.type === 'loop_all_completed') {
+                    const message = log.message || 'Loop complete';
+                    return '<h1 class="text-xl font-bold text-center text-green-600 dark:text-green-400">' +
+                        message +
+                    '</h1>';
+                }
+
                 if (log.type === 'assistant' && log.message?.content) {
                     // Check for tool use first
                     const toolUse = log.message.content.find(item => item.type === 'tool_use');
@@ -347,16 +335,43 @@ const HTML_TEMPLATE = `
 
                         // Special rendering for TodoWrite tool
                         if (toolName === 'TodoWrite' && toolUse.input && toolUse.input.todos) {
-                            const todoList = this.renderTodoList(toolUse.input.todos);
+                            const todos = toolUse.input.todos;
+                            const completedCount = todos.filter(t => t.status === 'completed').length;
+                            const totalCount = todos.length;
+                            const inProgressTodo = todos.find(t => t.status === 'in_progress');
+                            const hasInProgressOrCompleted = todos.some(t => t.status === 'in_progress' || t.status === 'completed');
+
+                            // If no items are in progress or completed (first time), show full list
+                            if (!hasInProgressOrCompleted) {
+                                const todoList = this.renderTodoList(todos);
+                                return '<div class="text-md text-gray-700 dark:text-gray-300">' +
+                                    '<span class="font-medium">🛠 Tool: ' + toolName + '</span>' +
+                                    '<div class="mt-2">' + todoList + '</div>' +
+                                '</div>';
+                            }
+
+                            // Otherwise show compact progress format
+                            // Include the in-progress task in the count (completed + 1 if there's an in-progress task)
+                            const currentProgress = inProgressTodo ? completedCount + 1 : completedCount;
+                            const progressText = currentProgress + '/' + totalCount;
+                            const currentTaskText = inProgressTodo ? ' ▶ ' + inProgressTodo.content : '';
+
                             return '<div class="text-md text-gray-700 dark:text-gray-300">' +
-                                '<span class="font-medium">🛠 Tool: ' + toolName + '</span>' +
-                                '<div class="mt-2">' + todoList + '</div>' +
+                                '<span class="font-medium">🛠 Tool: ' + toolName + ' ' + progressText + currentTaskText + '</span>' +
+                            '</div>';
+                        }
+
+                        // Special rendering for Bash commands
+                        if (toolName === 'Bash' && toolUse.input && toolUse.input.command) {
+                            return '<div class="text-md text-gray-700 dark:text-gray-300">' +
+                                '<span class="font-medium">🛠 Tool: ' + toolName + ' cmd: ' + this.escapeHtml(toolUse.input.command.substring(0, 30)) + (toolUse.input.command.length > 30 ? '...' : '') + '</span>' +
+                                '<div class="mt-2"><div class="inline-block px-3 py-2 bg-black text-green-400 rounded text-sm font-mono">' + this.escapeHtml(toolUse.input.command) + '</div></div>' +
                             '</div>';
                         }
 
                         return '<div class="text-md text-gray-700 dark:text-gray-300">' +
                             '<span class="font-medium">🛠 Tool: ' + toolName + '</span>' +
-                            (inputSummary ? '<span class="text-gray-600 dark:text-gray-400"> (' + inputSummary + ')</span>' : '') +
+                            (inputSummary ? '<span class="text-gray-600 dark:text-gray-400"> ' + inputSummary + '</span>' : '') +
                         '</div>';
                     }
 
@@ -364,8 +379,8 @@ const HTML_TEMPLATE = `
                     const textContent = log.message.content.find(item => item.type === 'text');
                     if (textContent && textContent.text) {
                         // Use markdown parsing for multi-line text content
-                        const markdownHtml = marked.parse(textContent.text);
-                        return '<div class="text-lg text-gray-800 dark:text-gray-200 leading-relaxed prose prose-sm max-w-none">' +
+                        const markdownHtml = this.parseMarkdown(textContent.text);
+                        return '<div class="prose prose-lg max-w-none text-gray-800 dark:text-gray-200">' +
                             markdownHtml +
                         '</div>';
                     }
@@ -408,7 +423,7 @@ const HTML_TEMPLATE = `
                     '</li>';
                 }).join('');
 
-                return '<ul class="text-xs space-y-1 mt-1 pl-0 ml-5">' + todoItems + '</ul>';
+                return '<ul class="text-lg space-y-1 mt-1 pl-0 ml-5">' + todoItems + '</ul>';
             }
 
             formatToolInputSummary(input, toolName) {
@@ -420,14 +435,14 @@ const HTML_TEMPLATE = `
                 // Create tool-specific summaries
                 switch (toolName) {
                     case 'Read':
-                        return input.file_path ? 'file: ' + input.file_path.split('/').pop() : '';
+                        return input.file_path ? 'file: <span class="inline-block px-1 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-sm font-mono">' + input.file_path.split('/').pop() + '</span>' : '';
                     case 'Edit':
                     case 'MultiEdit':
-                        return input.file_path ? 'file: ' + input.file_path.split('/').pop() : '';
+                        return input.file_path ? 'file: <span class="inline-block px-1 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-sm font-mono">' + input.file_path.split('/').pop() + '</span>' : '';
                     case 'Write':
-                        return input.file_path ? 'file: ' + input.file_path.split('/').pop() : '';
+                        return input.file_path ? 'file: <span class="inline-block px-1 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-sm font-mono">' + input.file_path.split('/').pop() + '</span>' : '';
                     case 'Bash':
-                        return input.command ? 'cmd: ' + input.command.substring(0, 30) + (input.command.length > 30 ? '...' : '') : '';
+                        return input.command ? '' : '';
                     case 'Grep':
                         return input.pattern ? 'pattern: ' + input.pattern : '';
                     case 'Glob':
@@ -445,6 +460,18 @@ const HTML_TEMPLATE = `
                 }
             }
 
+            parseMarkdown(text) {
+                // Configure marked for proper line break handling
+                marked.setOptions({
+                    breaks: true,        // Convert single line breaks to <br>
+                    gfm: true,          // Enable GitHub flavored markdown
+                    sanitize: false,    // Allow HTML (we trust our own content)
+                    smartypants: false  // Disable smart quotes to avoid encoding issues
+                });
+
+                return marked.parse(text);
+            }
+
             escapeHtml(text) {
                 const div = document.createElement('div');
                 div.textContent = text;
@@ -452,6 +479,16 @@ const HTML_TEMPLATE = `
             }
 
             getCardStyling(log) {
+                // Special styling for loop all completed messages (green background)
+                if (log.type === 'loop_all_completed') {
+                    return 'bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-600';
+                }
+
+                // Special styling for loop end summary messages (blue background)
+                if (log.type === 'loop_end_summary') {
+                    return 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-600';
+                }
+
                 // Special styling for result success messages (green background)
                 if (log.type === 'result' && log.subtype === 'success') {
                     return 'bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-600';
@@ -466,7 +503,7 @@ const HTML_TEMPLATE = `
                 }
 
                 // Default styling for other messages (white background)
-                return 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700';
+                return 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800';
             }
 
             getTypeColor(type) {
@@ -541,20 +578,39 @@ const HTML_TEMPLATE = `
                 return log.type === 'loop_start_marker' ||
                        (log.type === 'system' && log.subtype === 'init') ||
                        (log.type === 'result' && log.subtype === 'success') ||
+                       log.type === 'loop_end_summary' ||
+                       log.type === 'loop_all_completed' ||
                        (log.type === 'assistant' && log.message?.content);
             }
 
-            toggleRawJson(index) {
-                const rawJsonDiv = document.getElementById('raw-json-' + index);
-                const button = event.target;
+            showRawJsonModal(index) {
+                // Find the log entry
+                const log = this.filteredLogs[index];
+                if (!log) return;
 
-                if (rawJsonDiv.classList.contains('hidden')) {
-                    rawJsonDiv.classList.remove('hidden');
-                    button.textContent = 'Hide raw JSON';
-                } else {
-                    rawJsonDiv.classList.add('hidden');
-                    button.textContent = 'Show raw JSON';
-                }
+                // Create a modal overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        document.body.removeChild(overlay);
+                    }
+                };
+
+                const modal = document.createElement('div');
+                modal.className = 'bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 max-w-4xl max-h-96 overflow-y-auto m-4';
+
+                const formattedContent = this.formatLogContent(log);
+
+                modal.innerHTML =
+                    '<div class="flex items-center justify-between mb-4">' +
+                        '<h3 class="text-lg font-semibold">Raw JSON - ' + log.type + ' (#' + (index + 1) + ')</h3>' +
+                        '<button onclick="this.closest(\\'.fixed\\').remove()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>' +
+                    '</div>' +
+                    '<pre class="text-sm whitespace-pre-wrap break-words bg-gray-50 dark:bg-gray-700 p-4 rounded">' + formattedContent + '</pre>';
+
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
             }
 
             expandStreamEvent(index) {

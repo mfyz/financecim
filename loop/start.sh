@@ -65,6 +65,8 @@ while [ "$i" -le 2 ]; do
   i=$((i+1))
 done
 
+echo "{\"type\":\"loop_all_completed\", \"message\":\"==================== Loop complete ====================\"}" >> "$LOG_FILE"
+
 # Done message
 printf '\n\n'
 printf '%0.s▄' $(seq 1 80)

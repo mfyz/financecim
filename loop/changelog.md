@@ -491,3 +491,12 @@ CODEX
 - Ensured correct CSV quoting for fields with commas/quotes and included unit/source/category names
 - Wrote unit tests for export route: headers, CSV content, filter parsing, limit clamping, error handling
 - Added `plans/technical-implementation.md` pointer to consolidate docs path
+
+------------------------------
+
+## 2025-09-28 - Rules API Test & Priorities Coverage
+
+- Enforced non-empty `description` validation in `POST /api/rules/test`
+- Added unit tests for `POST /api/rules/test` (success, validation, errors)
+- Added unit tests for `PUT /api/rules/unit/priorities` (happy path, validation, errors)
+- Added unit tests for `PUT /api/rules/category/priorities` (happy path, validation, errors)

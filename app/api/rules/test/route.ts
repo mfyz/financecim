@@ -3,7 +3,7 @@ import { rulesModel } from '@/db/models/rules.model'
 import { z } from 'zod'
 
 const TestRulesSchema = z.object({
-  description: z.string(),
+  description: z.string().min(1, 'Description is required'),
   sourceCategory: z.string().optional(),
   sourceId: z.number().int().positive().optional()
 })

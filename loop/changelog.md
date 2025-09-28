@@ -358,3 +358,12 @@ CODEX
 - Added unit test for `suggestTags` limit and ordering in `__tests__/lib/tags.test.ts`
 - Verified tags utilities behavior with Jest
 
+
+------------------------------
+
+## 2025-09-28 - Tag Suggestions API
+
+- Added `GET /api/transactions/tags/suggest` endpoint for tag suggestions (prefix + limit)
+- Implemented suggestions using `lib/tags.suggestTags` and existing `transactionsModel.getAllTags`
+- Added unit tests for suggestions endpoint (prefix match, limits, error handling)
+

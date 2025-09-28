@@ -260,3 +260,39 @@ Phase 2.2 Real Database Integration progress:
 - Ready for production use with reliable component testing
 
 ------------------------------
+
+------------------------------
+
+## API Unit Tests Expansion - 2025-09-27
+
+### Changes Made
+- **Created unit tests for Category Rules API** (`/api/rules/category`)
+  - Added 10 comprehensive test cases for GET and POST operations
+  - Covered validation, error handling, and success scenarios
+
+- **Created unit tests for Category Rule by ID API** (`/api/rules/category/[id]`)
+  - Added 12 test cases for GET, PUT, and DELETE operations
+  - Tested ID validation, update scenarios, and error handling
+
+- **Created unit tests for Import Log by ID API** (`/api/import-log/[id]`)
+  - Added 13 test cases covering all CRUD operations
+  - Included metadata parsing and validation tests
+  - Fixed failing test by removing null errorMessage from update payload
+
+### Test Coverage Progress
+- Test count increased from 447 to 491 tests
+- Added 44 new API endpoint test cases
+- All 491 tests passing successfully
+- Achieved comprehensive API coverage for Rules and ImportLog endpoints
+
+### Current API Test Coverage Status
+- ✅ Units API - Full coverage
+- ✅ Sources API - Full coverage
+- ✅ Categories API - Full coverage
+- ✅ Transactions API - Full coverage
+- ✅ Dashboard API - Full coverage
+- ✅ Rules API - Full coverage (newly added)
+- ✅ ImportLog API - Full coverage (newly added)
+
+------------------------------
+

@@ -5691,3 +5691,5 @@
 }
 
 {"type":"loop_end_summary","date":"2025-09-28","summary":"## 2025-09-28 - Validation Utilities + Tests\n\n- Added `lib/validations.ts` with Zod schemas for `Transaction` and `Tag`\n- Implemented `validateTransaction()` helper that normalizes `Date` to ISO\n- Wrote unit tests `__tests__/lib/validations.test.ts` covering valid/invalid cases\n- No breaking changes; aligns with Technical Implementation Guide 6.4\n"}
+
+{ "type": "loop_end_summary", "date": "2025-09-28", "summary": "## 2025-09-28 - API Test Additions\n\n- Added unit tests for `GET /api/transactions/tags`\n- Added unit tests for `GET /api/import-log/stats`\n- Added unit tests for `GET /api/dashboard/metrics`\n- All new tests pass; no production code changes\n" }

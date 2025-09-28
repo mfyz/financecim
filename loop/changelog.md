@@ -376,3 +376,14 @@ CODEX
 - Added `GET /api/transactions/tags/suggest` endpoint for tag suggestions (prefix + limit)
 - Implemented suggestions using `lib/tags.suggestTags` and existing `transactionsModel.getAllTags`
 - Added unit tests for suggestions endpoint (prefix match, limits, error handling)
+
+
+------------------------------
+
+## 2025-09-28 - API Test Additions
+
+- Added unit tests for `GET /api/transactions/tags`
+- Added unit tests for `GET /api/import-log/stats`
+- Added unit tests for `GET /api/dashboard/metrics`
+- All new tests pass; no production code changes
+

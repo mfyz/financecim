@@ -5,6 +5,15 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Transactions CSV Export API
+
+- Added `GET /api/transactions/export` to export filtered transactions as CSV with proper headers
+- Implemented query parsing (sort, filters, limit clamp) consistent with transactions list API
+- Ensured correct CSV quoting for fields with commas/quotes and included unit/source/category names
+- Wrote unit tests for export route: headers, CSV content, filter parsing, limit clamping, error handling
+- Added `plans/technical-implementation.md` pointer to consolidate docs path
+
+
 ## 2025-09-28 - Import Rules + Logging
 
 - Added `rulesModel.applyUnitRules` and `applyCategoryRules` wrappers used by CSV import
@@ -456,3 +465,23 @@ CODEX
 - Added GET `/api/sources/stats` returning counts by type
 - Wrote unit tests for both endpoints (success and error cases)
 - All tests pass
+
+------------------------------
+
+## 2025-09-28 - Transactions CSV Export API
+
+- Added `GET /api/transactions/export` to export filtered transactions as CSV with proper headers
+- Implemented query parsing (sort, filters, limit clamp) consistent with transactions list API
+- Ensured correct CSV quoting for fields with commas/quotes and included unit/source/category names
+- Wrote unit tests for export route: headers, CSV content, filter parsing, limit clamping, error handling
+- Added `plans/technical-implementation.md` pointer to consolidate docs path
+
+------------------------------
+
+## 2025-09-28 - Transactions CSV Export API
+
+- Added `GET /api/transactions/export` to export filtered transactions as CSV with proper headers
+- Implemented query parsing (sort, filters, limit clamp) consistent with transactions list API
+- Ensured correct CSV quoting for fields with commas/quotes and included unit/source/category names
+- Wrote unit tests for export route: headers, CSV content, filter parsing, limit clamping, error handling
+- Added `plans/technical-implementation.md` pointer to consolidate docs path

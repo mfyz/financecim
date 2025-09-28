@@ -14,12 +14,12 @@ echo -n > "$LOG_FILE"
 
 run_once() {
   # Run claude and tee output to log file and pipe to jq
-  claude -p \
+  cat "$PROMPT_FILE" "loop/base-prompt.md" \
+  | claude -p \
     --verbose \
     --dangerously-skip-permissions \
     --include-partial-messages \
     --output-format=stream-json \
-    < "$PROMPT_FILE" \
   | tee -a "$LOG_FILE" \
   | jq -rj --unbuffered '
       # Simplest possible approach to filter and format the stream

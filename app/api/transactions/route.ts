@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transactionsModel, type TransactionFilters } from '@/db/models/transactions.model'
 import { z } from 'zod'
+import { parseTags, serializeTags } from '@/lib/tags'
 
 // Validation schema for creating transactions
 const createTransactionSchema = z.object({
@@ -80,6 +81,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validatedData = createTransactionSchema.parse(body)
+
+    // Normalize tags string if provided
+    if (typeof validatedData.tags === 'string') {
+      validatedData.tags = serializeTags(parseTags(validatedData.tags))
+    }
 
     const transaction = await transactionsModel.create(validatedData)
 

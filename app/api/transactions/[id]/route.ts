@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transactionsModel } from '@/db/models/transactions.model'
 import { z } from 'zod'
+import { parseTags, serializeTags } from '@/lib/tags'
 
 // Validation schema for updating transactions
 const updateTransactionSchema = z.object({
@@ -67,6 +68,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json()
     const validatedData = updateTransactionSchema.parse(body)
+
+    // Normalize tags if provided
+    if (typeof validatedData.tags === 'string') {
+      validatedData.tags = serializeTags(parseTags(validatedData.tags))
+    }
 
     const transaction = await transactionsModel.update(id, validatedData)
 

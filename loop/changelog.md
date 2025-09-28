@@ -405,3 +405,12 @@ CODEX
 - Added migration `0001_add_hash_to_transactions.sql`
 - Added runtime safeguard to add missing `hash` column
 - Wrote tests for hash util and model lookup by hash
+
+------------------------------
+
+## 2025-09-28 - Transactions Tags Normalization
+- Normalized tags input in POST /api/transactions (lowercase, trim, hyphenate, dedupe).
+- Normalized tags input in PUT /api/transactions/[id] updates consistently.
+- Added unit tests for tag normalization in create and update routes.
+- All unit tests pass (607 tests).
+

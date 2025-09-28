@@ -96,6 +96,14 @@ Both Categories and Transactions APIs have:
 
 ------------------------------
 
+------------------------------
+
+## 2025-09-28 - CSV Import API Preview Tests
+
+- Added unit tests for `PUT /api/import/csv` preview (headers, mapping, suggestions)
+- Added validation tests for `POST /api/import/csv` (no file, invalid sourceId)
+- Mocked models per CLAUDE.md conventions; all tests passing locally
+
 ## 2025-09-27 - Rules and ImportLog Integration
 
 ### Changes Made
@@ -509,3 +517,12 @@ CODEX
 - Added unit tests for `POST /api/rules/test` (success, validation, errors)
 - Added unit tests for `PUT /api/rules/unit/priorities` (happy path, validation, errors)
 - Added unit tests for `PUT /api/rules/category/priorities` (happy path, validation, errors)
+
+
+------------------------------
+
+## 2025-09-28 - CSV Import API Preview Tests
+
+- Added unit tests for `PUT /api/import/csv` preview (headers, mapping, suggestions)
+- Added validation tests for `POST /api/import/csv` (no file, invalid sourceId)
+- Mocked models per CLAUDE.md conventions; all tests passing locally

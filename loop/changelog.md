@@ -394,3 +394,14 @@ CODEX
 - Added unit tests for `GET /api/import-log/stats`
 - Added unit tests for `GET /api/dashboard/metrics`
 - All new tests pass; no production code changes
+
+------------------------------
+
+## 2025-09-28 - Transaction Hashing
+
+- Added shared `lib/hash.ts` to generate stable transaction hashes
+- Refactored CSV parser to use shared hash utility
+- Auto-generate `transactions.hash` on creation in model
+- Added migration `0001_add_hash_to_transactions.sql`
+- Added runtime safeguard to add missing `hash` column
+- Wrote tests for hash util and model lookup by hash

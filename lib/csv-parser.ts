@@ -1,5 +1,5 @@
 import { Transaction } from '@/types/transactions'
-import crypto from 'crypto'
+import { transactionHash } from '@/lib/hash'
 
 export interface CSVColumn {
   index: number
@@ -269,8 +269,7 @@ export class CSVParser {
    * Generate hash for duplicate detection
    */
   private generateHash(sourceId: number, date: string, description: string, amount: number): string {
-    const data = `${sourceId}|${date}|${description}|${amount.toFixed(2)}`
-    return crypto.createHash('sha256').update(data).digest('hex').substring(0, 16)
+    return transactionHash(sourceId, date, description, amount)
   }
 
   /**

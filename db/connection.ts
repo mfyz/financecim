@@ -36,6 +36,15 @@ export function getDatabase() {
     } catch (error) {
       console.log('ℹ️  No migrations found or migrations already applied')
     }
+
+    // Ensure critical columns exist even if older DB/journal is present
+    // This is a safe, idempotent addition guarded by try/catch.
+    try {
+      sqlite.prepare('ALTER TABLE `transactions` ADD COLUMN `hash` text').run()
+      console.log('🔁 Added missing transactions.hash column')
+    } catch {
+      // Ignore if column already exists
+    }
   }
   
   return db

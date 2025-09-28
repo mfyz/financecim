@@ -1,6 +1,7 @@
 import { eq, and, or, like, desc, asc, sql, count, sum, gte, lte, ne, isNull, isNotNull } from 'drizzle-orm'
 import { getDatabase } from '../connection'
 import { transactions, units, sources, categories, type Transaction, type NewTransaction } from '../schema'
+import { transactionHash } from '@/lib/hash'
 
 export interface TransactionWithRelations extends Transaction {
   unit?: { id: number; name: string; color: string } | null
@@ -278,7 +279,12 @@ export const transactionsModel = {
    */
   async create(data: NewTransaction): Promise<Transaction> {
     const db = getDatabase()
-    const result = await db.insert(transactions).values(data).returning()
+    // Auto-generate hash if missing and enough data is present
+    let values: NewTransaction = { ...data }
+    if (!values.hash && values.sourceId && values.date && values.description && typeof values.amount === 'number') {
+      values.hash = transactionHash(values.sourceId, values.date, values.description, values.amount)
+    }
+    const result = await db.insert(transactions).values(values).returning()
     return result[0]
   },
 

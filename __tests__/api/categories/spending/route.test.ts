@@ -31,6 +31,15 @@ describe('/api/categories/spending', () => {
     { id: 4, name: 'Utilities', color: '#ef4444', parentCategoryId: null, monthlyBudget: null }
   ]
 
+  const mockCategoriesWithChildren = [
+    { id: 1, name: 'Food', color: '#10b981', parentCategoryId: null, monthlyBudget: 600 },
+    { id: 2, name: 'Groceries', color: '#10b981', parentCategoryId: 1, monthlyBudget: null },
+    { id: 3, name: 'Restaurants', color: '#10b981', parentCategoryId: 1, monthlyBudget: null },
+    { id: 4, name: 'Transportation', color: '#3b82f6', parentCategoryId: null, monthlyBudget: 300 },
+    { id: 5, name: 'Gas', color: '#3b82f6', parentCategoryId: 4, monthlyBudget: null },
+    { id: 6, name: 'Parking', color: '#3b82f6', parentCategoryId: 4, monthlyBudget: null }
+  ]
+
   const mockTransactions = {
     data: [
       {
@@ -238,6 +247,56 @@ describe('/api/categories/spending', () => {
       expect(data.period.dateTo).toBe('2025-09-30')
     })
 
+    it('should handle last_3_months period', async () => {
+      mockCategoriesModel.getAllFlat.mockResolvedValue(mockCategories)
+      mockTransactionsModel.getAll.mockResolvedValue({ data: [], total: 0 })
+      mockTransactionsModel.getStats.mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: 0,
+        totalTransactions: 0,
+        averageAmount: 0,
+        largestIncome: 0,
+        largestExpense: 0,
+        categorizedCount: 0,
+        uncategorizedCount: 0,
+        ignoredCount: 0
+      })
+
+      const request = new NextRequest('http://localhost/api/categories/spending?period=last_3_months')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.period.type).toBe('last_3_months')
+      expect(data.period.dateFrom).toBe('2025-07-01')
+      expect(data.period.dateTo).toBe('2025-09-30')
+    })
+
+    it('should handle last_6_months period', async () => {
+      mockCategoriesModel.getAllFlat.mockResolvedValue(mockCategories)
+      mockTransactionsModel.getAll.mockResolvedValue({ data: [], total: 0 })
+      mockTransactionsModel.getStats.mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: 0,
+        totalTransactions: 0,
+        averageAmount: 0,
+        largestIncome: 0,
+        largestExpense: 0,
+        categorizedCount: 0,
+        uncategorizedCount: 0,
+        ignoredCount: 0
+      })
+
+      const request = new NextRequest('http://localhost/api/categories/spending?period=last_6_months')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.period.type).toBe('last_6_months')
+      expect(data.period.dateFrom).toBe('2025-04-01')
+      expect(data.period.dateTo).toBe('2025-09-30')
+    })
+
     it('should handle custom period with dates', async () => {
       mockCategoriesModel.getAllFlat.mockResolvedValue(mockCategories)
       mockTransactionsModel.getAll.mockResolvedValue({ data: [], total: 0 })
@@ -383,6 +442,114 @@ describe('/api/categories/spending', () => {
 
       expect(response.status).toBe(200)
       expect(data.summary.savingsRate).toBe(0)
+    })
+  })
+
+  describe('GET - Parent-Child Category Relationships', () => {
+    it('should aggregate child category spending to parent categories', async () => {
+      const mockTransactionsWithChildren = {
+        data: [
+          { id: 1, description: 'Grocery Store', amount: -150, categoryId: 2, date: '2025-09-15' },
+          { id: 2, description: 'Restaurant', amount: -75, categoryId: 3, date: '2025-09-16' },
+          { id: 3, description: 'Gas Station', amount: -60, categoryId: 5, date: '2025-09-17' },
+          { id: 4, description: 'Parking Garage', amount: -20, categoryId: 6, date: '2025-09-18' },
+          { id: 5, description: 'Salary', amount: 4000, categoryId: null, date: '2025-09-01' }
+        ],
+        total: 5
+      }
+
+      mockCategoriesModel.getAllFlat.mockResolvedValue(mockCategoriesWithChildren)
+      mockTransactionsModel.getAll.mockResolvedValue(mockTransactionsWithChildren)
+      mockTransactionsModel.getStats.mockResolvedValue({
+        totalIncome: 4000,
+        totalExpenses: -305,
+        totalTransactions: 5,
+        averageAmount: 739,
+        largestIncome: 4000,
+        largestExpense: -150,
+        categorizedCount: 4,
+        uncategorizedCount: 1,
+        ignoredCount: 0
+      })
+
+      const request = new NextRequest('http://localhost/api/categories/spending')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+
+      // Find the aggregated parent categories
+      const foodCategory = data.categories.find((c: any) => c.categoryId === 1)
+      const transportationCategory = data.categories.find((c: any) => c.categoryId === 4)
+
+      // Food parent should aggregate Groceries + Restaurants
+      expect(foodCategory).toBeDefined()
+      expect(foodCategory.categoryName).toBe('Food')
+      expect(foodCategory.totalSpent).toBe(225) // 150 + 75
+      expect(foodCategory.transactionCount).toBe(2)
+      expect(foodCategory.monthlyBudget).toBe(600)
+      if (foodCategory.budgetUtilization !== null) {
+        expect(foodCategory.budgetUtilization).toBeCloseTo(37.5, 1) // 225/600 * 100
+      }
+
+      // Transportation parent should aggregate Gas + Parking
+      expect(transportationCategory).toBeDefined()
+      expect(transportationCategory.categoryName).toBe('Transportation')
+      expect(transportationCategory.totalSpent).toBe(80) // 60 + 20
+      expect(transportationCategory.transactionCount).toBe(2)
+      expect(transportationCategory.monthlyBudget).toBe(300)
+      if (transportationCategory.budgetUtilization !== null) {
+        expect(transportationCategory.budgetUtilization).toBeCloseTo(26.67, 1) // 80/300 * 100
+      }
+
+      // Child categories should also be present in the output
+      const groceriesCategory = data.categories.find((c: any) => c.categoryId === 2)
+      if (groceriesCategory) {
+        expect(groceriesCategory.totalSpent).toBe(150)
+        expect(groceriesCategory.parentCategoryId).toBe(1)
+      }
+    })
+
+    it('should handle child categories without parent budget correctly', async () => {
+      const categoriesWithoutParentBudget = [
+        { id: 1, name: 'Food', color: '#10b981', parentCategoryId: null, monthlyBudget: null },
+        { id: 2, name: 'Groceries', color: '#10b981', parentCategoryId: 1, monthlyBudget: 400 },
+        { id: 3, name: 'Restaurants', color: '#10b981', parentCategoryId: 1, monthlyBudget: 200 }
+      ]
+
+      const mockTransactionsWithChildren = {
+        data: [
+          { id: 1, description: 'Grocery Store', amount: -150, categoryId: 2, date: '2025-09-15' },
+          { id: 2, description: 'Restaurant', amount: -75, categoryId: 3, date: '2025-09-16' }
+        ],
+        total: 2
+      }
+
+      mockCategoriesModel.getAllFlat.mockResolvedValue(categoriesWithoutParentBudget)
+      mockTransactionsModel.getAll.mockResolvedValue(mockTransactionsWithChildren)
+      mockTransactionsModel.getStats.mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: -225,
+        totalTransactions: 2,
+        averageAmount: -112.5,
+        largestIncome: 0,
+        largestExpense: -150,
+        categorizedCount: 2,
+        uncategorizedCount: 0,
+        ignoredCount: 0
+      })
+
+      const request = new NextRequest('http://localhost/api/categories/spending')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+
+      const foodCategory = data.categories.find((c: any) => c.categoryId === 1)
+      expect(foodCategory).toBeDefined()
+      expect(foodCategory.totalSpent).toBe(225)
+      expect(foodCategory.monthlyBudget).toBe(null)
+      expect(foodCategory.budgetUtilization).toBe(null)
     })
   })
 

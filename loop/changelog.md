@@ -336,4 +336,25 @@ Phase 2.2 Real Database Integration progress:
 - ✅ Previously tested UI components remain fully covered
 
 ------------------------------
+------------------------------
+------------------------------
+------------------------------
+------------------------------
+------------------------------
+------------------------------
+------------------------------
+
+CODEX
+
+------------------------------
+------------------------------
+------------------------------
+
+
+------------------------------
+
+## 2025-09-28 - Tags Utils Fix + Tests
+- Fixed duplicate `suggestTags` implementation in `lib/tags.ts` (single, limit-aware version)
+- Added unit test for `suggestTags` limit and ordering in `__tests__/lib/tags.test.ts`
+- Verified tags utilities behavior with Jest
 

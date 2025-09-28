@@ -3,7 +3,7 @@
 set -eu
 
 # Variables
-ITERATION_COUNT=2
+ITERATION_COUNT=10
 PROMPT_FILE="${1:-loop/prompt.md}"
 
 # Trap for both interrupt and normal exit
@@ -11,7 +11,7 @@ trap 'printf "\n[Interrupted]\n" >&2; exit 130' INT
 
 run_once() {
   # Run claude and tee output to log file and pipe to jq
-  cat "$PROMPT_FILE" \
+  cat "$PROMPT_FILE" "loop/base-prompt.md" \
   | codex e \
     --skip-git-repo-check \
     --dangerously-bypass-approvals-and-sandbox

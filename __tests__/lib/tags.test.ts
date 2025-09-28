@@ -32,5 +32,23 @@ describe('tags utils', () => {
     expect(suggestTags('tr', all)).toEqual(['training', 'travel'])
     expect(suggestTags('  WORK', all)).toEqual(['work'])
   })
-})
 
+  test('suggestTags handles empty or no-match inputs', () => {
+    const all = ['alpha', 'beta']
+    expect(suggestTags('', all)).toEqual([])
+    expect(suggestTags('zzz', all)).toEqual([])
+  })
+
+  test('suggestTags respects limit and ordering', () => {
+    const all = ['travel', 'training', 'transport', 'transit', 'transfer', 'trap', 'trace', 'trance', 'trader', 'trail', 'tractor', 'trawl']
+    const suggestions = suggestTags('tr', all, 5)
+    expect(suggestions.length).toBe(5)
+    // All suggestions start with prefix
+    expect(suggestions.every((s) => s.startsWith('tr'))).toBe(true)
+    // Sorted alphabetically
+    const sorted = [...suggestions].sort()
+    expect(suggestions).toEqual(sorted)
+    // Limiting to 0 returns empty
+    expect(suggestTags('tr', all, 0)).toEqual([])
+  })
+})

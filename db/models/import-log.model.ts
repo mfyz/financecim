@@ -15,6 +15,32 @@ export const importLogModel = {
     }
   },
 
+  /**
+   * Convenience logger to accept snake_case keys from legacy callers
+   */
+  async logImport(data: {
+    source_id: number
+    file_name?: string
+    transactions_added: number
+    transactions_skipped?: number
+    transactions_updated?: number
+    status: 'success' | 'partial' | 'failed'
+    error_message?: string
+    metadata?: any
+  }) {
+    const mapped: NewImportLog = {
+      sourceId: data.source_id,
+      fileName: data.file_name,
+      transactionsAdded: data.transactions_added ?? 0,
+      transactionsSkipped: data.transactions_skipped ?? 0,
+      transactionsUpdated: data.transactions_updated ?? 0,
+      status: data.status,
+      errorMessage: data.error_message,
+      metadata: data.metadata,
+    }
+    return this.create(mapped)
+  },
+
   async getById(id: number) {
     try {
       const [log] = await db.select().from(importLog).where(eq(importLog.id, id)).limit(1)

@@ -5,6 +5,14 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Import Rules + Logging
+
+- Added `rulesModel.applyUnitRules` and `applyCategoryRules` wrappers used by CSV import
+- Implemented `importLogModel.logImport` to map snake_case payloads and persist logs
+- Wrote unit tests: `rules.model.test.ts` and `import-log.model.test.ts`
+- Verified CSV import API tests pass, including rule application preview
+
+
 ------------------------------
 
 ## 2025-09-28 - Validation Utilities + Tests
@@ -386,4 +394,3 @@ CODEX
 - Added unit tests for `GET /api/import-log/stats`
 - Added unit tests for `GET /api/dashboard/metrics`
 - All new tests pass; no production code changes
-

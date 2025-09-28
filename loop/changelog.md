@@ -446,4 +446,13 @@ CODEX
 - Fixed date normalization: preserve `YYYY-MM-DD` strings to avoid timezone shifts (no parsing)
 - Adjusted update mapping to keep string dates as-is; avoided local TZ drift
 - Added unit test to ensure string date preservation in normalization
-- All unit tests pass locally
+ - All unit tests pass locally
+
+------------------------------
+
+## 2025-09-28 - Units & Sources Stats APIs
+
+- Added GET `/api/units/stats` returning `{ active, inactive }`
+- Added GET `/api/sources/stats` returning counts by type
+- Wrote unit tests for both endpoints (success and error cases)
+- All tests pass

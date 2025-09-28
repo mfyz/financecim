@@ -595,3 +595,32 @@ CLAUDE
 - All 638 unit tests passing successfully
 - Test coverage includes all API endpoints mentioned in recent commits
 
+
+------------------------------
+
+## 2025-09-28 - Advanced Analytics API Endpoints
+
+- Implemented spending trends API endpoint (`GET /api/transactions/trends`)
+  - Supports monthly and yearly trend analysis
+  - Calculates income, expenses, net, and transaction counts over time
+  - Includes summary statistics with best/worst periods
+  - Filters by unit and category for focused analysis
+  - Fixed timezone issues with proper date string parsing
+
+- Implemented category spending analysis API (`GET /api/categories/spending`)
+  - Analyzes spending patterns across categories
+  - Supports multiple time periods (current month, last month, 3/6 months, YTD, custom)
+  - Calculates budget utilization and identifies over-budget categories
+  - Provides savings rate calculation
+  - Aggregates parent-child category relationships
+  - Fixed budget calculation to handle month boundaries correctly
+
+- Created comprehensive unit tests for both endpoints
+  - 26 test cases for spending trends and category analysis
+  - Tests cover various time periods, filters, and edge cases
+  - All 303 API tests passing (39 test suites)
+
+- Enhanced reporting capabilities for Phase 2 Dashboard & Reporting requirements
+  - Monthly/yearly comparisons fully implemented
+  - Category spending breakdown with budget tracking
+  - Spending trends visualization data ready for frontend

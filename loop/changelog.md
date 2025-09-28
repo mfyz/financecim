@@ -566,3 +566,13 @@ CLAUDE
 ------------------------------
 ------------------------------
 
+------------------------------
+
+## 2025-09-28 - Comprehensive API Test Coverage Verification
+
+- Verified unit tests for rule toggle endpoints already exist and are comprehensive
+- Both `/api/rules/unit/[id]/toggle` and `/api/rules/category/[id]/toggle` have full test coverage
+- Tests cover success cases, validation errors, 404 errors, and database failures
+- All 638 unit tests passing successfully
+- Test coverage includes all API endpoints mentioned in recent commits
+

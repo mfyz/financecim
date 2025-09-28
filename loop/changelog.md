@@ -5,6 +5,15 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - Import API Refactor + Tests
+
+- Refactored `POST /api/transactions/import` to use `transactionsModel` and proper schema
+- Added hash-based duplicate check via `transactionsModel.getByHash`
+- Removed direct DB snake_case assumptions in import logic
+- Rewrote unit tests to mock model and cover import/skip/error paths
+- Verified all unit tests pass (608/608)
+
+
 ## 2025-09-28 - Units Toggle API Tests
 
 - Added unit tests for `POST /api/units/[id]/toggle` covering success, invalid ID, not found, and unexpected errors

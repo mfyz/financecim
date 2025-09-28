@@ -5,10 +5,10 @@ set -eu
 # Clean interrupt
 trap 'printf "\n[Interrupted]\n" >&2; exit 130' INT
 
-PROMPT_FILE="${1:-plans/prompt.md}"
+PROMPT_FILE="${1:-loop/prompt.md}"
 
 # Setup log file
-LOG_FILE="plans/loop.log"
+LOG_FILE="loop/loop.log"
 # Empty the log file if it exists
 echo -n > "$LOG_FILE"
 
@@ -56,6 +56,11 @@ while [ "$i" -le 2 ]; do
   echo "{\"type\":\"loop_start_marker\", \"message\":\"==================== New Claude Run $i - $(date) ====================\"}" >> "$LOG_FILE"
 
   run_once
+
+  # commit and push changes
+  # git add .
+  # git commit -m "Loop iteration $i: $(claude --model haiku -p 'summarize the git changes and create one line git commit message, just give me the commit message line, dont prepend or add explanation, just give me the message as your response')"
+  # git push
 
   i=$((i+1))
 done

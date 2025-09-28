@@ -350,8 +350,10 @@ export default function ImportStep3Page() {
         bValue = bValue.toLowerCase()
       }
 
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      if (aValue !== null && bValue !== null) {
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      }
       return 0
     })
 
@@ -688,7 +690,7 @@ export default function ImportStep3Page() {
               </h3>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Are you sure you want to import {stats.clean} transactions? This action cannot be undone.
+              Are you sure you want to import {stats.cleanTransactions} transactions? This action cannot be undone.
             </p>
             <div className="flex space-x-3">
               <button
@@ -718,7 +720,7 @@ export default function ImportStep3Page() {
                 Importing Transactions
               </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {importedCount} of {stats.clean} transactions imported
+                {importedCount} of {stats.cleanTransactions} transactions imported
               </p>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div

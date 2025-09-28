@@ -1,4 +1,4 @@
-import { Transaction } from '@/types/transactions'
+import { type Transaction } from '@/db/schema'
 import { transactionHash } from '@/lib/hash'
 
 export interface CSVColumn {

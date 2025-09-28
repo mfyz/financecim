@@ -5,6 +5,17 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-28 - TypeScript Fixes and Test Verification
+
+- Fixed missing Transaction type import in csv-parser.ts by importing from db/schema
+- Fixed null check issues in import step3 page sorting logic
+- Corrected stats property references from `stats.clean` to `stats.cleanTransactions`
+- Added missing hash field to transaction query selects and transformations in transactions model
+- Verified all 730 unit tests still passing after fixes
+- Maintained comprehensive test coverage across all API endpoints and components
+
+------------------------------
+
 ## 2025-09-28 - Comprehensive API Test Coverage Verification
 
 - Verified all API endpoints have comprehensive unit test coverage

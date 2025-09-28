@@ -236,6 +236,7 @@ export const transactionsModel = {
         ignore: transactions.ignore,
         notes: transactions.notes,
         tags: transactions.tags,
+        hash: transactions.hash,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -275,6 +276,7 @@ export const transactionsModel = {
       ignore: row.ignore,
       notes: row.notes,
       tags: row.tags,
+      hash: row.hash,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {
@@ -317,6 +319,7 @@ export const transactionsModel = {
         ignore: transactions.ignore,
         notes: transactions.notes,
         tags: transactions.tags,
+        hash: transactions.hash,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -350,6 +353,7 @@ export const transactionsModel = {
       ignore: row.ignore,
       notes: row.notes,
       tags: row.tags,
+      hash: row.hash,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {

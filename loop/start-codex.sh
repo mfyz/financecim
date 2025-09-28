@@ -3,7 +3,7 @@
 set -eu
 
 # Variables
-ITERATION_COUNT=10
+ITERATION_COUNT=50
 PROMPT_FILE="${1:-loop/prompt.md}"
 
 # Trap for both interrupt and normal exit

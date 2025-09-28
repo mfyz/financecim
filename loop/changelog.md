@@ -414,3 +414,17 @@ CODEX
 - Added unit tests for tag normalization in create and update routes.
 - All unit tests pass (607 tests).
 
+------------------------------
+------------------------------
+------------------------------
+------------------------------
+
+------------------------------
+
+## 2025-09-28 - Transactions Model CRUD + Normalization
+
+- Added , , ,  with snake_case/camelCase mapping, date ISO normalization, and hash auto-generation.
+- Updated model to avoid SQLite binding issues and rely on DB defaults for timestamps.
+- Added unit test  covering normalization behavior and hash.
+- Verified CSV import flow uses /; all tests passing (608).
+

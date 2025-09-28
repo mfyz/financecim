@@ -31,6 +31,137 @@ export interface BulkUpdateData {
 
 export const transactionsModel = {
   /**
+   * Normalize incoming payload supporting both camelCase and snake_case keys
+   * Also normalizes date (YYYY-MM-DD) and computes hash when absent
+   */
+  normalizePayload(input: any): NewTransaction {
+    // Accept both snake_case and camelCase
+    const sourceId = input.sourceId ?? input.source_id
+    const unitId = input.unitId ?? input.unit_id ?? undefined
+    const categoryId = input.categoryId ?? input.category_id ?? undefined
+    const sourceCategory = input.sourceCategory ?? input.source_category ?? undefined
+    const ignore = input.ignore ?? false
+    const notes = input.notes ?? undefined
+    const tags = input.tags ?? undefined
+
+    // Normalize date to YYYY-MM-DD string
+    let date: string
+    if (input.date instanceof Date) {
+      date = input.date.toISOString().split('T')[0]
+    } else if (typeof input.date === 'string') {
+      // Assume already in ISO or parsable
+      const d = new Date(input.date)
+      if (!isNaN(d.getTime())) {
+        date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      } else {
+        // Fallback: use as-is
+        date = input.date
+      }
+    } else {
+      throw new Error('Invalid date')
+    }
+
+    const description = input.description
+    const amount = input.amount
+
+    // Compute hash if not provided
+    const hash: string | undefined = input.hash
+      ? String(input.hash)
+      : (typeof sourceId === 'number' && typeof description === 'string' && typeof amount === 'number'
+          ? transactionHash(sourceId, date, description, amount)
+          : undefined)
+
+    const payload: NewTransaction = {
+      sourceId,
+      unitId: unitId ?? null as any,
+      date,
+      description,
+      amount,
+      sourceCategory: (sourceCategory ?? null) as any,
+      categoryId: (categoryId ?? null) as any,
+      ignore,
+      notes: (notes ?? null) as any,
+      tags: (tags ?? null) as any,
+      hash: (hash ?? null) as any,
+    } as NewTransaction
+    // No createdAt/updatedAt here; let DB defaults apply
+
+    return payload
+  },
+
+  /** Create a new transaction */
+  async create(data: any) {
+    const db = getDatabase()
+    const values = this.normalizePayload(data)
+    // Debug: ensure no unsupported types slip through
+    console.log('transactions.create values', values)
+    const [created] = await db.insert(transactions).values(values).returning()
+    return created
+  },
+
+  /** Get a transaction by its duplicate-detection hash */
+  async getByHash(hash: string) {
+    const db = getDatabase()
+    const [row] = await db.select().from(transactions).where(eq(transactions.hash, hash)).limit(1)
+    return row || null
+  },
+
+  /** Update a transaction by ID */
+  async update(id: number, data: Partial<NewTransaction>) {
+    const db = getDatabase()
+    // Ensure exists
+    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, id)).limit(1)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    // Map potential snake_case keys and normalize date
+    const mapped: Partial<NewTransaction> = {}
+    if (data.hasOwnProperty('sourceId') || (data as any).source_id !== undefined) {
+      mapped.sourceId = (data as any).sourceId ?? (data as any).source_id
+    }
+    if (data.hasOwnProperty('unitId') || (data as any).unit_id !== undefined) {
+      mapped.unitId = (data as any).unitId ?? (data as any).unit_id
+    }
+    if (data.hasOwnProperty('categoryId') || (data as any).category_id !== undefined) {
+      mapped.categoryId = (data as any).categoryId ?? (data as any).category_id
+    }
+    if (data.hasOwnProperty('sourceCategory') || (data as any).source_category !== undefined) {
+      mapped.sourceCategory = (data as any).sourceCategory ?? (data as any).source_category
+    }
+    if (data.hasOwnProperty('ignore')) mapped.ignore = data.ignore as any
+    if (data.hasOwnProperty('notes')) mapped.notes = data.notes as any
+    if (data.hasOwnProperty('tags')) mapped.tags = data.tags as any
+    if (data.hasOwnProperty('description')) mapped.description = data.description as any
+    if (data.hasOwnProperty('amount')) mapped.amount = data.amount as any
+    if ((data as any).date !== undefined) {
+      const d = (data as any).date
+      if (d instanceof Date) {
+        mapped.date = d.toISOString().split('T')[0]
+      } else if (typeof d === 'string') {
+        const dd = new Date(d)
+        mapped.date = !isNaN(dd.getTime())
+          ? `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`
+          : d
+      }
+    }
+
+    mapped.updatedAt = new Date().toISOString()
+
+    const [updated] = await db.update(transactions).set(mapped).where(eq(transactions.id, id)).returning()
+    return updated
+  },
+
+  /** Delete a transaction by ID */
+  async delete(id: number) {
+    const db = getDatabase()
+    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, id)).limit(1)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+    await db.delete(transactions).where(eq(transactions.id, id))
+  },
+  /**
    * Get all transactions with pagination and filters
    */
   async getAll(

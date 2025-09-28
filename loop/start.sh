@@ -2,7 +2,10 @@
 
 set -eu
 
-# Variables for cleanup
+# Variables
+ITERATION_COUNT=50
+PROMPT_FILE="${1:-loop/prompt.md}"
+LOG_FILE="loop/loop.log"
 VIEWER_PID=""
 
 # Clean interrupt and cleanup function
@@ -18,10 +21,6 @@ cleanup() {
 trap 'cleanup; printf "\n[Interrupted]\n" >&2; exit 130' INT
 trap 'cleanup' EXIT
 
-PROMPT_FILE="${1:-loop/prompt.md}"
-
-# Setup log file
-LOG_FILE="loop/loop.log"
 # Empty the log file if it exists
 echo -n > "$LOG_FILE"
 
@@ -70,7 +69,7 @@ run_once() {
 }
 
 i=1
-while [ "$i" -le 2 ]; do
+while [ "$i" -le $ITERATION_COUNT ]; do
   printf '\n\n'
   printf '%0.s▄' $(seq 1 80)
   printf '\n\n\n\n'

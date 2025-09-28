@@ -428,3 +428,15 @@ CODEX
 - Added unit test  covering normalization behavior and hash.
 - Verified CSV import flow uses /; all tests passing (608).
 
+
+------------------------------
+
+## 2025-09-28 - Transactions Model Cleanup
+
+- Refactored `db/models/transactions.model.ts` to remove duplicate methods and unify logic
+- Centralized create via `normalizePayload`; single `getByHash`/`update`/`delete` implementations
+- Fixed date normalization: preserve `YYYY-MM-DD` strings to avoid timezone shifts (no parsing)
+- Adjusted update mapping to keep string dates as-is; avoided local TZ drift
+- Added unit test to ensure string date preservation in normalization
+- All unit tests pass locally
+

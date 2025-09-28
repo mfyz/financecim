@@ -35,7 +35,6 @@ export const transactionsModel = {
    * Also normalizes date (YYYY-MM-DD) and computes hash when absent
    */
   normalizePayload(input: any): NewTransaction {
-    // Accept both snake_case and camelCase
     const sourceId = input.sourceId ?? input.source_id
     const unitId = input.unitId ?? input.unit_id ?? undefined
     const categoryId = input.categoryId ?? input.category_id ?? undefined
@@ -49,14 +48,8 @@ export const transactionsModel = {
     if (input.date instanceof Date) {
       date = input.date.toISOString().split('T')[0]
     } else if (typeof input.date === 'string') {
-      // Assume already in ISO or parsable
-      const d = new Date(input.date)
-      if (!isNaN(d.getTime())) {
-        date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      } else {
-        // Fallback: use as-is
-        date = input.date
-      }
+      // Keep string dates as-is to avoid timezone shifts
+      date = input.date
     } else {
       throw new Error('Invalid date')
     }
@@ -73,7 +66,7 @@ export const transactionsModel = {
 
     const payload: NewTransaction = {
       sourceId,
-      unitId: unitId ?? null as any,
+      unitId: (unitId ?? null) as any,
       date,
       description,
       amount,
@@ -84,30 +77,27 @@ export const transactionsModel = {
       tags: (tags ?? null) as any,
       hash: (hash ?? null) as any,
     } as NewTransaction
-    // No createdAt/updatedAt here; let DB defaults apply
 
     return payload
   },
 
-  /** Create a new transaction */
-  async create(data: any) {
+  /** Create a new transaction (uses normalizePayload) */
+  async create(data: any): Promise<Transaction> {
     const db = getDatabase()
     const values = this.normalizePayload(data)
-    // Debug: ensure no unsupported types slip through
-    console.log('transactions.create values', values)
     const [created] = await db.insert(transactions).values(values).returning()
     return created
   },
 
   /** Get a transaction by its duplicate-detection hash */
-  async getByHash(hash: string) {
+  async getByHash(hash: string): Promise<Transaction | null> {
     const db = getDatabase()
     const [row] = await db.select().from(transactions).where(eq(transactions.hash, hash)).limit(1)
     return row || null
   },
 
-  /** Update a transaction by ID */
-  async update(id: number, data: Partial<NewTransaction>) {
+  /** Update a transaction by ID (maps snake_case and normalizes date) */
+  async update(id: number, data: Partial<NewTransaction>): Promise<Transaction> {
     const db = getDatabase()
     // Ensure exists
     const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, id)).limit(1)
@@ -115,34 +105,31 @@ export const transactionsModel = {
       throw new Error('Transaction not found')
     }
 
-    // Map potential snake_case keys and normalize date
     const mapped: Partial<NewTransaction> = {}
-    if (data.hasOwnProperty('sourceId') || (data as any).source_id !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceId') || (data as any).source_id !== undefined) {
       mapped.sourceId = (data as any).sourceId ?? (data as any).source_id
     }
-    if (data.hasOwnProperty('unitId') || (data as any).unit_id !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(data, 'unitId') || (data as any).unit_id !== undefined) {
       mapped.unitId = (data as any).unitId ?? (data as any).unit_id
     }
-    if (data.hasOwnProperty('categoryId') || (data as any).category_id !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(data, 'categoryId') || (data as any).category_id !== undefined) {
       mapped.categoryId = (data as any).categoryId ?? (data as any).category_id
     }
-    if (data.hasOwnProperty('sourceCategory') || (data as any).source_category !== undefined) {
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceCategory') || (data as any).source_category !== undefined) {
       mapped.sourceCategory = (data as any).sourceCategory ?? (data as any).source_category
     }
-    if (data.hasOwnProperty('ignore')) mapped.ignore = data.ignore as any
-    if (data.hasOwnProperty('notes')) mapped.notes = data.notes as any
-    if (data.hasOwnProperty('tags')) mapped.tags = data.tags as any
-    if (data.hasOwnProperty('description')) mapped.description = data.description as any
-    if (data.hasOwnProperty('amount')) mapped.amount = data.amount as any
+    if (Object.prototype.hasOwnProperty.call(data, 'ignore')) mapped.ignore = (data as any).ignore as any
+    if (Object.prototype.hasOwnProperty.call(data, 'notes')) mapped.notes = (data as any).notes as any
+    if (Object.prototype.hasOwnProperty.call(data, 'tags')) mapped.tags = (data as any).tags as any
+    if (Object.prototype.hasOwnProperty.call(data, 'description')) mapped.description = (data as any).description as any
+    if (Object.prototype.hasOwnProperty.call(data, 'amount')) mapped.amount = (data as any).amount as any
     if ((data as any).date !== undefined) {
       const d = (data as any).date
       if (d instanceof Date) {
         mapped.date = d.toISOString().split('T')[0]
       } else if (typeof d === 'string') {
-        const dd = new Date(d)
-        mapped.date = !isNaN(dd.getTime())
-          ? `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`
-          : d
+        // Keep provided YYYY-MM-DD strings as-is
+        mapped.date = d
       }
     }
 
@@ -152,15 +139,7 @@ export const transactionsModel = {
     return updated
   },
 
-  /** Delete a transaction by ID */
-  async delete(id: number) {
-    const db = getDatabase()
-    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, id)).limit(1)
-    if (!existing) {
-      throw new Error('Transaction not found')
-    }
-    await db.delete(transactions).where(eq(transactions.id, id))
-  },
+  
   /**
    * Get all transactions with pagination and filters
    */
@@ -391,54 +370,7 @@ export const transactionsModel = {
     }
   },
 
-  /**
-   * Get transaction by hash
-   */
-  async getByHash(hash: string): Promise<Transaction | null> {
-    const db = getDatabase()
-    const result = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.hash, hash))
-      .limit(1)
-
-    return result[0] || null
-  },
-
-  /**
-   * Create new transaction
-   */
-  async create(data: NewTransaction): Promise<Transaction> {
-    const db = getDatabase()
-    // Auto-generate hash if missing and enough data is present
-    let values: NewTransaction = { ...data }
-    if (!values.hash && values.sourceId && values.date && values.description && typeof values.amount === 'number') {
-      values.hash = transactionHash(values.sourceId, values.date, values.description, values.amount)
-    }
-    const result = await db.insert(transactions).values(values).returning()
-    return result[0]
-  },
-
-  /**
-   * Update existing transaction
-   */
-  async update(id: number, data: Partial<NewTransaction>): Promise<Transaction> {
-    const db = getDatabase()
-    
-    // Check if transaction exists
-    const existing = await this.getById(id)
-    if (!existing) {
-      throw new Error('Transaction not found')
-    }
-
-    const result = await db
-      .update(transactions)
-      .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(eq(transactions.id, id))
-      .returning()
-    
-    return result[0]
-  },
+  
 
   /**
    * Delete transaction by ID

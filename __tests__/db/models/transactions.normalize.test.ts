@@ -35,5 +35,18 @@ describe('transactionsModel.normalizePayload', () => {
     const expectedHash = transactionHash(42, '2024-07-08', 'TEST NORMALIZE', -9.99)
     expect(normalized.hash).toBe(expectedHash)
   })
-})
 
+  it('preserves YYYY-MM-DD strings without timezone shift', () => {
+    const input = {
+      sourceId: 5,
+      date: '2024-02-01',
+      description: 'TEST DATE STRING',
+      amount: -1.23,
+      ignore: false,
+    }
+
+    const normalized = (transactionsModel as any).normalizePayload(input)
+
+    expect(normalized.date).toBe('2024-02-01')
+  })
+})

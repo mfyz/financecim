@@ -5,6 +5,16 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+------------------------------
+
+## 2025-09-28 - Validation Utilities + Tests
+
+- Added `lib/validations.ts` with Zod schemas for `Transaction` and `Tag`
+- Implemented `validateTransaction()` helper that normalizes `Date` to ISO
+- Wrote unit tests `__tests__/lib/validations.test.ts` covering valid/invalid cases
+- No breaking changes; aligns with Technical Implementation Guide 6.4
+
+
 ## 2025-09-27 - Unit Test Fixes for API Endpoints
 
 ### Changes Made
@@ -366,4 +376,3 @@ CODEX
 - Added `GET /api/transactions/tags/suggest` endpoint for tag suggestions (prefix + limit)
 - Implemented suggestions using `lib/tags.suggestTags` and existing `transactionsModel.getAllTags`
 - Added unit tests for suggestions endpoint (prefix match, limits, error handling)
-

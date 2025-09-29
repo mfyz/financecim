@@ -5,6 +5,21 @@ This log tracks the development progress of the Financecim personal finance appl
 
 ------------------------------
 
+## 2025-09-29 - Rules Page Real API Integration
+
+- Replaced mock data with real API calls in Rules page (`app/rules/page.tsx`)
+- Added data fetching via useEffect to load units, categories, sources, and rules from API
+- Updated all CRUD operations (add, edit, delete, toggle) to use API endpoints
+- Fixed form field references to use `matchType` instead of `type` for consistency
+- Updated unit/category references to use IDs instead of names for proper database relations
+- Added loading state with spinner while fetching data
+- Fixed move up/down functions to update priorities via API
+- Updated test rule function to use `/api/rules/test` endpoint
+- Fixed TypeScript errors related to field name changes and API data structures
+- All 730 unit tests still passing after changes
+
+------------------------------
+
 ## 2025-09-28 - TypeScript Fixes and Test Verification
 
 - Fixed missing Transaction type import in csv-parser.ts by importing from db/schema

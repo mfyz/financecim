@@ -1,93 +1,77 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Play, Pause, ChevronUp, ChevronDown, Building2, FileText, Tag } from 'lucide-react'
 import { Modal } from '@/components/ui'
 import { Form, FormField, FormSelect } from '@/components/forms'
+import { toast } from 'sonner'
+
+interface Unit {
+  id: number
+  name: string
+  color: string
+  icon?: string | null
+  active: boolean
+}
+
+interface Category {
+  id: number
+  name: string
+  parentCategoryId?: number | null
+  color: string
+  icon?: string | null
+}
 
 interface UnitRule {
   id: number
   ruleType: 'source' | 'description'
-  type?: 'contains' | 'starts_with' | 'regex'
+  matchType: 'contains' | 'starts_with' | 'exact' | 'regex'
   pattern: string
-  unit: string
+  unitId: number
   priority: number
   active: boolean
+  unit?: Unit
 }
 
 interface CategoryRule {
   id: number
   ruleType: 'source_category' | 'description'
-  type: 'exact' | 'contains' | 'starts_with' | 'regex'
+  matchType: 'exact' | 'contains' | 'starts_with' | 'regex'
   pattern: string
-  category: string
+  categoryId: number
   priority: number
   active: boolean
+  category?: Category
 }
 
 interface NewUnitRule {
   ruleType: 'source' | 'description'
-  type: 'contains' | 'starts_with' | 'regex'
+  matchType: 'contains' | 'starts_with' | 'exact' | 'regex'
   pattern: string
-  unit: string
+  unitId: number
 }
 
 interface NewCategoryRule {
   ruleType: 'source_category' | 'description'
-  type: 'exact' | 'contains' | 'starts_with' | 'regex'
+  matchType: 'exact' | 'contains' | 'starts_with' | 'regex'
   pattern: string
-  category: string
+  categoryId: number
 }
 
-// Mock data matching the prototype with "Test" prefix
-const unitOptions = [
-  { id: 1, name: 'Test Personal', color: '#6B7280' },
-  { id: 2, name: 'Test Main Business', color: '#3B82F6' },
-  { id: 3, name: 'Test Side Hustle', color: '#10B981' },
-  { id: 4, name: 'Test Real Estate', color: '#F59E0B' }
-]
+interface Source {
+  id: number
+  name: string
+  type: string
+}
 
-const sourceOptions = [
-  'Test Chase Bank',
-  'Test Capital One',
-  'Test Business Credit Card',
-  'Test Savings Account'
-]
-
-const initialUnitRules: UnitRule[] = [
-  { id: 1, ruleType: 'source', pattern: 'Test Chase Bank', unit: 'Test Main Business', priority: 1, active: true },
-  { id: 2, ruleType: 'source', pattern: 'Test Capital One', unit: 'Test Personal', priority: 2, active: true },
-  { id: 3, ruleType: 'description', type: 'contains', pattern: 'AMAZON WEB SERVICES', unit: 'Test Side Hustle', priority: 3, active: true },
-  { id: 4, ruleType: 'description', type: 'contains', pattern: 'HOME DEPOT', unit: 'Test Real Estate', priority: 4, active: true },
-  { id: 5, ruleType: 'description', type: 'starts_with', pattern: 'AWS', unit: 'Test Side Hustle', priority: 5, active: true },
-  { id: 6, ruleType: 'source', pattern: 'Test Business Credit Card', unit: 'Test Side Hustle', priority: 6, active: true }
-]
-
-const initialCategoryRules: CategoryRule[] = [
-  { id: 1, ruleType: 'description', type: 'contains', pattern: 'WALMART', category: 'Test Groceries', priority: 1, active: true },
-  { id: 2, ruleType: 'description', type: 'contains', pattern: 'TARGET', category: 'Test Shopping', priority: 2, active: true },
-  { id: 3, ruleType: 'description', type: 'starts_with', pattern: 'SHELL', category: 'Test Gas', priority: 3, active: true },
-  { id: 4, ruleType: 'source_category', type: 'exact', pattern: 'Groceries', category: 'Test Groceries', priority: 4, active: true },
-  { id: 5, ruleType: 'source_category', type: 'contains', pattern: 'Food', category: 'Test Restaurants', priority: 5, active: true },
-  { id: 6, ruleType: 'description', type: 'contains', pattern: 'STARBUCKS', category: 'Test Restaurants', priority: 6, active: true },
-  { id: 7, ruleType: 'description', type: 'regex', pattern: '^UBER.*EATS', category: 'Test Restaurants', priority: 7, active: false },
-  { id: 8, ruleType: 'description', type: 'contains', pattern: 'NETFLIX', category: 'Test Entertainment', priority: 8, active: true },
-  { id: 9, ruleType: 'source_category', type: 'exact', pattern: 'Bills & Utilities', category: 'Test Bills & Utilities', priority: 9, active: true }
-]
-
-const categoryOptions = [
-  'Test Groceries',
-  'Test Restaurants', 
-  'Test Gas',
-  'Test Shopping',
-  'Test Entertainment',
-  'Test Bills & Utilities',
-  'Test Transportation'
-]
 
 export default function RulesPage() {
-  const [unitRules, setUnitRules] = useState<UnitRule[]>(initialUnitRules)
-  const [categoryRules, setCategoryRules] = useState<CategoryRule[]>(initialCategoryRules)
+  const [unitRules, setUnitRules] = useState<UnitRule[]>([])
+  const [categoryRules, setCategoryRules] = useState<CategoryRule[]>([])
+  const [units, setUnits] = useState<Unit[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [sources, setSources] = useState<Source[]>([])
+  const [loading, setLoading] = useState(true)
   
   // Unit Rule Modals
   const [showAddUnitRuleModal, setShowAddUnitRuleModal] = useState(false)
@@ -95,9 +79,9 @@ export default function RulesPage() {
   const [editingUnitRule, setEditingUnitRule] = useState<UnitRule | null>(null)
   const [newUnitRule, setNewUnitRule] = useState<NewUnitRule>({
     ruleType: 'description',
-    type: 'contains',
+    matchType: 'contains',
     pattern: '',
-    unit: ''
+    unitId: 0
   })
 
   // Category Rule Modals
@@ -106,9 +90,9 @@ export default function RulesPage() {
   const [editingCategoryRule, setEditingCategoryRule] = useState<CategoryRule | null>(null)
   const [newCategoryRule, setNewCategoryRule] = useState<NewCategoryRule>({
     ruleType: 'description',
-    type: 'contains',
+    matchType: 'contains',
     pattern: '',
-    category: ''
+    categoryId: 0
   })
 
   // Test Modal
@@ -117,114 +101,265 @@ export default function RulesPage() {
   const [testResult, setTestResult] = useState<string | null>(null)
   const [currentTestRule, setCurrentTestRule] = useState<UnitRule | CategoryRule | null>(null)
 
+  // Load data on mount
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [unitsRes, categoriesRes, sourcesRes, unitRulesRes, categoryRulesRes] = await Promise.all([
+        fetch('/api/units'),
+        fetch('/api/categories'),
+        fetch('/api/sources'),
+        fetch('/api/rules/unit'),
+        fetch('/api/rules/category')
+      ])
+
+      const [unitsData, categoriesData, sourcesData, unitRulesData, categoryRulesData] = await Promise.all([
+        unitsRes.json(),
+        categoriesRes.json(),
+        sourcesRes.json(),
+        unitRulesRes.json(),
+        categoryRulesRes.json()
+      ])
+
+      setUnits(unitsData)
+      setCategories(categoriesData)
+      setSources(sourcesData)
+      setUnitRules(unitRulesData)
+      setCategoryRules(categoryRulesData)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      toast.error('Failed to load rules')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const resetNewUnitRule = () => {
     setNewUnitRule({
       ruleType: 'description',
-      type: 'contains',
+      matchType: 'contains',
       pattern: '',
-      unit: ''
+      unitId: 0
     })
   }
 
   const resetNewCategoryRule = () => {
     setNewCategoryRule({
       ruleType: 'description',
-      type: 'contains',
+      matchType: 'contains',
       pattern: '',
-      category: ''
+      categoryId: 0
     })
   }
 
-  const addUnitRule = () => {
-    if (newUnitRule.pattern.trim() && newUnitRule.unit) {
-      const newId = Math.max(...unitRules.map(r => r.id)) + 1
-      const newPriority = Math.max(...unitRules.map(r => r.priority)) + 1
-      
-      const rule: UnitRule = {
-        id: newId,
-        ruleType: newUnitRule.ruleType,
-        pattern: newUnitRule.pattern,
-        unit: newUnitRule.unit,
-        priority: newPriority,
-        active: true
+  const addUnitRule = async () => {
+    if (newUnitRule.pattern.trim() && newUnitRule.unitId > 0) {
+      try {
+        const newPriority = unitRules.length > 0 ? Math.max(...unitRules.map(r => r.priority)) + 1 : 1
+
+        const response = await fetch('/api/rules/unit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ruleType: newUnitRule.ruleType,
+            pattern: newUnitRule.pattern,
+            matchType: newUnitRule.matchType,
+            unitId: newUnitRule.unitId,
+            priority: newPriority,
+            active: true
+          })
+        })
+
+        if (!response.ok) throw new Error('Failed to create unit rule')
+
+        const createdRule = await response.json()
+        setUnitRules(prev => [...prev, createdRule])
+        setShowAddUnitRuleModal(false)
+        resetNewUnitRule()
+        toast.success('Unit rule created successfully')
+      } catch (error) {
+        console.error('Error creating unit rule:', error)
+        toast.error('Failed to create unit rule')
       }
-      
-      if (newUnitRule.ruleType === 'description') {
-        rule.type = newUnitRule.type
-      }
-      
-      setUnitRules(prev => [...prev, rule])
-      setShowAddUnitRuleModal(false)
-      resetNewUnitRule()
     }
   }
 
-  const editUnitRule = () => {
+  const editUnitRule = async () => {
     if (editingUnitRule) {
-      setUnitRules(prev => prev.map(r => 
-        r.id === editingUnitRule.id ? { ...editingUnitRule } : r
-      ))
-      setShowEditUnitRuleModal(false)
-      setEditingUnitRule(null)
-    }
-  }
+      try {
+        const response = await fetch(`/api/rules/unit/${editingUnitRule.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ruleType: editingUnitRule.ruleType,
+            pattern: editingUnitRule.pattern,
+            matchType: editingUnitRule.matchType,
+            unitId: editingUnitRule.unitId,
+            priority: editingUnitRule.priority,
+            active: editingUnitRule.active
+          })
+        })
 
-  const deleteUnitRule = (ruleId: number) => {
-    if (confirm('Are you sure you want to delete this unit rule?')) {
-      setUnitRules(prev => prev.filter(r => r.id !== ruleId))
-    }
-  }
+        if (!response.ok) throw new Error('Failed to update unit rule')
 
-  const toggleUnitRule = (ruleId: number) => {
-    setUnitRules(prev => prev.map(r => 
-      r.id === ruleId ? { ...r, active: !r.active } : r
-    ))
-  }
-
-  const addCategoryRule = () => {
-    if (newCategoryRule.pattern.trim() && newCategoryRule.category) {
-      const newId = Math.max(...categoryRules.map(r => r.id)) + 1
-      const newPriority = Math.max(...categoryRules.map(r => r.priority)) + 1
-      
-      const rule: CategoryRule = {
-        id: newId,
-        ruleType: newCategoryRule.ruleType,
-        type: newCategoryRule.type,
-        pattern: newCategoryRule.pattern,
-        category: newCategoryRule.category,
-        priority: newPriority,
-        active: true
+        const updatedRule = await response.json()
+        setUnitRules(prev => prev.map(r =>
+          r.id === editingUnitRule.id ? updatedRule : r
+        ))
+        setShowEditUnitRuleModal(false)
+        setEditingUnitRule(null)
+        toast.success('Unit rule updated successfully')
+      } catch (error) {
+        console.error('Error updating unit rule:', error)
+        toast.error('Failed to update unit rule')
       }
-      
-      setCategoryRules(prev => [...prev, rule])
-      setShowAddCategoryRuleModal(false)
-      resetNewCategoryRule()
     }
   }
 
-  const editCategoryRule = () => {
-    if (editingCategoryRule) {
-      setCategoryRules(prev => prev.map(r => 
-        r.id === editingCategoryRule.id ? { ...editingCategoryRule } : r
+  const deleteUnitRule = async (ruleId: number) => {
+    if (confirm('Are you sure you want to delete this unit rule?')) {
+      try {
+        const response = await fetch(`/api/rules/unit/${ruleId}`, {
+          method: 'DELETE'
+        })
+
+        if (!response.ok) throw new Error('Failed to delete unit rule')
+
+        setUnitRules(prev => prev.filter(r => r.id !== ruleId))
+        toast.success('Unit rule deleted successfully')
+      } catch (error) {
+        console.error('Error deleting unit rule:', error)
+        toast.error('Failed to delete unit rule')
+      }
+    }
+  }
+
+  const toggleUnitRule = async (ruleId: number) => {
+    try {
+      const response = await fetch(`/api/rules/unit/${ruleId}/toggle`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) throw new Error('Failed to toggle unit rule')
+
+      const updatedRule = await response.json()
+      setUnitRules(prev => prev.map(r =>
+        r.id === ruleId ? updatedRule : r
       ))
-      setShowEditCategoryRuleModal(false)
-      setEditingCategoryRule(null)
+      toast.success('Unit rule toggled successfully')
+    } catch (error) {
+      console.error('Error toggling unit rule:', error)
+      toast.error('Failed to toggle unit rule')
     }
   }
 
-  const deleteCategoryRule = (ruleId: number) => {
+  const addCategoryRule = async () => {
+    if (newCategoryRule.pattern.trim() && newCategoryRule.categoryId > 0) {
+      try {
+        const newPriority = categoryRules.length > 0 ? Math.max(...categoryRules.map(r => r.priority)) + 1 : 1
+
+        const response = await fetch('/api/rules/category', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ruleType: newCategoryRule.ruleType,
+            pattern: newCategoryRule.pattern,
+            matchType: newCategoryRule.matchType,
+            categoryId: newCategoryRule.categoryId,
+            priority: newPriority,
+            active: true
+          })
+        })
+
+        if (!response.ok) throw new Error('Failed to create category rule')
+
+        const createdRule = await response.json()
+        setCategoryRules(prev => [...prev, createdRule])
+        setShowAddCategoryRuleModal(false)
+        resetNewCategoryRule()
+        toast.success('Category rule created successfully')
+      } catch (error) {
+        console.error('Error creating category rule:', error)
+        toast.error('Failed to create category rule')
+      }
+    }
+  }
+
+  const editCategoryRule = async () => {
+    if (editingCategoryRule) {
+      try {
+        const response = await fetch(`/api/rules/category/${editingCategoryRule.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ruleType: editingCategoryRule.ruleType,
+            pattern: editingCategoryRule.pattern,
+            matchType: editingCategoryRule.matchType,
+            categoryId: editingCategoryRule.categoryId,
+            priority: editingCategoryRule.priority,
+            active: editingCategoryRule.active
+          })
+        })
+
+        if (!response.ok) throw new Error('Failed to update category rule')
+
+        const updatedRule = await response.json()
+        setCategoryRules(prev => prev.map(r =>
+          r.id === editingCategoryRule.id ? updatedRule : r
+        ))
+        setShowEditCategoryRuleModal(false)
+        setEditingCategoryRule(null)
+        toast.success('Category rule updated successfully')
+      } catch (error) {
+        console.error('Error updating category rule:', error)
+        toast.error('Failed to update category rule')
+      }
+    }
+  }
+
+  const deleteCategoryRule = async (ruleId: number) => {
     if (confirm('Are you sure you want to delete this category rule?')) {
-      setCategoryRules(prev => prev.filter(r => r.id !== ruleId))
+      try {
+        const response = await fetch(`/api/rules/category/${ruleId}`, {
+          method: 'DELETE'
+        })
+
+        if (!response.ok) throw new Error('Failed to delete category rule')
+
+        setCategoryRules(prev => prev.filter(r => r.id !== ruleId))
+        toast.success('Category rule deleted successfully')
+      } catch (error) {
+        console.error('Error deleting category rule:', error)
+        toast.error('Failed to delete category rule')
+      }
     }
   }
 
-  const toggleCategoryRule = (ruleId: number) => {
-    setCategoryRules(prev => prev.map(r => 
-      r.id === ruleId ? { ...r, active: !r.active } : r
-    ))
+  const toggleCategoryRule = async (ruleId: number) => {
+    try {
+      const response = await fetch(`/api/rules/category/${ruleId}/toggle`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) throw new Error('Failed to toggle category rule')
+
+      const updatedRule = await response.json()
+      setCategoryRules(prev => prev.map(r =>
+        r.id === ruleId ? updatedRule : r
+      ))
+      toast.success('Category rule toggled successfully')
+    } catch (error) {
+      console.error('Error toggling category rule:', error)
+      toast.error('Failed to toggle category rule')
+    }
   }
 
-  const moveUp = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: React.Dispatch<React.SetStateAction<UnitRule[]>> | React.Dispatch<React.SetStateAction<CategoryRule[]>>) => {
+  const moveUp = async (rule: UnitRule | CategoryRule, isUnitRule: boolean) => {
+    const ruleArray = isUnitRule ? unitRules : categoryRules
     const index = ruleArray.findIndex(r => r.id === rule.id)
     if (index > 0) {
       const newArray = [...ruleArray]
@@ -232,11 +367,33 @@ export default function RulesPage() {
       newArray[index].priority = newArray[index - 1].priority
       newArray[index - 1].priority = temp
       newArray.sort((a, b) => a.priority - b.priority)
-      ;(setRules as React.Dispatch<React.SetStateAction<(UnitRule | CategoryRule)[]>>)(newArray)
+
+      // Update priorities on the server
+      try {
+        const priorities = newArray.map(r => ({ id: r.id, priority: r.priority }))
+        const endpoint = isUnitRule ? '/api/rules/unit/priorities' : '/api/rules/category/priorities'
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priorities })
+        })
+
+        if (!response.ok) throw new Error('Failed to update priorities')
+
+        if (isUnitRule) {
+          setUnitRules(newArray as UnitRule[])
+        } else {
+          setCategoryRules(newArray as CategoryRule[])
+        }
+      } catch (error) {
+        console.error('Error updating priorities:', error)
+        toast.error('Failed to update rule priorities')
+      }
     }
   }
 
-  const moveDown = (rule: UnitRule | CategoryRule, ruleArray: UnitRule[] | CategoryRule[], setRules: React.Dispatch<React.SetStateAction<UnitRule[]>> | React.Dispatch<React.SetStateAction<CategoryRule[]>>) => {
+  const moveDown = async (rule: UnitRule | CategoryRule, isUnitRule: boolean) => {
+    const ruleArray = isUnitRule ? unitRules : categoryRules
     const index = ruleArray.findIndex(r => r.id === rule.id)
     if (index < ruleArray.length - 1) {
       const newArray = [...ruleArray]
@@ -244,93 +401,82 @@ export default function RulesPage() {
       newArray[index].priority = newArray[index + 1].priority
       newArray[index + 1].priority = temp
       newArray.sort((a, b) => a.priority - b.priority)
-      ;(setRules as React.Dispatch<React.SetStateAction<(UnitRule | CategoryRule)[]>>)(newArray)
+
+      // Update priorities on the server
+      try {
+        const priorities = newArray.map(r => ({ id: r.id, priority: r.priority }))
+        const endpoint = isUnitRule ? '/api/rules/unit/priorities' : '/api/rules/category/priorities'
+        const response = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priorities })
+        })
+
+        if (!response.ok) throw new Error('Failed to update priorities')
+
+        if (isUnitRule) {
+          setUnitRules(newArray as UnitRule[])
+        } else {
+          setCategoryRules(newArray as CategoryRule[])
+        }
+      } catch (error) {
+        console.error('Error updating priorities:', error)
+        toast.error('Failed to update rule priorities')
+      }
     }
   }
 
-  const testRule = (rule: UnitRule | CategoryRule) => {
+  const testRule = async (rule: UnitRule | CategoryRule) => {
     if (!testText) {
       setTestResult('Please enter test text')
       return
     }
-    
-    let matches = false
-    
-    if ('unit' in rule) { // Unit rule
-      if (rule.ruleType === 'source') {
-        matches = testText.toUpperCase().includes(rule.pattern.toUpperCase())
-        setTestResult(matches 
-          ? `✅ Match! Would assign unit: ${rule.unit}` 
+
+    try {
+      const response = await fetch('/api/rules/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: testText })
+      })
+
+      if (!response.ok) throw new Error('Failed to test rule')
+
+      const result = await response.json()
+
+      // Check if this specific rule would match
+      let matches = false
+      let assignedName = ''
+
+      if ('unitId' in rule) { // Unit rule
+        matches = result.unitId === rule.unitId
+        const unit = units.find(u => u.id === rule.unitId)
+        assignedName = unit?.name || 'Unknown'
+        setTestResult(matches
+          ? `✅ Match! Would assign unit: ${assignedName}`
           : '❌ No match')
-      } else if (rule.ruleType === 'description') {
-        const text = testText.toUpperCase()
-        const pattern = rule.pattern.toUpperCase()
-        
-        if (rule.type === 'contains') {
-          matches = text.includes(pattern)
-        } else if (rule.type === 'starts_with') {
-          matches = text.startsWith(pattern)
-        } else if (rule.type === 'regex') {
-          try {
-            const regex = new RegExp(rule.pattern)
-            matches = regex.test(text)
-          } catch {
-            setTestResult('Invalid regex pattern')
-            return
-          }
-        }
-        
-        setTestResult(matches 
-          ? `✅ Match! Would assign unit: ${rule.unit}` 
-          : '❌ No match')
-      }
-    } else { // Category rule
-      if (rule.ruleType === 'source_category') {
-        const text = testText.toUpperCase()
-        const pattern = rule.pattern.toUpperCase()
-        
-        if (rule.type === 'exact') {
-          matches = text === pattern
-        } else if (rule.type === 'contains') {
-          matches = text.includes(pattern)
-        } else if (rule.type === 'starts_with') {
-          matches = text.startsWith(pattern)
-        } else if (rule.type === 'regex') {
-          try {
-            const regex = new RegExp(rule.pattern)
-            matches = regex.test(text)
-          } catch {
-            setTestResult('Invalid regex pattern')
-            return
-          }
-        }
-        
-        setTestResult(matches 
-          ? `✅ Match! Would categorize as: ${rule.category}` 
-          : '❌ No match')
-      } else if (rule.ruleType === 'description') {
-        const text = testText.toUpperCase()
-        const pattern = rule.pattern.toUpperCase()
-        
-        if (rule.type === 'contains') {
-          matches = text.includes(pattern)
-        } else if (rule.type === 'starts_with') {
-          matches = text.startsWith(pattern)
-        } else if (rule.type === 'regex') {
-          try {
-            const regex = new RegExp(rule.pattern)
-            matches = regex.test(text)
-          } catch {
-            setTestResult('Invalid regex pattern')
-            return
-          }
-        }
-        
-        setTestResult(matches 
-          ? `✅ Match! Would categorize as: ${rule.category}` 
+      } else { // Category rule
+        matches = result.categoryId === rule.categoryId
+        const category = categories.find(c => c.id === rule.categoryId)
+        assignedName = category?.name || 'Unknown'
+        setTestResult(matches
+          ? `✅ Match! Would categorize as: ${assignedName}`
           : '❌ No match')
       }
+    } catch (error) {
+      console.error('Error testing rule:', error)
+      setTestResult('Error testing rule')
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading rules...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -380,7 +526,7 @@ export default function RulesPage() {
                       <span className="font-semibold">{rule.priority}</span>
                       <div className="flex flex-col">
                         <button 
-                          onClick={() => moveUp(rule, unitRules, setUnitRules)}
+                          onClick={() => moveUp(rule, true)}
                           disabled={rule.priority === 1}
                           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                           title="Move up"
@@ -388,7 +534,7 @@ export default function RulesPage() {
                           <ChevronUp className="w-3 h-3" />
                         </button>
                         <button 
-                          onClick={() => moveDown(rule, unitRules, setUnitRules)}
+                          onClick={() => moveDown(rule, true)}
                           disabled={rule.priority === unitRules.length}
                           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                           title="Move down"
@@ -410,7 +556,7 @@ export default function RulesPage() {
                       </span>
                       {rule.ruleType === 'description' && (
                         <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-600 rounded text-xs">
-                          {rule.type}
+                          {rule.matchType}
                         </span>
                       )}
                     </div>
@@ -422,11 +568,11 @@ export default function RulesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     <div className="flex items-center">
-                      <div 
+                      <div
                         className="w-3 h-3 rounded mr-2"
-                        style={{ backgroundColor: unitOptions.find(u => u.name === rule.unit)?.color || '#6B7280' }}
+                        style={{ backgroundColor: rule.unit?.color || units.find(u => u.id === rule.unitId)?.color || '#6B7280' }}
                       ></div>
-                      <span>{rule.unit}</span>
+                      <span>{rule.unit?.name || units.find(u => u.id === rule.unitId)?.name || 'Unknown'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -524,15 +670,15 @@ export default function RulesPage() {
                   <div className="flex items-center space-x-1">
                     <span className="font-semibold">{rule.priority}</span>
                     <div className="flex flex-col">
-                      <button 
-                        onClick={() => moveUp(rule, categoryRules, setCategoryRules)}
+                      <button
+                        onClick={() => moveUp(rule, false)}
                         disabled={rule.priority === 1}
                         className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                       >
                         <ChevronUp className="w-3 h-3" />
                       </button>
-                      <button 
-                        onClick={() => moveDown(rule, categoryRules, setCategoryRules)}
+                      <button
+                        onClick={() => moveDown(rule, false)}
                         disabled={rule.priority === categoryRules.length}
                         className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                       >
@@ -552,7 +698,7 @@ export default function RulesPage() {
                       {rule.ruleType === 'source_category' ? 'Source Category' : 'Description'}
                     </span>
                     <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-600 rounded text-xs">
-                      {rule.type}
+                      {rule.matchType}
                     </span>
                   </div>
                 </td>
@@ -562,7 +708,7 @@ export default function RulesPage() {
                   </code>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  <span>{rule.category}</span>
+                  <span>{rule.category?.name || categories.find(c => c.id === rule.categoryId)?.name || 'Unknown'}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button onClick={() => toggleCategoryRule(rule.id)}>
@@ -648,16 +794,17 @@ export default function RulesPage() {
             <FormSelect
               label="Match Type"
               required
-              value={newUnitRule.type}
-              onChange={(e) => setNewUnitRule(prev => ({ ...prev, type: e.target.value as 'contains' | 'starts_with' | 'regex' }))}
+              value={newUnitRule.matchType}
+              onChange={(e) => setNewUnitRule(prev => ({ ...prev, matchType: e.target.value as 'contains' | 'starts_with' | 'exact' | 'regex' }))}
               options={[
                 { value: 'contains', label: 'Contains' },
                 { value: 'starts_with', label: 'Starts With' },
+                { value: 'exact', label: 'Exact Match' },
                 { value: 'regex', label: 'Regular Expression' }
               ]}
             />
           )}
-          
+
           {newUnitRule.ruleType === 'source' ? (
             <FormSelect
               label="Source"
@@ -666,7 +813,7 @@ export default function RulesPage() {
               onChange={(e) => setNewUnitRule(prev => ({ ...prev, pattern: e.target.value }))}
               options={[
                 { value: '', label: 'Select source...' },
-                ...sourceOptions.map(source => ({ value: source, label: source }))
+                ...sources.map(source => ({ value: source.name, label: source.name }))
               ]}
             />
           ) : (
@@ -682,11 +829,11 @@ export default function RulesPage() {
           <FormSelect
             label="Unit"
             required
-            value={newUnitRule.unit}
-            onChange={(e) => setNewUnitRule(prev => ({ ...prev, unit: e.target.value }))}
+            value={newUnitRule.unitId.toString()}
+            onChange={(e) => setNewUnitRule(prev => ({ ...prev, unitId: parseInt(e.target.value) }))}
             options={[
-              { value: '', label: 'Select unit...' },
-              ...unitOptions.map(unit => ({ value: unit.name, label: unit.name }))
+              { value: '0', label: 'Select unit...' },
+              ...units.filter(u => u.active).map(unit => ({ value: unit.id.toString(), label: unit.name }))
             ]}
           />
           
@@ -737,11 +884,12 @@ export default function RulesPage() {
               <FormSelect
                 label="Match Type"
                 required
-                value={editingUnitRule.type || 'contains'}
-                onChange={(e) => setEditingUnitRule(prev => prev ? { ...prev, type: e.target.value as 'contains' | 'starts_with' | 'regex' } : null)}
+                value={editingUnitRule.matchType || 'contains'}
+                onChange={(e) => setEditingUnitRule(prev => prev ? { ...prev, matchType: e.target.value as 'contains' | 'starts_with' | 'exact' | 'regex' } : null)}
                 options={[
                   { value: 'contains', label: 'Contains' },
                   { value: 'starts_with', label: 'Starts With' },
+                  { value: 'exact', label: 'Exact Match' },
                   { value: 'regex', label: 'Regular Expression' }
                 ]}
               />
@@ -753,7 +901,7 @@ export default function RulesPage() {
                 required
                 value={editingUnitRule.pattern}
                 onChange={(e) => setEditingUnitRule(prev => prev ? { ...prev, pattern: e.target.value } : null)}
-                options={sourceOptions.map(source => ({ value: source, label: source }))}
+                options={sources.map(source => ({ value: source.name, label: source.name }))}
               />
             ) : (
               <FormField
@@ -767,9 +915,9 @@ export default function RulesPage() {
             <FormSelect
               label="Unit"
               required
-              value={editingUnitRule.unit}
-              onChange={(e) => setEditingUnitRule(prev => prev ? { ...prev, unit: e.target.value } : null)}
-              options={unitOptions.map(unit => ({ value: unit.name, label: unit.name }))}
+              value={editingUnitRule.unitId?.toString() || ''}
+              onChange={(e) => setEditingUnitRule(prev => prev ? { ...prev, unitId: parseInt(e.target.value) } : null)}
+              options={units.filter(u => u.active).map(unit => ({ value: unit.id.toString(), label: unit.name }))}
             />
             
             <div className="flex justify-end space-x-2 pt-4">
@@ -818,8 +966,8 @@ export default function RulesPage() {
           <FormSelect
             label="Match Type"
             required
-            value={newCategoryRule.type}
-            onChange={(e) => setNewCategoryRule(prev => ({ ...prev, type: e.target.value as 'exact' | 'contains' | 'starts_with' | 'regex' }))}
+            value={newCategoryRule.matchType}
+            onChange={(e) => setNewCategoryRule(prev => ({ ...prev, matchType: e.target.value as 'exact' | 'contains' | 'starts_with' | 'regex' }))}
             options={[
               ...(newCategoryRule.ruleType === 'source_category' ? [{ value: 'exact', label: 'Exact Match' }] : []),
               { value: 'contains', label: 'Contains' },
@@ -839,11 +987,11 @@ export default function RulesPage() {
           <FormSelect
             label="Category"
             required
-            value={newCategoryRule.category}
-            onChange={(e) => setNewCategoryRule(prev => ({ ...prev, category: e.target.value }))}
+            value={newCategoryRule.categoryId.toString()}
+            onChange={(e) => setNewCategoryRule(prev => ({ ...prev, categoryId: parseInt(e.target.value) }))}
             options={[
-              { value: '', label: 'Select category...' },
-              ...categoryOptions.map(category => ({ value: category, label: category }))
+              { value: '0', label: 'Select category...' },
+              ...categories.map(category => ({ value: category.id.toString(), label: category.name }))
             ]}
           />
           
@@ -893,8 +1041,8 @@ export default function RulesPage() {
             <FormSelect
               label="Match Type"
               required
-              value={editingCategoryRule.type}
-              onChange={(e) => setEditingCategoryRule(prev => prev ? { ...prev, type: e.target.value as 'exact' | 'contains' | 'starts_with' | 'regex' } : null)}
+              value={editingCategoryRule.matchType}
+              onChange={(e) => setEditingCategoryRule(prev => prev ? { ...prev, matchType: e.target.value as 'exact' | 'contains' | 'starts_with' | 'regex' } : null)}
               options={[
                 ...(editingCategoryRule.ruleType === 'source_category' ? [{ value: 'exact', label: 'Exact Match' }] : []),
                 { value: 'contains', label: 'Contains' },
@@ -913,9 +1061,9 @@ export default function RulesPage() {
             <FormSelect
               label="Category"
               required
-              value={editingCategoryRule.category}
-              onChange={(e) => setEditingCategoryRule(prev => prev ? { ...prev, category: e.target.value } : null)}
-              options={categoryOptions.map(category => ({ value: category, label: category }))}
+              value={editingCategoryRule.categoryId?.toString() || ''}
+              onChange={(e) => setEditingCategoryRule(prev => prev ? { ...prev, categoryId: parseInt(e.target.value) } : null)}
+              options={categories.map(category => ({ value: category.id.toString(), label: category.name }))}
             />
             
             <div className="flex justify-end space-x-2 pt-4">
@@ -958,14 +1106,18 @@ export default function RulesPage() {
               <>
                 <p className="text-sm">
                   <span className="bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-xs">
-                    {'type' in currentTestRule ? currentTestRule.type : 'source'}
+                    {currentTestRule.matchType || 'source'}
                   </span>
                   <code className="bg-blue-50 dark:bg-blue-900/50 px-2 py-1 rounded text-xs ml-2">
                     {currentTestRule.pattern}
                   </code>
                 </p>
                 <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">
-                  → <span>{'unit' in currentTestRule ? currentTestRule.unit : currentTestRule.category}</span>
+                  → <span>
+                    {'unitId' in currentTestRule
+                      ? (units.find(u => u.id === currentTestRule.unitId)?.name || 'Unknown')
+                      : (categories.find(c => c.id === currentTestRule.categoryId)?.name || 'Unknown')}
+                  </span>
                 </p>
               </>
             )}

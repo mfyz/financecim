@@ -732,3 +732,33 @@ CLAUDE
 - All API routes have complete test coverage including Rules endpoints
 
 ------------------------------
+
+
+------------------------------
+
+## 2025-09-29 - E2E Test Suite Implementation
+
+- Created comprehensive E2E test for transaction import flow (`__e2e__/critical-flows/import-flow.spec.ts`)
+  - Tests complete import workflow from file upload to completion
+  - Tests duplicate detection during import
+  - Tests column mapping validation
+- Created comprehensive E2E test for auto-categorization workflow (`__e2e__/critical-flows/auto-categorization.spec.ts`)
+  - Tests unit rule creation and application
+  - Tests category rule creation and application
+  - Tests rules applying during import
+  - Tests rule priority ordering
+  - Tests rule active/inactive toggle
+- Created comprehensive E2E test for transaction filtering and bulk operations (`__e2e__/critical-flows/transactions-bulk.spec.ts`)
+  - Tests filtering by date range, unit, and category
+  - Tests search functionality
+  - Tests bulk categorization
+  - Tests bulk unit assignment
+  - Tests bulk ignore/unignore operations
+  - Tests inline editing
+  - Tests CSV export functionality
+  - Tests pagination
+  - Tests column sorting
+- All 730 unit tests still passing after changes
+- E2E tests aligned with technical implementation guide for critical user journeys
+
+------------------------------

@@ -38,7 +38,7 @@ test.describe('Transaction Filtering and Bulk Operations', () => {
 
     // Select category filter
     const categorySelect = page.locator('select[name="category-filter"]');
-    await categorySelect.selectOption({ label: /Groceries/i });
+    await categorySelect.selectOption({ label: 'Groceries' });
 
     // Apply filters
     await page.click('button:has-text("Apply Filters")');
@@ -87,7 +87,7 @@ test.describe('Transaction Filtering and Bulk Operations', () => {
 
     // Select category in modal
     const bulkCategorySelect = page.locator('.modal select[name="category"]');
-    await bulkCategorySelect.selectOption({ label: /Entertainment/i });
+    await bulkCategorySelect.selectOption({ label: 'Entertainment' });
 
     // Apply bulk action
     await page.click('.modal button:has-text("Apply")');
@@ -162,7 +162,7 @@ test.describe('Transaction Filtering and Bulk Operations', () => {
 
     // Edit category inline
     const categorySelect = firstRow.locator('select[name="category"]');
-    await categorySelect.selectOption({ label: /Transportation/i });
+    await categorySelect.selectOption({ label: 'Transportation' });
 
     // Edit notes inline
     const notesInput = firstRow.locator('input[name="notes"]');

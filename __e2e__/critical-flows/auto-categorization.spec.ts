@@ -46,7 +46,7 @@ test.describe('Auto-Categorization Workflow', () => {
     await page.fill('input[name="pattern"]', 'NETFLIX');
     await page.selectOption('select[name="rule_type"]', 'description');
     await page.selectOption('select[name="match_type"]', 'contains');
-    await page.selectOption('select[name="category_id"]', { label: /Entertainment/i });
+    await page.selectOption('select[name="category_id"]', { label: 'Entertainment' });
     await page.fill('input[name="priority"]', '1');
 
     // Save the rule
@@ -86,7 +86,7 @@ test.describe('Auto-Categorization Workflow', () => {
     await page.fill('input[name="pattern"]', 'SALARY');
     await page.selectOption('select[name="rule_type"]', 'description');
     await page.selectOption('select[name="match_type"]', 'contains');
-    await page.selectOption('select[name="category_id"]', { label: /Income/i });
+    await page.selectOption('select[name="category_id"]', { label: 'Income' });
     await page.fill('input[name="priority"]', '1');
     await page.click('button:has-text("Save")');
 

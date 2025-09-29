@@ -210,19 +210,17 @@ export const transactionsModel = {
     const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
 
     // Get total count
-    let totalQuery = db.select({ count: count() }).from(transactions)
+    const totalQuery = db.select({ count: count() }).from(transactions)
 
-    if (whereConditions.length > 0) {
-      totalQuery = totalQuery.where(and(...whereConditions))
-    }
-
-    const totalResult = await totalQuery
+    const totalResult = await (whereConditions.length > 0
+      ? totalQuery.where(and(...whereConditions))
+      : totalQuery)
 
     const total = totalResult[0]?.count || 0
     const totalPages = Math.ceil(total / limit)
 
     // Get data with relations
-    let dataQuery = db
+    const dataQuery = db
       .select({
         // Transaction fields
         id: transactions.id,
@@ -254,11 +252,9 @@ export const transactionsModel = {
       .innerJoin(sources, eq(transactions.sourceId, sources.id))
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
 
-    if (whereConditions.length > 0) {
-      dataQuery = dataQuery.where(and(...whereConditions))
-    }
-
-    const data = await dataQuery
+    const data = await (whereConditions.length > 0
+      ? dataQuery.where(and(...whereConditions))
+      : dataQuery)
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset)
@@ -477,7 +473,7 @@ export const transactionsModel = {
     }
 
     // Get basic stats
-    let basicStatsQuery = db
+    const basicStatsQuery = db
       .select({
         totalTransactions: count(),
         totalAmount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
@@ -485,28 +481,24 @@ export const transactionsModel = {
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      basicStatsQuery = basicStatsQuery.where(and(...whereConditions))
-    }
-
-    const basicStats = await basicStatsQuery
+    const basicStats = await (whereConditions.length > 0
+      ? basicStatsQuery.where(and(...whereConditions))
+      : basicStatsQuery)
 
     // Get income/expense breakdown
-    let incomeExpenseQuery = db
+    const incomeExpenseQuery = db
       .select({
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalExpenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      incomeExpenseQuery = incomeExpenseQuery.where(and(...whereConditions))
-    }
-
-    const incomeExpenseStats = await incomeExpenseQuery
+    const incomeExpenseStats = await (whereConditions.length > 0
+      ? incomeExpenseQuery.where(and(...whereConditions))
+      : incomeExpenseQuery)
 
     // Get categorization stats
-    let categorizationQuery = db
+    const categorizationQuery = db
       .select({
         categorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NOT NULL THEN 1 END)`,
         uncategorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NULL THEN 1 END)`,
@@ -514,11 +506,9 @@ export const transactionsModel = {
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      categorizationQuery = categorizationQuery.where(and(...whereConditions))
-    }
-
-    const categorizationStats = await categorizationQuery
+    const categorizationStats = await (whereConditions.length > 0
+      ? categorizationQuery.where(and(...whereConditions))
+      : categorizationQuery)
 
     const basic = basicStats[0]
     const incomeExpense = incomeExpenseStats[0]

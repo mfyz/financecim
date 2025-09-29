@@ -93,7 +93,7 @@ export default function ReportsPage() {
           budget: cat.monthlyBudget,
           budgetUtilization: cat.monthlyBudget ? (Math.abs(cat.totalSpent || 0) / cat.monthlyBudget) * 100 : undefined
         }))
-        .sort((a, b) => b.amount - a.amount)
+        .sort((a: CategoryData, b: CategoryData) => b.amount - a.amount)
         .slice(0, 10)
 
       // Mock yearly comparison (would need historical data in real implementation)
@@ -267,7 +267,7 @@ export default function ReportsPage() {
               <YAxis
                 stroke="#9CA3AF"
                 style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={(value: number) => `$${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip
                 contentStyle={{
@@ -316,11 +316,11 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
-                  data={data.categoryBreakdown}
+                  data={data.categoryBreakdown as any}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) => `${name} (${percentage.toFixed(0)}%)`}
+                  label={(props: any) => `${props.name} (${props.percentage.toFixed(0)}%)`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="amount"
@@ -384,7 +384,7 @@ export default function ReportsPage() {
                 <YAxis
                   stroke="#9CA3AF"
                   style={{ fontSize: '12px' }}
-                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  tickFormatter={(value: number) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   contentStyle={{

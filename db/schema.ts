@@ -52,6 +52,8 @@ export const transactions = sqliteTable('transactions', {
   ignore: integer('ignore', { mode: 'boolean' }).default(false),
   notes: text('notes'),
   tags: text('tags'), // Comma-separated tags
+  hash: text('hash'), // Hash for duplicate detection
+  sourceData: text('source_data', { mode: 'json' }), // Original CSV data as JSON
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({

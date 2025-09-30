@@ -276,6 +276,26 @@ export const rulesModel = {
     }
   },
 
+  // Convenience: apply only Unit rules and return matching unitId
+  async applyUnitRules(input: { description: string; source_id?: number }) {
+    const { description, source_id } = input
+    const result = await this.applyRulesToTransaction({
+      description,
+      sourceId: typeof source_id === 'number' ? source_id : undefined,
+    })
+    return result.unitId
+  },
+
+  // Convenience: apply only Category rules and return matching categoryId
+  async applyCategoryRules(input: { description: string; source_category?: string | null }) {
+    const { description, source_category } = input
+    const result = await this.applyRulesToTransaction({
+      description,
+      sourceCategory: source_category ?? undefined,
+    })
+    return result.categoryId
+  },
+
   // Test rules against sample data
   async testUnitRule(rule: Partial<NewUnitRule>, testData: { description?: string; sourceId?: number }) {
     if (!rule.pattern || !rule.matchType || !rule.ruleType) {

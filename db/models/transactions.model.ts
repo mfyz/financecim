@@ -1,6 +1,7 @@
 import { eq, and, or, like, desc, asc, sql, count, sum, gte, lte, ne, isNull, isNotNull } from 'drizzle-orm'
 import { getDatabase } from '../connection'
 import { transactions, units, sources, categories, type Transaction, type NewTransaction } from '../schema'
+import { transactionHash } from '@/lib/hash'
 
 export interface TransactionWithRelations extends Transaction {
   unit?: { id: number; name: string; color: string } | null
@@ -29,6 +30,121 @@ export interface BulkUpdateData {
 }
 
 export const transactionsModel = {
+  /**
+   * Normalize incoming payload supporting both camelCase and snake_case keys
+   * Also normalizes date (YYYY-MM-DD) and computes hash when absent
+   */
+  normalizePayload(input: any): NewTransaction {
+    const sourceId = input.sourceId ?? input.source_id
+    const unitId = input.unitId ?? input.unit_id ?? undefined
+    const categoryId = input.categoryId ?? input.category_id ?? undefined
+    const sourceCategory = input.sourceCategory ?? input.source_category ?? undefined
+    const ignore = input.ignore ?? false
+    const notes = input.notes ?? undefined
+    const tags = input.tags ?? undefined
+    const sourceData = input.sourceData ?? input.source_data ?? undefined
+
+    // Normalize date to YYYY-MM-DD string
+    let date: string
+    if (input.date instanceof Date) {
+      date = input.date.toISOString().split('T')[0]
+    } else if (typeof input.date === 'string') {
+      // Keep string dates as-is to avoid timezone shifts
+      date = input.date
+    } else {
+      throw new Error('Invalid date')
+    }
+
+    const description = input.description
+    const amount = input.amount
+
+    // Compute hash if not provided
+    const hash: string | undefined = input.hash
+      ? String(input.hash)
+      : (typeof sourceId === 'number' && typeof description === 'string' && typeof amount === 'number'
+          ? transactionHash(sourceId, date, description, amount)
+          : undefined)
+
+    const payload: NewTransaction = {
+      sourceId,
+      unitId: (unitId ?? null) as any,
+      date,
+      description,
+      amount,
+      sourceCategory: (sourceCategory ?? null) as any,
+      categoryId: (categoryId ?? null) as any,
+      ignore,
+      notes: (notes ?? null) as any,
+      tags: (tags ?? null) as any,
+      hash: (hash ?? null) as any,
+      sourceData: (sourceData ?? null) as any,
+    } as NewTransaction
+
+    return payload
+  },
+
+  /** Create a new transaction (uses normalizePayload) */
+  async create(data: any): Promise<Transaction> {
+    const db = getDatabase()
+    const values = this.normalizePayload(data)
+    const [created] = await db.insert(transactions).values(values).returning()
+    return created
+  },
+
+  /** Get a transaction by its duplicate-detection hash */
+  async getByHash(hash: string): Promise<Transaction | null> {
+    const db = getDatabase()
+    const [row] = await db.select().from(transactions).where(eq(transactions.hash, hash)).limit(1)
+    return row || null
+  },
+
+  /** Update a transaction by ID (maps snake_case and normalizes date) */
+  async update(id: number, data: Partial<NewTransaction>): Promise<Transaction> {
+    const db = getDatabase()
+    // Ensure exists
+    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, id)).limit(1)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    const mapped: Partial<NewTransaction> = {}
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceId') || (data as any).source_id !== undefined) {
+      mapped.sourceId = (data as any).sourceId ?? (data as any).source_id
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'unitId') || (data as any).unit_id !== undefined) {
+      mapped.unitId = (data as any).unitId ?? (data as any).unit_id
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'categoryId') || (data as any).category_id !== undefined) {
+      mapped.categoryId = (data as any).categoryId ?? (data as any).category_id
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceCategory') || (data as any).source_category !== undefined) {
+      mapped.sourceCategory = (data as any).sourceCategory ?? (data as any).source_category
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'ignore')) mapped.ignore = (data as any).ignore as any
+    if (Object.prototype.hasOwnProperty.call(data, 'notes')) mapped.notes = (data as any).notes as any
+    if (Object.prototype.hasOwnProperty.call(data, 'tags')) mapped.tags = (data as any).tags as any
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceData') || (data as any).source_data !== undefined) {
+      mapped.sourceData = (data as any).sourceData ?? (data as any).source_data
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'description')) mapped.description = (data as any).description as any
+    if (Object.prototype.hasOwnProperty.call(data, 'amount')) mapped.amount = (data as any).amount as any
+    if ((data as any).date !== undefined) {
+      const d = (data as any).date
+      if (d instanceof Date) {
+        mapped.date = d.toISOString().split('T')[0]
+      } else if (typeof d === 'string') {
+        // Keep provided YYYY-MM-DD strings as-is
+        mapped.date = d
+      }
+    }
+
+    mapped.updatedAt = new Date().toISOString()
+
+    const [updated] = await db.update(transactions).set(mapped).where(eq(transactions.id, id)).returning()
+    return updated
+  },
+
+  
   /**
    * Get all transactions with pagination and filters
    */
@@ -99,19 +215,17 @@ export const transactionsModel = {
     const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
 
     // Get total count
-    let totalQuery = db.select({ count: count() }).from(transactions)
+    const totalQuery = db.select({ count: count() }).from(transactions)
 
-    if (whereConditions.length > 0) {
-      totalQuery = totalQuery.where(and(...whereConditions))
-    }
-
-    const totalResult = await totalQuery
+    const totalResult = await (whereConditions.length > 0
+      ? totalQuery.where(and(...whereConditions))
+      : totalQuery)
 
     const total = totalResult[0]?.count || 0
     const totalPages = Math.ceil(total / limit)
 
     // Get data with relations
-    let dataQuery = db
+    const dataQuery = db
       .select({
         // Transaction fields
         id: transactions.id,
@@ -125,6 +239,7 @@ export const transactionsModel = {
         ignore: transactions.ignore,
         notes: transactions.notes,
         tags: transactions.tags,
+        hash: transactions.hash,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -142,11 +257,9 @@ export const transactionsModel = {
       .innerJoin(sources, eq(transactions.sourceId, sources.id))
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
 
-    if (whereConditions.length > 0) {
-      dataQuery = dataQuery.where(and(...whereConditions))
-    }
-
-    const data = await dataQuery
+    const data = await (whereConditions.length > 0
+      ? dataQuery.where(and(...whereConditions))
+      : dataQuery)
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset)
@@ -164,6 +277,7 @@ export const transactionsModel = {
       ignore: row.ignore,
       notes: row.notes,
       tags: row.tags,
+      hash: row.hash,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {
@@ -206,6 +320,7 @@ export const transactionsModel = {
         ignore: transactions.ignore,
         notes: transactions.notes,
         tags: transactions.tags,
+        hash: transactions.hash,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -239,6 +354,7 @@ export const transactionsModel = {
       ignore: row.ignore,
       notes: row.notes,
       tags: row.tags,
+      hash: row.hash,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {
@@ -259,35 +375,7 @@ export const transactionsModel = {
     }
   },
 
-  /**
-   * Create new transaction
-   */
-  async create(data: NewTransaction): Promise<Transaction> {
-    const db = getDatabase()
-    const result = await db.insert(transactions).values(data).returning()
-    return result[0]
-  },
-
-  /**
-   * Update existing transaction
-   */
-  async update(id: number, data: Partial<NewTransaction>): Promise<Transaction> {
-    const db = getDatabase()
-    
-    // Check if transaction exists
-    const existing = await this.getById(id)
-    if (!existing) {
-      throw new Error('Transaction not found')
-    }
-
-    const result = await db
-      .update(transactions)
-      .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(eq(transactions.id, id))
-      .returning()
-    
-    return result[0]
-  },
+  
 
   /**
    * Delete transaction by ID
@@ -390,7 +478,7 @@ export const transactionsModel = {
     }
 
     // Get basic stats
-    let basicStatsQuery = db
+    const basicStatsQuery = db
       .select({
         totalTransactions: count(),
         totalAmount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
@@ -398,28 +486,24 @@ export const transactionsModel = {
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      basicStatsQuery = basicStatsQuery.where(and(...whereConditions))
-    }
-
-    const basicStats = await basicStatsQuery
+    const basicStats = await (whereConditions.length > 0
+      ? basicStatsQuery.where(and(...whereConditions))
+      : basicStatsQuery)
 
     // Get income/expense breakdown
-    let incomeExpenseQuery = db
+    const incomeExpenseQuery = db
       .select({
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalExpenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      incomeExpenseQuery = incomeExpenseQuery.where(and(...whereConditions))
-    }
-
-    const incomeExpenseStats = await incomeExpenseQuery
+    const incomeExpenseStats = await (whereConditions.length > 0
+      ? incomeExpenseQuery.where(and(...whereConditions))
+      : incomeExpenseQuery)
 
     // Get categorization stats
-    let categorizationQuery = db
+    const categorizationQuery = db
       .select({
         categorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NOT NULL THEN 1 END)`,
         uncategorizedCount: sql<number>`COUNT(CASE WHEN ${transactions.categoryId} IS NULL THEN 1 END)`,
@@ -427,11 +511,9 @@ export const transactionsModel = {
       })
       .from(transactions)
 
-    if (whereConditions.length > 0) {
-      categorizationQuery = categorizationQuery.where(and(...whereConditions))
-    }
-
-    const categorizationStats = await categorizationQuery
+    const categorizationStats = await (whereConditions.length > 0
+      ? categorizationQuery.where(and(...whereConditions))
+      : categorizationQuery)
 
     const basic = basicStats[0]
     const incomeExpense = incomeExpenseStats[0]
@@ -480,5 +562,101 @@ export const transactionsModel = {
 
     const result = await this.getAll(1, limit, 'date', 'desc', { search: query })
     return result.data
+  },
+
+  /**
+   * Get transaction trends for reporting
+   */
+  async getTrends(
+    period: 'monthly' | 'yearly' = 'monthly',
+    unitId?: number,
+    categoryId?: number
+  ): Promise<{
+    period: string
+    data: Array<{
+      period: string
+      income: number
+      expenses: number
+      net: number
+      transactionCount: number
+    }>
+    summary: {
+      totalIncome: number
+      totalExpenses: number
+      totalNet: number
+      bestPeriod: { period: string; value: number } | null
+      worstPeriod: { period: string; value: number } | null
+    }
+  }> {
+    const db = getDatabase()
+
+    // Build where conditions
+    const whereConditions = []
+    if (unitId) {
+      whereConditions.push(eq(transactions.unitId, unitId))
+    }
+    if (categoryId) {
+      whereConditions.push(eq(transactions.categoryId, categoryId))
+    }
+
+    // Get period format for grouping
+    const periodFormat = period === 'monthly'
+      ? sql<string>`strftime('%Y-%m', ${transactions.date})`
+      : sql<string>`strftime('%Y', ${transactions.date})`
+
+    // Get trends data
+    const trendsQuery = db
+      .select({
+        period: periodFormat,
+        income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
+        expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
+        transactionCount: count()
+      })
+      .from(transactions)
+      .groupBy(periodFormat)
+      .orderBy(periodFormat)
+
+    const trendsResult = await (whereConditions.length > 0
+      ? trendsQuery.where(and(...whereConditions))
+      : trendsQuery)
+
+    // Calculate net and format data
+    const data = trendsResult.map(row => ({
+      period: row.period || '',
+      income: row.income || 0,
+      expenses: row.expenses || 0,
+      net: (row.income || 0) - (row.expenses || 0),
+      transactionCount: row.transactionCount || 0
+    }))
+
+    // Calculate summary
+    let totalIncome = 0
+    let totalExpenses = 0
+    let bestPeriod: { period: string; value: number } | null = null
+    let worstPeriod: { period: string; value: number } | null = null
+
+    data.forEach(row => {
+      totalIncome += row.income
+      totalExpenses += row.expenses
+
+      if (!bestPeriod || row.net > bestPeriod.value) {
+        bestPeriod = { period: row.period, value: row.net }
+      }
+      if (!worstPeriod || row.net < worstPeriod.value) {
+        worstPeriod = { period: row.period, value: row.net }
+      }
+    })
+
+    return {
+      period,
+      data,
+      summary: {
+        totalIncome,
+        totalExpenses,
+        totalNet: totalIncome - totalExpenses,
+        bestPeriod,
+        worstPeriod
+      }
+    }
   }
 }

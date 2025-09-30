@@ -711,12 +711,18 @@ fastify.register(async function (fastify) {
         // Track the current position in the log file
         let lastPosition = 0;
 
-        // Send existing log entries first
+        // Send existing log entries first (last 1000 lines for performance)
         if (fs.existsSync(LOG_FILE)) {
             const logContent = fs.readFileSync(LOG_FILE, 'utf8');
-            const lines = logContent.split('\n').filter(line => line.trim());
+            const allLines = logContent.split('\n').filter(line => line.trim());
 
-            console.log(`Loading ${lines.length} existing log lines for client`);
+            // Only load the last 1000 lines if there are more than 1000 lines
+            const MAX_INITIAL_LINES = 1000;
+            const lines = allLines.length > MAX_INITIAL_LINES
+                ? allLines.slice(-MAX_INITIAL_LINES)
+                : allLines;
+
+            console.log(`Loading ${lines.length} of ${allLines.length} total log lines for client`);
             let validLines = 0;
 
             lines.forEach((line, index) => {

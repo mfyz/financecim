@@ -3,14 +3,15 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Layers, 
-  Tags, 
-  Workflow, 
-  Receipt, 
+import {
+  LayoutDashboard,
+  Building2,
+  Layers,
+  Tags,
+  Workflow,
+  Receipt,
   Upload,
+  Settings,
   Menu,
   Sun,
   Moon
@@ -54,6 +55,12 @@ const navigationItems = [
     href: '/import',
     icon: Upload,
   },
+  {
+    name: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    iconOnly: true,
+  },
 ]
 
 export function MainNav() {
@@ -77,7 +84,8 @@ export function MainNav() {
                 {navigationItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.href
-                  
+                  const iconOnly = 'iconOnly' in item && item.iconOnly
+
                   return (
                     <Link
                       key={item.name}
@@ -88,9 +96,10 @@ export function MainNav() {
                           ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                           : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       )}
+                      aria-label={iconOnly ? item.name : undefined}
                     >
-                      <Icon className="w-3.5 h-3.5 mr-1.5" />
-                      {item.name}
+                      <Icon className={iconOnly ? "w-3.5 h-3.5" : "w-3.5 h-3.5 mr-1.5"} />
+                      {!iconOnly && item.name}
                     </Link>
                   )
                 })}

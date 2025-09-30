@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDatabase } from '@/db/connection'
-import { transactions } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { transactionsModel } from '@/db/models/transactions.model'
 
 export async function POST(request: NextRequest) {
   try {
-    const db = getDatabase()
     const body = await request.json()
     const importTransactions = body.transactions
 
@@ -28,47 +25,30 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Processing transaction:', transaction)
 
-        // Check for duplicate by hash
-        if (transaction.hash) {
-          const existing = await db
-            .select()
-            .from(transactions)
-            .where(eq(transactions.hash, transaction.hash))
-            .limit(1)
+        // Normalize the transaction payload (this will generate the correct hash)
+        const normalized = transactionsModel.normalizePayload(transaction)
 
-          if (existing.length > 0) {
-            console.log('Skipping duplicate transaction with hash:', transaction.hash)
+        // Check for duplicate using the correctly generated hash
+        if (normalized.hash) {
+          const existing = await transactionsModel.getByHash(normalized.hash)
+          if (existing) {
+            console.log('Skipping duplicate transaction with hash:', normalized.hash)
             skipped++
             continue
           }
         }
 
-        // Prepare transaction data
-        const transactionData = {
-          date: new Date(transaction.date),
-          description: transaction.description || '',
-          amount: parseFloat(String(transaction.amount)),
-          source_id: parseInt(String(transaction.source_id)),
-          category_id: transaction.category_id ? parseInt(String(transaction.category_id)) : null,
-          unit_id: transaction.unit_id ? parseInt(String(transaction.unit_id)) : 1,
-          source_data: transaction.source_data || {},
-          hash: transaction.hash || null,
-          is_ignored: false,
-          notes: null,
-          tags: null,
-          created_at: new Date(),
-          updated_at: new Date()
-        }
-
-        console.log('Inserting transaction:', transactionData)
-
-        // Insert transaction
-        await db.insert(transactions).values(transactionData)
+        // Create the transaction (pass the already-normalized data)
+        await transactionsModel.create(transaction)
 
         imported++
         console.log('Successfully imported transaction', imported)
       } catch (error) {
         console.error('Error importing transaction:', error)
+        if (error instanceof Error) {
+          console.error('Error message:', error.message)
+          console.error('Error stack:', error.stack)
+        }
         console.error('Transaction data:', transaction)
         errors.push({ transaction, error: String(error) })
         // Continue with next transaction

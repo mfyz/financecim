@@ -115,3 +115,4 @@ transactions.json
 bank-data.*
 financial-records.*
 loop/*.log
+chrome

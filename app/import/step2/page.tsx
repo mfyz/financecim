@@ -616,7 +616,7 @@ export default function ImportStep2Page() {
                 {/* Map To Row with Dropdowns */}
                 <tr className="border-b-2 border-gray-300 dark:border-gray-600">
                   <th
-                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-750 border-r border-gray-200 dark:border-gray-600"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 border-r border-gray-200 dark:border-gray-600"
                     style={{ width: '80px' }}
                   >
                     Map To
@@ -629,10 +629,10 @@ export default function ImportStep2Page() {
                     return (
                       <td
                         key={index}
-                        className={`px-3 py-3 bg-gray-100 dark:bg-gray-750 ${
+                        className={`px-3 py-3 ${
                           isMapper
-                            ? 'bg-blue-50 dark:bg-blue-900/10'
-                            : ''
+                            ? 'bg-blue-50 dark:bg-blue-900/20'
+                            : 'bg-gray-100 dark:bg-gray-700'
                         }`}
                       >
                         <select

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw } from 'lucide-react'
+import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw, Info } from 'lucide-react'
 import { TransactionWithRelations } from '@/db/models/transactions.model'
 import { CategoryDropdown } from '@/components/forms'
+import { SourceDataModal } from '@/components/ui/source-data-modal'
 
 interface Unit {
   id: number
@@ -63,10 +64,14 @@ export default function TransactionsPage() {
   const [showIgnored, setShowIgnored] = useState<boolean | undefined>(false)
   const [selectedUnit, setSelectedUnit] = useState<string>('all')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  
+
   // Sort states
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'description' | 'created_at'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Source data modal state
+  const [isSourceDataModalOpen, setIsSourceDataModalOpen] = useState(false)
+  const [selectedSourceData, setSelectedSourceData] = useState<Record<string, any> | null>(null)
 
   // Fetch initial data
   useEffect(() => {
@@ -393,6 +398,11 @@ export default function TransactionsPage() {
       month: 'short',
       day: 'numeric'
     })
+  }
+
+  const handleShowSourceData = (sourceData: any) => {
+    setSelectedSourceData(sourceData || null)
+    setIsSourceDataModalOpen(true)
   }
 
 
@@ -841,8 +851,17 @@ export default function TransactionsPage() {
                       />
                     </td>
                     <td className="px-6 py-3 text-sm whitespace-nowrap">
-                      <div className="inline-flex rounded-md shadow-sm">
-                        <button 
+                      <div className="inline-flex rounded-md shadow-sm gap-1">
+                        {transaction.sourceData ? (
+                          <button
+                            onClick={() => handleShowSourceData(transaction.sourceData as Record<string, any>)}
+                            className="px-2 py-1.5 border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors rounded"
+                            title="Show Source Data"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        ) : null}
+                        <button
                           onClick={() => deleteTransaction(transaction.id)}
                           className="px-2 py-1.5 border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 transition-colors rounded"
                           title="Delete transaction"
@@ -922,6 +941,13 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
+
+      {/* Source Data Modal */}
+      <SourceDataModal
+        isOpen={isSourceDataModalOpen}
+        onClose={() => setIsSourceDataModalOpen(false)}
+        sourceData={selectedSourceData}
+      />
     </div>
   )
 }

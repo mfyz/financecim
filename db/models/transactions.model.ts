@@ -240,6 +240,7 @@ export const transactionsModel = {
         notes: transactions.notes,
         tags: transactions.tags,
         hash: transactions.hash,
+        sourceData: transactions.sourceData,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -278,6 +279,7 @@ export const transactionsModel = {
       notes: row.notes,
       tags: row.tags,
       hash: row.hash,
+      sourceData: row.sourceData,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {
@@ -321,6 +323,7 @@ export const transactionsModel = {
         notes: transactions.notes,
         tags: transactions.tags,
         hash: transactions.hash,
+        sourceData: transactions.sourceData,
         createdAt: transactions.createdAt,
         updatedAt: transactions.updatedAt,
         // Unit relation
@@ -355,6 +358,7 @@ export const transactionsModel = {
       notes: row.notes,
       tags: row.tags,
       hash: row.hash,
+      sourceData: row.sourceData,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       unit: row.unitId ? {

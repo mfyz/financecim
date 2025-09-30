@@ -74,12 +74,13 @@ export const categoriesModel = {
 
   // Delete category
   async delete(id: number): Promise<void> {
+    const db = getDatabase()
     // Check if category has children
     const children = await db.select()
       .from(categories)
       .where(eq(categories.parentCategoryId, id))
       .limit(1)
-    
+
     if (children.length > 0) {
       throw new Error('Cannot delete category with subcategories')
     }
@@ -87,7 +88,7 @@ export const categoriesModel = {
     // Check if category is used in transactions (will be implemented later)
     // For now, just delete the category
     const result = await db.delete(categories).where(eq(categories.id, id)).returning()
-    
+
     if (!result[0]) {
       throw new Error('Category not found')
     }

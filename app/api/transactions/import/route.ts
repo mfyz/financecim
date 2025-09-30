@@ -28,14 +28,16 @@ export async function POST(request: NextRequest) {
         // Normalize the transaction payload (this will generate the correct hash)
         const normalized = transactionsModel.normalizePayload(transaction)
 
-        // Check for duplicate using the correctly generated hash
-        if (normalized.hash) {
+        // Check for duplicate using the correctly generated hash (unless user overrode it)
+        if (normalized.hash && !transaction.allowDuplicate) {
           const existing = await transactionsModel.getByHash(normalized.hash)
           if (existing) {
             console.log('Skipping duplicate transaction with hash:', normalized.hash)
             skipped++
             continue
           }
+        } else if (transaction.allowDuplicate) {
+          console.log('Allowing duplicate import (user override) for hash:', normalized.hash)
         }
 
         // Create the transaction (pass the already-normalized data)

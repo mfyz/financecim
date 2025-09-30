@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, Check, AlertCircle, Search, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -21,6 +22,7 @@ interface PreviewTransaction {
   hasError: boolean
   errorDetails: string | null
   status: 'clean' | 'duplicate' | 'db_duplicate' | 'error'
+  userOverride?: boolean // User marked this duplicate as OK to import
 }
 
 interface ImportStats {
@@ -60,10 +62,17 @@ export default function ImportStep3Page() {
   const [importProgress, setImportProgress] = useState(0)
   const [importComplete, setImportComplete] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     loadImportData()
   }, [])
+
+  useEffect(() => {
+    console.log('Toolbar debug:', { mounted, selectedIdsSize: selectedIds.size, shouldShow: mounted && selectedIds.size > 0 })
+  }, [mounted, selectedIds])
 
   const generateRowHash = (row: string[], columnMapping: ColumnMapping, sourceId: number): string => {
     // Generate hash using the same algorithm as the backend
@@ -276,6 +285,50 @@ export default function ImportStep3Page() {
     }
   }
 
+  // Selection handlers
+  const handleSelectAll = () => {
+    // Select all transactions on current page
+    const newSelected = new Set(selectedIds)
+
+    if (currentPageData.every(t => selectedIds.has(t.id))) {
+      // Deselect all on current page
+      currentPageData.forEach(t => newSelected.delete(t.id))
+    } else {
+      // Select all on current page
+      currentPageData.forEach(t => newSelected.add(t.id))
+    }
+
+    setSelectedIds(newSelected)
+  }
+
+  const handleSelectTransaction = (id: number) => {
+    const newSelected = new Set(selectedIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleMarkNotDuplicate = () => {
+    if (selectedIds.size === 0) return
+
+    // Update previewData to mark selected transactions as user-overridden
+    const updatedData = previewData.map(transaction => {
+      if (selectedIds.has(transaction.id)) {
+        return {
+          ...transaction,
+          userOverride: true
+        }
+      }
+      return transaction
+    })
+
+    setPreviewData(updatedData)
+    setSelectedIds(new Set()) // Clear selection after marking
+  }
+
   const handleImportConfirm = async () => {
     setShowConfirmModal(false)
     setIsImporting(true)
@@ -283,8 +336,12 @@ export default function ImportStep3Page() {
     setImportedCount(0)
 
     try {
-      // Filter out transactions with errors, duplicates, and database duplicates
-      const validTransactions = previewData.filter(t => !t.hasError && !t.isDuplicate && !t.isDbDuplicate)
+      // Filter out transactions with errors, duplicates (unless user-overridden), and database duplicates (unless user-overridden)
+      const validTransactions = previewData.filter(t =>
+        !t.hasError &&
+        (!t.isDuplicate || t.userOverride) &&
+        (!t.isDbDuplicate || t.userOverride)
+      )
       const total = validTransactions.length
       let successCount = 0
 
@@ -302,7 +359,8 @@ export default function ImportStep3Page() {
           source_category: transaction.source_category || null,
           category_id: null, // Will be auto-categorized later
           unit_id: null, // Will be auto-assigned by rules
-          source_data: transaction.source_data || {} // Preserve original CSV data
+          source_data: transaction.source_data || {}, // Preserve original CSV data
+          allowDuplicate: transaction.userOverride || false // Tell backend to skip duplicate check
           // Note: hash is intentionally omitted - the model will generate the correct hash
         }))
 
@@ -350,9 +408,9 @@ export default function ImportStep3Page() {
 
   const stats: ImportStats = useMemo(() => {
     const total = previewData.length
-    const clean = previewData.filter(t => t.status === 'clean').length
-    const duplicates = previewData.filter(t => t.status === 'duplicate').length
-    const dbDuplicates = previewData.filter(t => t.status === 'db_duplicate').length
+    const clean = previewData.filter(t => t.status === 'clean' || t.userOverride).length
+    const duplicates = previewData.filter(t => t.status === 'duplicate' && !t.userOverride).length
+    const dbDuplicates = previewData.filter(t => t.status === 'db_duplicate' && !t.userOverride).length
     const errors = previewData.filter(t => t.status === 'error').length
 
     return {
@@ -401,7 +459,7 @@ export default function ImportStep3Page() {
         bValue = bValue.toLowerCase()
       }
 
-      if (aValue !== null && bValue !== null) {
+      if (aValue !== null && bValue !== null && aValue !== undefined && bValue !== undefined) {
         if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
         if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
       }
@@ -427,7 +485,7 @@ export default function ImportStep3Page() {
   }
 
   return (
-    <div className="py-8">
+    <div className="py-8 pb-24">
       <div className="mb-8">
         <div className="flex items-center mb-4">
           <Link 
@@ -478,57 +536,57 @@ export default function ImportStep3Page() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="flex gap-4 mb-8">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+          className={`flex-1 bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'all' ? 'ring-2 ring-blue-500' : ''
           }`}
         >
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Transactions</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalTransactions}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalTransactions.toLocaleString()}</div>
         </button>
         <button
           onClick={() => setStatusFilter('clean')}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+          className={`flex-1 bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'clean' ? 'ring-2 ring-green-500' : ''
           }`}
         >
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Clean</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.cleanTransactions}</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.cleanTransactions.toLocaleString()}</div>
         </button>
         <button
           onClick={() => setStatusFilter('duplicate')}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+          className={`flex-1 bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'duplicate' ? 'ring-2 ring-orange-500' : ''
           }`}
         >
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Duplicates</div>
-          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.duplicateTransactions}</div>
+          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.duplicateTransactions.toLocaleString()}</div>
         </button>
         <button
           onClick={() => setStatusFilter('db_duplicate')}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+          className={`flex-1 bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'db_duplicate' ? 'ring-2 ring-blue-500' : ''
           }`}
         >
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Already Imported</div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.dbDuplicateTransactions}</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.dbDuplicateTransactions.toLocaleString()}</div>
         </button>
         <button
           onClick={() => setStatusFilter('error')}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+          className={`flex-1 bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'error' ? 'ring-2 ring-red-500' : ''
           }`}
         >
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Errors</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.errorTransactions}</div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.errorTransactions.toLocaleString()}</div>
         </button>
       </div>
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 p-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -551,19 +609,24 @@ export default function ImportStep3Page() {
             <option value="db_duplicate">Already Imported</option>
             <option value="error">Errors</option>
           </select>
-
-          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-            Showing {filteredAndSortedData.length} of {previewData.length} transactions
-          </div>
         </div>
       </div>
 
       {/* Preview Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 overflow-hidden mb-8">
-        <div className="overflow-x-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20 mb-8">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="min-w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 sticky top-0 z-10">
               <tr>
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={currentPageData.length > 0 && currentPageData.every(t => selectedIds.has(t.id))}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2"
+                    title="Select all on this page"
+                  />
+                </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                   onClick={() => handleSort('id')}
@@ -626,10 +689,19 @@ export default function ImportStep3Page() {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {currentPageData.map((transaction) => (
                 <tr key={transaction.id} className={
+                  transaction.userOverride ? 'bg-green-50 dark:bg-green-900/20' :
                   transaction.status === 'error' ? 'bg-red-50 dark:bg-red-900/20' :
                   transaction.status === 'duplicate' ? 'bg-orange-50 dark:bg-orange-900/20' :
                   transaction.status === 'db_duplicate' ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                 }>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(transaction.id)}
+                      onChange={() => handleSelectTransaction(transaction.id)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {transaction.id}
                   </td>
@@ -668,27 +740,36 @@ export default function ImportStep3Page() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center space-x-2">
-                      {transaction.status === 'error' && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200" title={transaction.errorDetails || 'Error'}>
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Error
-                        </span>
-                      )}
-                      {transaction.status === 'duplicate' && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200" title={`Duplicate in CSV - Hash: ${transaction.hash.substring(0, 8)}...`}>
-                          Duplicate
-                        </span>
-                      )}
-                      {transaction.status === 'db_duplicate' && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200" title={`Already in database - Hash: ${transaction.hash.substring(0, 8)}...`}>
-                          Already Imported
-                        </span>
-                      )}
-                      {transaction.status === 'clean' && (
+                      {transaction.userOverride ? (
                         <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
                           <Check className="w-3 h-3 mr-1" />
-                          Clean
+                          Override: Will Import
                         </span>
+                      ) : (
+                        <>
+                          {transaction.status === 'error' && (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200" title={transaction.errorDetails || 'Error'}>
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Error
+                            </span>
+                          )}
+                          {transaction.status === 'duplicate' && (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200" title={`Duplicate in CSV - Hash: ${transaction.hash.substring(0, 8)}...`}>
+                              Duplicate
+                            </span>
+                          )}
+                          {transaction.status === 'db_duplicate' && (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200" title={`Already in database - Hash: ${transaction.hash.substring(0, 8)}...`}>
+                              Already Imported
+                            </span>
+                          )}
+                          {transaction.status === 'clean' && (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+                              <Check className="w-3 h-3 mr-1" />
+                              Clean
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -835,6 +916,53 @@ export default function ImportStep3Page() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Bulk Action Toolbar */}
+      {mounted && selectedIds.size > 0 && typeof window !== 'undefined' && createPortal(
+        <div
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-4 border-blue-600 dark:border-blue-500"
+          style={{
+            zIndex: 10000,
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.06)'
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''} selected
+                </span>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const selectedTransactions = previewData.filter(t => selectedIds.has(t.id))
+                  const hasDuplicates = selectedTransactions.some(t => (t.isDuplicate || t.isDbDuplicate) && !t.userOverride)
+                  return hasDuplicates && (
+                    <button
+                      onClick={handleMarkNotDuplicate}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium shadow-md"
+                    >
+                      Mark as Not Duplicate
+                    </button>
+                  )
+                })()}
+                {/* Future bulk actions can be added here */}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

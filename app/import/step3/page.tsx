@@ -17,15 +17,17 @@ interface PreviewTransaction {
   rawRow: string[]
   source_data: Record<string, any>
   isDuplicate: boolean
+  isDbDuplicate: boolean
   hasError: boolean
   errorDetails: string | null
-  status: 'clean' | 'duplicate' | 'error'
+  status: 'clean' | 'duplicate' | 'db_duplicate' | 'error'
 }
 
 interface ImportStats {
   totalTransactions: number
   cleanTransactions: number
   duplicateTransactions: number
+  dbDuplicateTransactions: number
   errorTransactions: number
 }
 
@@ -45,7 +47,7 @@ interface Source {
 export default function ImportStep3Page() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'clean' | 'duplicate' | 'error'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'clean' | 'duplicate' | 'db_duplicate' | 'error'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(1000)
   const [sortField, setSortField] = useState<keyof PreviewTransaction>('id')
@@ -63,18 +65,21 @@ export default function ImportStep3Page() {
     loadImportData()
   }, [])
 
-  const generateRowHash = (row: string[], columnMapping: ColumnMapping): string => {
-    // Create a clean object with mapped data
-    const cleanData = {
-      date: row[parseInt(columnMapping.date)] || '',
-      description: row[parseInt(columnMapping.description)] || '',
-      amount: row[parseInt(columnMapping.amount)] || '',
-      source_category: row[parseInt(columnMapping.source_category)] || ''
+  const generateRowHash = (row: string[], columnMapping: ColumnMapping, sourceId: number): string => {
+    // Generate hash using the same algorithm as the backend
+    // Format: sourceId|date|description|amount (with amount fixed to 2 decimals)
+    const date = row[parseInt(columnMapping.date)] || ''
+    const description = row[parseInt(columnMapping.description)] || ''
+    const amountStr = row[parseInt(columnMapping.amount)] || ''
+    const amount = parseFloat(amountStr)
+
+    if (isNaN(amount)) {
+      // If amount is invalid, use a placeholder to generate some hash
+      return CryptoJS.SHA256(`${sourceId}|${date}|${description}|0.00`).toString().substring(0, 16)
     }
 
-    // Serialize to JSON and hash with MD5
-    const jsonString = JSON.stringify(cleanData)
-    return CryptoJS.MD5(jsonString).toString()
+    const data = `${sourceId}|${date}|${description}|${amount.toFixed(2)}`
+    return CryptoJS.SHA256(data).toString().substring(0, 16)
   }
 
   const serializeSourceData = (row: string[], headers: string[]): Record<string, any> => {
@@ -163,34 +168,76 @@ export default function ImportStep3Page() {
       const processedData: PreviewTransaction[] = []
       const hashCounts = new Map<string, number>()
 
-      // First pass: generate hashes and count duplicates
+      // First pass: generate hashes and count duplicates within CSV
+      // IMPORTANT: Apply amount reversal BEFORE generating hash to match database
+      const allHashes: string[] = []
       dataRows.forEach((row, index) => {
-        const hash = generateRowHash(row, columnMapping)
+        // Apply amount reversal if needed before hashing
+        let amountForHash = row[parseInt(columnMapping.amount)] || ''
+        if (reversePurchases && amountForHash) {
+          const numAmount = parseFloat(amountForHash)
+          if (!isNaN(numAmount)) {
+            amountForHash = (-numAmount).toString()
+          }
+        }
+
+        // Generate hash with the transformed amount
+        const modifiedRow = [...row]
+        modifiedRow[parseInt(columnMapping.amount)] = amountForHash
+        const hash = generateRowHash(modifiedRow, columnMapping, selectedSourceId)
+
+        allHashes.push(hash)
         hashCounts.set(hash, (hashCounts.get(hash) || 0) + 1)
       })
 
+      // Check for database duplicates by checking all hashes against existing transactions
+      const dbDuplicateHashes = new Set<string>()
+      try {
+        const response = await fetch('/api/transactions/check-duplicates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hashes: allHashes })
+        })
+        if (response.ok) {
+          const result = await response.json()
+          if (result.duplicates && Array.isArray(result.duplicates)) {
+            result.duplicates.forEach((hash: string) => dbDuplicateHashes.add(hash))
+          }
+        }
+      } catch (error) {
+        console.error('Error checking database duplicates:', error)
+      }
+
       // Second pass: create transaction objects with duplicate detection
       dataRows.forEach((row, index) => {
-        const hash = generateRowHash(row, columnMapping)
         const validation = validateTransaction(row, columnMapping)
-        const isDuplicate = (hashCounts.get(hash) || 0) > 1
         const sourceData = serializeSourceData(row, headers)
-
-        let status: 'clean' | 'duplicate' | 'error' = 'clean'
-        if (!validation.isValid) {
-          status = 'error'
-        } else if (isDuplicate) {
-          status = 'duplicate'
-        }
 
         let amount = row[parseInt(columnMapping.amount)] || ''
 
-        // Apply amount reversal if enabled
+        // Apply amount reversal if enabled (must be done before hash generation)
         if (reversePurchases && amount) {
           const numAmount = parseFloat(amount)
           if (!isNaN(numAmount)) {
             amount = (-numAmount).toString()
           }
+        }
+
+        // Generate hash with the transformed amount
+        const modifiedRow = [...row]
+        modifiedRow[parseInt(columnMapping.amount)] = amount
+        const hash = generateRowHash(modifiedRow, columnMapping, selectedSourceId)
+
+        const isDuplicate = (hashCounts.get(hash) || 0) > 1
+        const isDbDuplicate = dbDuplicateHashes.has(hash)
+
+        let status: 'clean' | 'duplicate' | 'db_duplicate' | 'error' = 'clean'
+        if (!validation.isValid) {
+          status = 'error'
+        } else if (isDbDuplicate) {
+          status = 'db_duplicate'
+        } else if (isDuplicate) {
+          status = 'duplicate'
         }
 
         processedData.push({
@@ -204,6 +251,7 @@ export default function ImportStep3Page() {
           rawRow: row,
           source_data: sourceData,
           isDuplicate,
+          isDbDuplicate,
           hasError: !validation.isValid,
           errorDetails: validation.errors.length > 0 ? validation.errors.join(', ') : null,
           status
@@ -235,8 +283,8 @@ export default function ImportStep3Page() {
     setImportedCount(0)
 
     try {
-      // Filter out transactions with errors and duplicates
-      const validTransactions = previewData.filter(t => !t.hasError && !t.isDuplicate)
+      // Filter out transactions with errors, duplicates, and database duplicates
+      const validTransactions = previewData.filter(t => !t.hasError && !t.isDuplicate && !t.isDbDuplicate)
       const total = validTransactions.length
       let successCount = 0
 
@@ -247,14 +295,15 @@ export default function ImportStep3Page() {
 
         // Create transaction objects for this batch
         const transactionBatch = batch.map(transaction => ({
-          date: new Date(transaction.date).toISOString(),
+          date: transaction.date, // Keep as YYYY-MM-DD string to avoid timezone issues
           description: transaction.description,
           amount: parseFloat(transaction.amount),
           source_id: parseInt(sessionStorage.getItem('selectedSourceId') || '0'),
+          source_category: transaction.source_category || null,
           category_id: null, // Will be auto-categorized later
-          unit_id: 1, // Default unit, should be from user profile
-          source_data: transaction.source_data || {},
-          hash: transaction.hash
+          unit_id: null, // Will be auto-assigned by rules
+          source_data: transaction.source_data || {} // Preserve original CSV data
+          // Note: hash is intentionally omitted - the model will generate the correct hash
         }))
 
         // Send batch to API
@@ -303,12 +352,14 @@ export default function ImportStep3Page() {
     const total = previewData.length
     const clean = previewData.filter(t => t.status === 'clean').length
     const duplicates = previewData.filter(t => t.status === 'duplicate').length
+    const dbDuplicates = previewData.filter(t => t.status === 'db_duplicate').length
     const errors = previewData.filter(t => t.status === 'error').length
 
     return {
       totalTransactions: total,
       cleanTransactions: clean,
       duplicateTransactions: duplicates,
+      dbDuplicateTransactions: dbDuplicates,
       errorTransactions: errors
     }
   }, [previewData])
@@ -456,6 +507,15 @@ export default function ImportStep3Page() {
           <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.duplicateTransactions}</div>
         </button>
         <button
+          onClick={() => setStatusFilter('db_duplicate')}
+          className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+            statusFilter === 'db_duplicate' ? 'ring-2 ring-blue-500' : ''
+          }`}
+        >
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Already Imported</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.dbDuplicateTransactions}</div>
+        </button>
+        <button
           onClick={() => setStatusFilter('error')}
           className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
             statusFilter === 'error' ? 'ring-2 ring-red-500' : ''
@@ -482,12 +542,13 @@ export default function ImportStep3Page() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'clean' | 'duplicate' | 'error')}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'clean' | 'duplicate' | 'db_duplicate' | 'error')}
             className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Status</option>
             <option value="clean">Clean</option>
-            <option value="duplicate">Duplicates</option>
+            <option value="duplicate">Duplicates (in CSV)</option>
+            <option value="db_duplicate">Already Imported</option>
             <option value="error">Errors</option>
           </select>
 
@@ -566,7 +627,8 @@ export default function ImportStep3Page() {
               {currentPageData.map((transaction) => (
                 <tr key={transaction.id} className={
                   transaction.status === 'error' ? 'bg-red-50 dark:bg-red-900/20' :
-                  transaction.status === 'duplicate' ? 'bg-orange-50 dark:bg-orange-900/20' : ''
+                  transaction.status === 'duplicate' ? 'bg-orange-50 dark:bg-orange-900/20' :
+                  transaction.status === 'db_duplicate' ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                 }>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {transaction.id}
@@ -613,8 +675,13 @@ export default function ImportStep3Page() {
                         </span>
                       )}
                       {transaction.status === 'duplicate' && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200" title={`Hash: ${transaction.hash.substring(0, 8)}...`}>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200" title={`Duplicate in CSV - Hash: ${transaction.hash.substring(0, 8)}...`}>
                           Duplicate
+                        </span>
+                      )}
+                      {transaction.status === 'db_duplicate' && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200" title={`Already in database - Hash: ${transaction.hash.substring(0, 8)}...`}>
+                          Already Imported
                         </span>
                       )}
                       {transaction.status === 'clean' && (

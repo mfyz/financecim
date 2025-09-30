@@ -125,11 +125,11 @@ export default function RulesPage() {
         categoryRulesRes.json()
       ])
 
-      setUnits(unitsData)
-      setCategories(categoriesData)
-      setSources(sourcesData)
-      setUnitRules(unitRulesData)
-      setCategoryRules(categoryRulesData)
+      setUnits(unitsData.data || unitsData)
+      setCategories(categoriesData.data || categoriesData)
+      setSources(sourcesData.data || sourcesData)
+      setUnitRules(unitRulesData.data || unitRulesData)
+      setCategoryRules(categoryRulesData.data || categoryRulesData)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error('Failed to load rules')

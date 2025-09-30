@@ -83,7 +83,7 @@ export default function TransactionsPage() {
   // Fetch stats when filters change
   useEffect(() => {
     fetchStats()
-  }, [searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, selectedTags])
+  }, [searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
 
   const fetchUnits = async () => {
     try {
@@ -181,8 +181,9 @@ export default function TransactionsPage() {
       if (dateTo) params.set('dateTo', dateTo)
       if (amountMin) params.set('amountMin', amountMin)
       if (amountMax) params.set('amountMax', amountMax)
+      if (showIgnored !== undefined) params.set('showIgnored', showIgnored.toString())
       if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
-      
+
       const response = await fetch(`/api/transactions/stats?${params}`)
       const data = await response.json()
       setStats(data)

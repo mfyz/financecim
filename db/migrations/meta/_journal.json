@@ -8,6 +8,20 @@
       "when": 1756698068496,
       "tag": "0000_woozy_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1756698068497,
+      "tag": "0001_add_hash_to_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1759194625321,
+      "tag": "0002_add_source_data_to_transactions",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,7 @@
     "visual-check": "node scripts/visual-check.js",
     "compare-prototype": "node scripts/compare-prototype.js",
     "kill-server": "ps aux | grep 'next dev -p 5601' | grep -v grep | awk '{print $2}' | xargs -r kill -TERM 2>/dev/null || echo 'No Next.js dev server found'",
+    "stop": "npm run kill-server",
     "restart": "npm run kill-server && npm run dev",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

@@ -42,6 +42,7 @@ export const transactionsModel = {
     const ignore = input.ignore ?? false
     const notes = input.notes ?? undefined
     const tags = input.tags ?? undefined
+    const sourceData = input.sourceData ?? input.source_data ?? undefined
 
     // Normalize date to YYYY-MM-DD string
     let date: string
@@ -76,6 +77,7 @@ export const transactionsModel = {
       notes: (notes ?? null) as any,
       tags: (tags ?? null) as any,
       hash: (hash ?? null) as any,
+      sourceData: (sourceData ?? null) as any,
     } as NewTransaction
 
     return payload
@@ -121,6 +123,9 @@ export const transactionsModel = {
     if (Object.prototype.hasOwnProperty.call(data, 'ignore')) mapped.ignore = (data as any).ignore as any
     if (Object.prototype.hasOwnProperty.call(data, 'notes')) mapped.notes = (data as any).notes as any
     if (Object.prototype.hasOwnProperty.call(data, 'tags')) mapped.tags = (data as any).tags as any
+    if (Object.prototype.hasOwnProperty.call(data, 'sourceData') || (data as any).source_data !== undefined) {
+      mapped.sourceData = (data as any).sourceData ?? (data as any).source_data
+    }
     if (Object.prototype.hasOwnProperty.call(data, 'description')) mapped.description = (data as any).description as any
     if (Object.prototype.hasOwnProperty.call(data, 'amount')) mapped.amount = (data as any).amount as any
     if ((data as any).date !== undefined) {
@@ -557,5 +562,101 @@ export const transactionsModel = {
 
     const result = await this.getAll(1, limit, 'date', 'desc', { search: query })
     return result.data
+  },
+
+  /**
+   * Get transaction trends for reporting
+   */
+  async getTrends(
+    period: 'monthly' | 'yearly' = 'monthly',
+    unitId?: number,
+    categoryId?: number
+  ): Promise<{
+    period: string
+    data: Array<{
+      period: string
+      income: number
+      expenses: number
+      net: number
+      transactionCount: number
+    }>
+    summary: {
+      totalIncome: number
+      totalExpenses: number
+      totalNet: number
+      bestPeriod: { period: string; value: number } | null
+      worstPeriod: { period: string; value: number } | null
+    }
+  }> {
+    const db = getDatabase()
+
+    // Build where conditions
+    const whereConditions = []
+    if (unitId) {
+      whereConditions.push(eq(transactions.unitId, unitId))
+    }
+    if (categoryId) {
+      whereConditions.push(eq(transactions.categoryId, categoryId))
+    }
+
+    // Get period format for grouping
+    const periodFormat = period === 'monthly'
+      ? sql<string>`strftime('%Y-%m', ${transactions.date})`
+      : sql<string>`strftime('%Y', ${transactions.date})`
+
+    // Get trends data
+    const trendsQuery = db
+      .select({
+        period: periodFormat,
+        income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
+        expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
+        transactionCount: count()
+      })
+      .from(transactions)
+      .groupBy(periodFormat)
+      .orderBy(periodFormat)
+
+    const trendsResult = await (whereConditions.length > 0
+      ? trendsQuery.where(and(...whereConditions))
+      : trendsQuery)
+
+    // Calculate net and format data
+    const data = trendsResult.map(row => ({
+      period: row.period || '',
+      income: row.income || 0,
+      expenses: row.expenses || 0,
+      net: (row.income || 0) - (row.expenses || 0),
+      transactionCount: row.transactionCount || 0
+    }))
+
+    // Calculate summary
+    let totalIncome = 0
+    let totalExpenses = 0
+    let bestPeriod: { period: string; value: number } | null = null
+    let worstPeriod: { period: string; value: number } | null = null
+
+    data.forEach(row => {
+      totalIncome += row.income
+      totalExpenses += row.expenses
+
+      if (!bestPeriod || row.net > bestPeriod.value) {
+        bestPeriod = { period: row.period, value: row.net }
+      }
+      if (!worstPeriod || row.net < worstPeriod.value) {
+        worstPeriod = { period: row.period, value: row.net }
+      }
+    })
+
+    return {
+      period,
+      data,
+      summary: {
+        totalIncome,
+        totalExpenses,
+        totalNet: totalIncome - totalExpenses,
+        bestPeriod,
+        worstPeriod
+      }
+    }
   }
 }

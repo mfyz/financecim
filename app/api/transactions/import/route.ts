@@ -25,23 +25,30 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Processing transaction:', transaction)
 
-        // Check for duplicate by hash when provided
-        if (transaction.hash) {
-          const existing = await transactionsModel.getByHash(String(transaction.hash))
+        // Normalize the transaction payload (this will generate the correct hash)
+        const normalized = transactionsModel.normalizePayload(transaction)
+
+        // Check for duplicate using the correctly generated hash
+        if (normalized.hash) {
+          const existing = await transactionsModel.getByHash(normalized.hash)
           if (existing) {
-            console.log('Skipping duplicate transaction with hash:', transaction.hash)
+            console.log('Skipping duplicate transaction with hash:', normalized.hash)
             skipped++
             continue
           }
         }
 
-        // Delegate creation and normalization to the model
+        // Create the transaction (pass the already-normalized data)
         await transactionsModel.create(transaction)
 
         imported++
         console.log('Successfully imported transaction', imported)
       } catch (error) {
         console.error('Error importing transaction:', error)
+        if (error instanceof Error) {
+          console.error('Error message:', error.message)
+          console.error('Error stack:', error.stack)
+        }
         console.error('Transaction data:', transaction)
         errors.push({ transaction, error: String(error) })
         // Continue with next transaction

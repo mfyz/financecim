@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw, Info } from 'lucide-react'
 import { TransactionWithRelations } from '@/db/models/transactions.model'
 import { CategoryDropdown } from '@/components/forms'
@@ -45,6 +46,7 @@ export default function TransactionsPage() {
   const [units, setUnits] = useState<Unit[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [tags, setTags] = useState<string[]>([])
+  const [mounted, setMounted] = useState(false)
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -72,6 +74,11 @@ export default function TransactionsPage() {
   // Source data modal state
   const [isSourceDataModalOpen, setIsSourceDataModalOpen] = useState(false)
   const [selectedSourceData, setSelectedSourceData] = useState<Record<string, any> | null>(null)
+
+  // Set mounted state
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Fetch initial data
   useEffect(() => {
@@ -407,7 +414,7 @@ export default function TransactionsPage() {
 
 
   return (
-    <div className="py-8">
+    <div className="py-8 pb-24">
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Transactions</h2>
@@ -596,71 +603,6 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
-      {showBulkActions && (
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-blue-900 dark:text-blue-300">
-              {selectedTransactions.length} transactions selected
-            </span>
-            <div className="space-x-2">
-              <select 
-                onChange={(e) => {
-                  if (e.target.value) {
-                    bulkUpdate({ unitId: parseInt(e.target.value) })
-                    e.target.value = ''
-                  }
-                }}
-                className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
-              >
-                <option value="">Bulk assign unit...</option>
-                {units.map(unit => (
-                  <option key={unit.id} value={unit.id}>{unit.name}</option>
-                ))}
-              </select>
-              <div className="inline-block">
-                <CategoryDropdown
-                  value=""
-                  onChange={(value) => {
-                    if (value) {
-                      bulkUpdate({ categoryId: parseInt(value) })
-                    }
-                  }}
-                  includeEmpty={true}
-                  emptyLabel="Bulk categorize as..."
-                  includeAll={false}
-                  includeUncategorized={false}
-                  className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-sm"
-                />
-              </div>
-              <button 
-                onClick={() => bulkUpdate({ ignore: true })}
-                className="bg-gray-500 dark:bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 dark:hover:bg-gray-700 flex items-center"
-              >
-                <EyeOff className="w-3 h-3 mr-1" />
-                Ignore
-              </button>
-              <button 
-                onClick={bulkDelete}
-                className="bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-600 dark:hover:bg-red-700 flex items-center"
-              >
-                <Trash2 className="w-3 h-3 mr-1" />
-                Delete
-              </button>
-              <button 
-                onClick={() => {
-                  setSelectedTransactions([])
-                  setShowBulkActions(false)
-                }}
-                className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm flex items-center"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Transactions Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/20">
@@ -948,6 +890,86 @@ export default function TransactionsPage() {
         onClose={() => setIsSourceDataModalOpen(false)}
         sourceData={selectedSourceData}
       />
+
+      {/* Floating Bulk Action Toolbar */}
+      {mounted && selectedTransactions.length > 0 && typeof window !== 'undefined' && createPortal(
+        <div
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-4 border-blue-600 dark:border-blue-500"
+          style={{
+            zIndex: 10000,
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.06)'
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {selectedTransactions.length} transaction{selectedTransactions.length !== 1 ? 's' : ''} selected
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedTransactions([])
+                    setShowBulkActions(false)
+                  }}
+                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      bulkUpdate({ unitId: parseInt(e.target.value) })
+                      e.target.value = ''
+                    }
+                  }}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
+                >
+                  <option value="">Assign unit...</option>
+                  {units.map(unit => (
+                    <option key={unit.id} value={unit.id}>{unit.name}</option>
+                  ))}
+                </select>
+                <div className="inline-block">
+                  <CategoryDropdown
+                    value=""
+                    onChange={(value) => {
+                      if (value) {
+                        bulkUpdate({ categoryId: parseInt(value) })
+                      }
+                    }}
+                    includeEmpty={true}
+                    emptyLabel="Assign category..."
+                    includeAll={false}
+                    includeUncategorized={false}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
+                  />
+                </div>
+                <button
+                  onClick={() => bulkUpdate({ ignore: true })}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium shadow-md inline-flex items-center gap-2"
+                >
+                  <EyeOff className="w-4 h-4" />
+                  Ignore
+                </button>
+                <button
+                  onClick={bulkDelete}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium shadow-md inline-flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

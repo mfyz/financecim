@@ -284,32 +284,37 @@ export default function ImportStep2Page() {
     }
 
     // First pass: exact matches (highest priority)
-    headers.forEach((header, index) => {
-      const headerLower = header.toLowerCase().trim()
+    // IMPORTANT: Loop through variations FIRST (not headers) to prioritize by config order
+    Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+      variations.forEach(variation => {
+        if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
 
-      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
-        variations.forEach(variation => {
-          if (headerLower === variation.toLowerCase()) {
-            if (!mapping[fieldType as keyof ColumnMapping]) { // Only set if not already mapped
-              mapping[fieldType as keyof ColumnMapping] = index.toString()
-            }
-          }
-        })
+        // Find first header that matches this variation
+        const headerIndex = headers.findIndex(header =>
+          header.toLowerCase().trim() === variation.toLowerCase()
+        )
+
+        if (headerIndex !== -1) {
+          mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
+        }
       })
     })
 
     // Second pass: partial matches for unmapped fields
-    headers.forEach((header, index) => {
-      const headerLower = header.toLowerCase().trim()
+    Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+      variations.forEach(variation => {
+        if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
 
-      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
-        variations.forEach(variation => {
-          if (headerLower.includes(variation.toLowerCase()) && headerLower !== variation.toLowerCase()) {
-            if (!mapping[fieldType as keyof ColumnMapping]) { // Only set if not already mapped
-              mapping[fieldType as keyof ColumnMapping] = index.toString()
-            }
-          }
+        // Find first header that partially matches this variation
+        const headerIndex = headers.findIndex(header => {
+          const headerLower = header.toLowerCase().trim()
+          return headerLower.includes(variation.toLowerCase()) &&
+                 headerLower !== variation.toLowerCase()
         })
+
+        if (headerIndex !== -1) {
+          mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
+        }
       })
     })
 

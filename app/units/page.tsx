@@ -414,17 +414,26 @@ export default function UnitsPage() {
             </div>
           </div>
           
-          <FormField
-            label="Icon"
-            value={newUnit.icon}
-            onChange={(e) => {
-              // Limit to single character (emoji or symbol)
-              const value = e.target.value.slice(0, 1)
-              setNewUnit(prev => ({ ...prev, icon: value }))
-            }}
-            placeholder="💼"
-            maxLength={1}
-          />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Icon (emoji or symbol)
+            </label>
+            <input
+              type="text"
+              value={newUnit.icon}
+              onChange={(e) => {
+                // Get the input value
+                const value = e.target.value
+                // Use Array.from to properly handle emojis (multi-byte characters)
+                // Allow empty string or take first character
+                const firstChar = value === '' ? '' : (Array.from(value)[0] || '')
+                setNewUnit(prev => ({ ...prev, icon: firstChar }))
+              }}
+              placeholder="💼"
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-center text-2xl"
+              style={{ maxWidth: '100px' }}
+            />
+          </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <button 
@@ -494,17 +503,26 @@ export default function UnitsPage() {
               </div>
             </div>
             
-            <FormField
-              label="Icon"
-              value={editingUnit.icon || '💼'}
-              onChange={(e) => {
-                // Limit to single character (emoji or symbol)
-                const value = e.target.value.slice(0, 1)
-                setEditingUnit(prev => prev ? { ...prev, icon: value } : null)
-              }}
-              placeholder="💼"
-              maxLength={1}
-            />
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Icon (emoji or symbol)
+              </label>
+              <input
+                type="text"
+                value={editingUnit.icon || ''}
+                onChange={(e) => {
+                  // Get the input value
+                  const value = e.target.value
+                  // Use Array.from to properly handle emojis (multi-byte characters)
+                  // Allow empty string or take first character
+                  const firstChar = value === '' ? '' : (Array.from(value)[0] || '')
+                  setEditingUnit(prev => prev ? { ...prev, icon: firstChar } : null)
+                }}
+                placeholder="💼"
+                className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-center text-2xl"
+                style={{ maxWidth: '100px' }}
+              />
+            </div>
             
             <div className="flex justify-end space-x-2 pt-4">
               <button 

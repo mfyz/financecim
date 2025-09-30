@@ -105,30 +105,63 @@ export default function ImportPage() {
       reader.onload = (e) => {
         try {
           const text = e.target?.result as string
-          const lines = text.split('\n').filter(line => line.trim())
-          const data = lines.map(line => {
-            // Simple CSV parsing - handles basic quotes and commas
-            const result = []
-            let current = ''
-            let inQuotes = false
 
-            for (let i = 0; i < line.length; i++) {
-              const char = line[i]
-              if (char === '"' && (i === 0 || line[i-1] === ',')) {
-                inQuotes = true
-              } else if (char === '"' && inQuotes) {
-                inQuotes = false
-              } else if (char === ',' && !inQuotes) {
-                result.push(current.trim())
-                current = ''
+          // Parse CSV with proper multi-line cell support
+          const rows: string[][] = []
+          let currentRow: string[] = []
+          let currentCell = ''
+          let inQuotes = false
+
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i]
+            const nextChar = text[i + 1]
+
+            if (char === '"') {
+              // Handle escaped quotes (double quotes within quotes)
+              if (inQuotes && nextChar === '"') {
+                currentCell += '"'
+                i++ // Skip next quote
               } else {
-                current += char
+                // Toggle quote state
+                inQuotes = !inQuotes
               }
+            } else if (char === ',' && !inQuotes) {
+              // End of cell
+              currentRow.push(currentCell.trim())
+              currentCell = ''
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+              // End of row (handle both \n and \r\n)
+              if (char === '\r' && nextChar === '\n') {
+                i++ // Skip the \n in \r\n
+              }
+
+              // Add the last cell and row if not empty
+              if (currentCell.trim() || currentRow.length > 0) {
+                currentRow.push(currentCell.trim())
+
+                // Only add non-empty rows
+                if (currentRow.some(cell => cell.length > 0)) {
+                  rows.push(currentRow)
+                }
+
+                currentRow = []
+                currentCell = ''
+              }
+            } else {
+              // Regular character
+              currentCell += char
             }
-            result.push(current.trim())
-            return result
-          })
-          resolve(data)
+          }
+
+          // Handle last cell and row if file doesn't end with newline
+          if (currentCell.trim() || currentRow.length > 0) {
+            currentRow.push(currentCell.trim())
+            if (currentRow.some(cell => cell.length > 0)) {
+              rows.push(currentRow)
+            }
+          }
+
+          resolve(rows)
         } catch (error) {
           reject(error)
         }

@@ -332,6 +332,219 @@ describe('ImportPage', () => {
       })
     })
 
+    test('parses CSV with multi-line cells correctly', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Location\n12/31/2024,"AplPay TST* PLAZA","BROOKLYN\nNY"\n01/01/2025,"Test Store","NEW YORK\nNY"'
+      const mockFile = new File([csvContent], 'multiline.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('multiline.csv')).toBeInTheDocument()
+        // Should have 2 data rows (not 4 from splitting on newlines)
+        expect(screen.getByText('2 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('parses CSV with escaped quotes (double quotes)', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\n01/20/2024,"He said ""Hello""",100.00'
+      const mockFile = new File([csvContent], 'escaped.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('escaped.csv')).toBeInTheDocument()
+        expect(screen.getByText('1 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV with Windows line endings (CRLF)', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\r\n01/20/2024,Test Transaction,-100.00\r\n01/21/2024,Another,-50.00'
+      const mockFile = new File([csvContent], 'windows.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('windows.csv')).toBeInTheDocument()
+        expect(screen.getByText('2 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV with empty rows gracefully', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\n01/20/2024,Test,-100.00\n\n\n01/21/2024,Another,-50.00'
+      const mockFile = new File([csvContent], 'empty-rows.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('empty-rows.csv')).toBeInTheDocument()
+        // Should skip empty rows and have 2 data rows
+        expect(screen.getByText('2 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV with complex multi-line cells (real-world example)', async () => {
+      render(<ImportPage />)
+
+      const csvContent = `Date,Description,Extended Details,Amount
+12/31/2024,AplPay TST* PLAZA,"99999994366 3473651086
+AplPay TST* PLAZA ORTEGA 300684874
+BROOKLYN
+NY
+Description : RESTAURANTS Price : 0.9663
+3473651086",96.63
+01/01/2025,Test Store,"Line 1
+Line 2
+Line 3",50.00`
+
+      const mockFile = new File([csvContent], 'complex.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('complex.csv')).toBeInTheDocument()
+        // Should have 2 data rows despite multiple newlines in cells
+        expect(screen.getByText('2 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV with trailing whitespace in cells', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\n01/20/2024,  Test Transaction  ,  -100.00  '
+      const mockFile = new File([csvContent], 'whitespace.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('whitespace.csv')).toBeInTheDocument()
+        expect(screen.getByText('1 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV without trailing newline', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\n01/20/2024,Test,-100.00'
+      const mockFile = new File([csvContent], 'no-trailing.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('no-trailing.csv')).toBeInTheDocument()
+        expect(screen.getByText('1 rows')).toBeInTheDocument()
+      })
+    })
+
+    test('handles CSV with mixed quoted and unquoted fields', async () => {
+      render(<ImportPage />)
+
+      const csvContent = 'Date,Description,Amount\n01/20/2024,"Quoted Description",100.00\n01/21/2024,Unquoted Description,-50.00'
+      const mockFile = new File([csvContent], 'mixed.csv', { type: 'text/csv' })
+
+      const fileInput = screen.getByText('Choose Files').closest('label')?.querySelector('input[type="file"]') as HTMLInputElement
+
+      Object.defineProperty(fileInput, 'files', {
+        value: [mockFile],
+        configurable: true,
+      })
+
+      mockFileReader.result = csvContent
+      fireEvent.change(fileInput)
+      if (mockFileReader.onload) {
+        mockFileReader.onload({ target: { result: csvContent } } as any)
+      }
+
+      await waitFor(() => {
+        expect(screen.getByText('mixed.csv')).toBeInTheDocument()
+        expect(screen.getByText('2 rows')).toBeInTheDocument()
+      })
+    })
+
     test('handles CSV parsing errors gracefully', async () => {
       render(<ImportPage />)
 

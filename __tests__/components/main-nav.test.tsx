@@ -64,10 +64,15 @@ describe('MainNav Component', () => {
       'Import'
     ]
 
+    // Test text-based navigation items
     navItems.forEach(item => {
       const link = screen.getByRole('link', { name: new RegExp(item) })
       expect(link).toBeInTheDocument()
     })
+
+    // Test Settings (icon-only link) - check it exists by href
+    const settingsLink = screen.getByRole('link', { name: '' }).closest('[href="/settings"]')
+    expect(settingsLink || screen.getAllByRole('link').find(link => link.getAttribute('href') === '/settings')).toBeInTheDocument()
   })
 
   it('should highlight active navigation item', () => {
@@ -151,7 +156,7 @@ describe('MainNav Component', () => {
     const visibleMobileItems = screen.getAllByRole('link').filter(link =>
       link.className.includes('text-base')
     )
-    expect(visibleMobileItems).toHaveLength(7) // All navigation items
+    expect(visibleMobileItems).toHaveLength(8) // All navigation items (including Settings)
   })
 
   it('should close mobile menu when a link is clicked', async () => {

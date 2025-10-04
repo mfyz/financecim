@@ -210,6 +210,10 @@ export class CSVParser {
 
   /**
    * Parse date string to ISO format
+   * Supports multiple formats:
+   * - ISO: YYYY-MM-DD
+   * - 4-digit year: MM/DD/YYYY, DD/MM/YYYY, DD.MM.YYYY
+   * - 2-digit year: MM/DD/YY, DD/MM/YY, DD.MM.YY
    */
   private parseDate(dateStr: string): string | null {
     try {
@@ -221,7 +225,46 @@ export class CSVParser {
         return trimmed
       }
 
-      // Try European format DD/MM/YYYY or DD.MM.YYYY
+      // Handle 2-digit years: 12/20/24, 1/5/24, etc.
+      if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2}$/.test(trimmed)) {
+        const parts = trimmed.split(/[\/\.]/)
+        const first = parseInt(parts[0])
+        const second = parseInt(parts[1])
+        let year = parseInt(parts[2])
+
+        // Convert 2-digit year to 4-digit
+        // Strategy: 00-30 = 2000-2030, 31-99 = 1931-1999
+        // This gives us a ~100 year window centered around current time
+        if (year >= 0 && year <= 30) {
+          year = 2000 + year
+        } else if (year >= 31 && year <= 99) {
+          year = 1900 + year
+        }
+
+        // Determine if DD/MM/YY or MM/DD/YY
+        if (first > 12 && second <= 12) {
+          // Definitely DD/MM/YY format (day > 12)
+          const date = new Date(year, second - 1, first)
+          if (!isNaN(date.getTime())) {
+            return `${year}-${String(second).padStart(2, '0')}-${String(first).padStart(2, '0')}`
+          }
+        } else if (second > 12 && first <= 12) {
+          // Definitely MM/DD/YY format (month value > 12 in position 2)
+          const date = new Date(year, first - 1, second)
+          if (!isNaN(date.getTime())) {
+            return `${year}-${String(first).padStart(2, '0')}-${String(second).padStart(2, '0')}`
+          }
+        } else {
+          // Ambiguous - try MM/DD/YY first (US default for 2-digit years)
+          // Most US banks use MM/DD/YY format
+          const date = new Date(year, first - 1, second)
+          if (!isNaN(date.getTime()) && date.getDate() === second && date.getMonth() === first - 1) {
+            return `${year}-${String(first).padStart(2, '0')}-${String(second).padStart(2, '0')}`
+          }
+        }
+      }
+
+      // Try 4-digit year format: DD/MM/YYYY or DD.MM.YYYY
       if (/^\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}$/.test(trimmed)) {
         const parts = trimmed.split(/[\/\.]/)
         const day = parseInt(parts[0])

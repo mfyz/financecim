@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         // Prepare transaction data
         const transactionData: {
           source_id: number
-          date: Date
+          date: string
           description: string
           amount: number
           source_category: string | null
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
           category_id?: number
         } = {
           source_id: sourceId,
-          date: new Date(parsed.date),
+          date: parsed.date, // Already normalized to ISO YYYY-MM-DD by CSV parser
           description: parsed.description,
           amount: parsed.amount,
           source_category: parsed.source_category || null,

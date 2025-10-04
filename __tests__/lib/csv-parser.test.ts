@@ -158,6 +158,93 @@ describe('CSVParser', () => {
       expect(transactions[2].date).toBe('2024-01-15')
     })
 
+    it('should parse 2-digit year formats (MM/DD/YY)', () => {
+      const csv = `Date,Description,Amount
+12/20/24,Test Transaction,100.00
+01/15/25,Another Transaction,50.50`
+
+      const { transactions, errors } = parser.parseTransactions(csv, mapping, 1)
+
+      expect(errors).toHaveLength(0)
+      expect(transactions).toHaveLength(2)
+      expect(transactions[0].date).toBe('2024-12-20')
+      expect(transactions[1].date).toBe('2025-01-15')
+    })
+
+    it('should parse 2-digit year formats (DD/MM/YY) when day > 12', () => {
+      const csv = `Date,Description,Amount
+20/12/24,Test Transaction,100.00
+15/01/25,Another Transaction,50.50`
+
+      const { transactions, errors } = parser.parseTransactions(csv, mapping, 1)
+
+      expect(errors).toHaveLength(0)
+      expect(transactions).toHaveLength(2)
+      expect(transactions[0].date).toBe('2024-12-20')
+      expect(transactions[1].date).toBe('2025-01-15')
+    })
+
+    it('should handle 2-digit year century cutoff (00-30 = 2000s, 31-99 = 1900s)', () => {
+      const csv = `Date,Description,Amount
+12/20/24,Year 2024,100.00
+12/20/30,Year 2030,100.00
+12/20/31,Year 1931,100.00
+12/20/99,Year 1999,100.00
+12/20/00,Year 2000,100.00`
+
+      const { transactions, errors } = parser.parseTransactions(csv, mapping, 1)
+
+      expect(errors).toHaveLength(0)
+      expect(transactions).toHaveLength(5)
+      expect(transactions[0].date).toBe('2024-12-20')
+      expect(transactions[1].date).toBe('2030-12-20')
+      expect(transactions[2].date).toBe('1931-12-20')
+      expect(transactions[3].date).toBe('1999-12-20')
+      expect(transactions[4].date).toBe('2000-12-20')
+    })
+
+    it('should default to US format (MM/DD/YY) for ambiguous 2-digit year dates', () => {
+      const csv = `Date,Description,Amount
+05/03/24,Ambiguous Date,100.00`
+
+      const { transactions, errors } = parser.parseTransactions(csv, mapping, 1)
+
+      expect(errors).toHaveLength(0)
+      expect(transactions).toHaveLength(1)
+      // Should interpret as May 3rd (US format MM/DD/YY)
+      expect(transactions[0].date).toBe('2024-05-03')
+    })
+
+    it('should handle single-digit months and days with 2-digit years', () => {
+      const csv = `Date,Description,Amount
+1/5/24,Single Digits,100.00
+3/9/25,More Singles,50.50`
+
+      const { transactions, errors } = parser.parseTransactions(csv, mapping, 1)
+
+      expect(errors).toHaveLength(0)
+      expect(transactions).toHaveLength(2)
+      expect(transactions[0].date).toBe('2024-01-05')
+      expect(transactions[1].date).toBe('2025-03-09')
+    })
+
+    it('should produce consistent hashes for same date in different formats', () => {
+      const csv1 = `Date,Description,Amount
+2024-12-20,Test Transaction,100.00`
+      const csv2 = `Date,Description,Amount
+12/20/2024,Test Transaction,100.00`
+      const csv3 = `Date,Description,Amount
+12/20/24,Test Transaction,100.00`
+
+      const { transactions: trans1 } = parser.parseTransactions(csv1, mapping, 1)
+      const { transactions: trans2 } = parser.parseTransactions(csv2, mapping, 1)
+      const { transactions: trans3 } = parser.parseTransactions(csv3, mapping, 1)
+
+      // All three should have the same hash (same date, description, amount, source)
+      expect(trans1[0].hash).toBe(trans2[0].hash)
+      expect(trans2[0].hash).toBe(trans3[0].hash)
+    })
+
     it('should include optional fields', () => {
       const mappingWithOptional: ColumnMapping = {
         date: 0,

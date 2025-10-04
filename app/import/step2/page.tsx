@@ -10,6 +10,8 @@ interface ColumnMapping {
   description: string
   amount: string
   source_category: string
+  debit?: string  // Optional: for separate debit column
+  credit?: string // Optional: for separate credit column
 }
 
 interface ValidationError {
@@ -36,7 +38,7 @@ const headerMappingConfig = {
     'details', 'memo', 'reference', 'vendor', 'transaction details'
   ],
   amount: [
-    'amount', 'debit', 'credit', 'transaction amount', 'net amount',
+    'amount', 'transaction amount', 'net amount',
     'total', 'sum', 'value', 'charge', 'payment', 'amount (usd)'
   ],
   source_category: [
@@ -63,6 +65,9 @@ export default function ImportStep2Page() {
   const [checkingStep1, setCheckingStep1] = useState(true)
   const [reversePurchases, setReversePurchases] = useState(false)
   const [showReverseSuggestion, setShowReverseSuggestion] = useState(false)
+  const [showDebitCreditInfo, setShowDebitCreditInfo] = useState(false)
+  const [rowsWithoutAmount, setRowsWithoutAmount] = useState(0)
+  const [previewExpanded, setPreviewExpanded] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [columnWidths, setColumnWidths] = useState<{[key: number]: 'narrow' | 'medium' | 'wide' | 'wider'}>({})
 
@@ -92,12 +97,14 @@ export default function ImportStep2Page() {
     updatePreview()
     validateMapping()
     analyzeAmountData()
+    analyzeDebitCreditColumns()
+    checkRowsWithoutAmount()
     analyzeColumnWidths() // Re-analyze whenever data changes
 
     // Only save to sessionStorage after initial load is complete
     if (isInitialized) {
       // Save to sessionStorage whenever mapping or source changes
-      if (columnMapping.date || columnMapping.description || columnMapping.amount) {
+      if (columnMapping.date || columnMapping.description || columnMapping.amount || columnMapping.debit || columnMapping.credit) {
         sessionStorage.setItem('columnMapping', JSON.stringify(columnMapping))
       }
       if (selectedSourceId) {
@@ -106,7 +113,7 @@ export default function ImportStep2Page() {
       sessionStorage.setItem('reversePurchases', JSON.stringify(reversePurchases))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnMapping, selectedSourceId, reversePurchases, isInitialized, csvData])
+  }, [columnMapping, selectedSourceId, reversePurchases, previewExpanded, isInitialized, csvData])
 
   const fetchSources = async () => {
     try {
@@ -170,6 +177,7 @@ export default function ImportStep2Page() {
       if (savedReversePurchases) {
         setReversePurchases(JSON.parse(savedReversePurchases))
       }
+
     } catch (error) {
       console.error('Error loading saved state:', error)
     }
@@ -209,6 +217,98 @@ export default function ImportStep2Page() {
       }
     } catch (error) {
       console.error('Error analyzing amount data:', error)
+    }
+  }
+
+  const analyzeDebitCreditColumns = () => {
+    if (csvData.length <= 1) return
+
+    try {
+      const headers = csvData[0]
+
+      // Look for debit and credit column pairs
+      let debitIndex = -1
+      let creditIndex = -1
+
+      headers.forEach((header, index) => {
+        const headerLower = header.toLowerCase().trim()
+        if (headerLower === 'debit') {
+          debitIndex = index
+        } else if (headerLower === 'credit') {
+          creditIndex = index
+        }
+      })
+
+      // If both debit and credit columns are found, suggest merging
+      if (debitIndex !== -1 && creditIndex !== -1) {
+        // Verify the pattern: one column has value, the other is empty per row
+        const dataRows = csvData.slice(1, Math.min(21, csvData.length)) // Sample first 20 rows
+        let pairCount = 0
+        let totalNonEmpty = 0
+
+        dataRows.forEach(row => {
+          const debitValue = row[debitIndex]?.trim()
+          const creditValue = row[creditIndex]?.trim()
+
+          const hasDebit = debitValue && debitValue !== ''
+          const hasCredit = creditValue && creditValue !== ''
+
+          if (hasDebit || hasCredit) {
+            totalNonEmpty++
+            // Check if only one has a value (mutually exclusive pattern)
+            if (hasDebit !== hasCredit) {
+              pairCount++
+            }
+          }
+        })
+
+        // If more than 70% of rows follow the mutually exclusive pattern, show info banner
+        if (totalNonEmpty > 0 && (pairCount / totalNonEmpty) > 0.7) {
+          setShowDebitCreditInfo(true)
+        } else {
+          setShowDebitCreditInfo(false)
+        }
+      } else {
+        setShowDebitCreditInfo(false)
+      }
+    } catch (error) {
+      console.error('Error analyzing debit/credit columns:', error)
+    }
+  }
+
+  const checkRowsWithoutAmount = () => {
+    if (csvData.length <= 1) {
+      setRowsWithoutAmount(0)
+      return
+    }
+
+    try {
+      const dataRows = csvData.slice(1) // Skip header
+      let missingCount = 0
+
+      dataRows.forEach(row => {
+        let hasAmount = false
+
+        // Check if debit/credit columns are mapped (either one or both)
+        if (columnMapping.debit || columnMapping.credit) {
+          const debitValue = columnMapping.debit ? (row[parseInt(columnMapping.debit)] || '') : ''
+          const creditValue = columnMapping.credit ? (row[parseInt(columnMapping.credit)] || '') : ''
+          hasAmount = (debitValue && debitValue.trim() !== '') || (creditValue && creditValue.trim() !== '')
+        } else if (columnMapping.amount) {
+          // Check regular amount column
+          const amountValue = row[parseInt(columnMapping.amount)] || ''
+          hasAmount = amountValue && amountValue.trim() !== ''
+        }
+
+        if (!hasAmount) {
+          missingCount++
+        }
+      })
+
+      setRowsWithoutAmount(missingCount)
+    } catch (error) {
+      console.error('Error checking rows without amount:', error)
+      setRowsWithoutAmount(0)
     }
   }
 
@@ -280,37 +380,76 @@ export default function ImportStep2Page() {
       date: '',
       description: '',
       amount: '',
-      source_category: ''
+      source_category: '',
+      debit: '',
+      credit: ''
     }
 
-    // First pass: exact matches (highest priority)
-    // IMPORTANT: Loop through variations FIRST (not headers) to prioritize by config order
+    // Check for debit/credit columns first (before amount column detection)
+    let debitIndex = -1
+    let creditIndex = -1
+    headers.forEach((header, index) => {
+      const headerLower = header.toLowerCase().trim()
+      if (headerLower === 'debit') {
+        debitIndex = index
+      } else if (headerLower === 'credit') {
+        creditIndex = index
+      }
+    })
+
+    // If both debit and credit found, map them instead of amount
+    if (debitIndex !== -1 && creditIndex !== -1) {
+      mapping.debit = debitIndex.toString()
+      mapping.credit = creditIndex.toString()
+      // Don't map amount column since we'll consolidate debit/credit
+    } else {
+      // Normal amount column detection
+      // First pass: exact matches (highest priority)
+      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+        variations.forEach(variation => {
+          if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
+
+          // Find first header that matches this variation
+          const headerIndex = headers.findIndex(header =>
+            header.toLowerCase().trim() === variation.toLowerCase()
+          )
+
+          if (headerIndex !== -1) {
+            mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
+          }
+        })
+      })
+
+      // Second pass: partial matches for unmapped fields
+      Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+        variations.forEach(variation => {
+          if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
+
+          // Find first header that partially matches this variation
+          const headerIndex = headers.findIndex(header => {
+            const headerLower = header.toLowerCase().trim()
+            return headerLower.includes(variation.toLowerCase()) &&
+                   headerLower !== variation.toLowerCase()
+          })
+
+          if (headerIndex !== -1) {
+            mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
+          }
+        })
+      })
+    }
+
+    // Always detect other fields (date, description, category)
     Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
+      if (fieldType === 'amount') return // Skip amount if we have debit/credit
+
       variations.forEach(variation => {
         if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
 
-        // Find first header that matches this variation
+        // Exact match
         const headerIndex = headers.findIndex(header =>
           header.toLowerCase().trim() === variation.toLowerCase()
         )
-
-        if (headerIndex !== -1) {
-          mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
-        }
-      })
-    })
-
-    // Second pass: partial matches for unmapped fields
-    Object.entries(headerMappingConfig).forEach(([fieldType, variations]) => {
-      variations.forEach(variation => {
-        if (mapping[fieldType as keyof ColumnMapping]) return // Skip if already mapped
-
-        // Find first header that partially matches this variation
-        const headerIndex = headers.findIndex(header => {
-          const headerLower = header.toLowerCase().trim()
-          return headerLower.includes(variation.toLowerCase()) &&
-                 headerLower !== variation.toLowerCase()
-        })
 
         if (headerIndex !== -1) {
           mapping[fieldType as keyof ColumnMapping] = headerIndex.toString()
@@ -323,14 +462,39 @@ export default function ImportStep2Page() {
   }
 
   const updatePreview = () => {
-    const preview = csvData.slice(1, 6).map((row, index) => {
-      let amount = row[parseInt(columnMapping.amount)] || ''
+    // Show 5 rows by default, 25 when expanded
+    const rowLimit = previewExpanded ? 25 : 5
+    const preview = csvData.slice(1, rowLimit + 1).map((row, index) => {
+      let amount = ''
 
-      // Apply amount reversal if enabled
-      if (reversePurchases && amount) {
-        const numAmount = parseFloat(amount)
-        if (!isNaN(numAmount)) {
-          amount = (-numAmount).toString()
+      // Check if debit/credit columns are mapped - automatically consolidate
+      if (columnMapping.debit && columnMapping.credit) {
+        const debitValue = row[parseInt(columnMapping.debit)] || ''
+        const creditValue = row[parseInt(columnMapping.credit)] || ''
+
+        if (debitValue && debitValue.trim()) {
+          // Debit is an expense (negative)
+          const numDebit = parseFloat(debitValue)
+          if (!isNaN(numDebit)) {
+            amount = (-numDebit).toString()
+          }
+        } else if (creditValue && creditValue.trim()) {
+          // Credit is a payment/refund (positive)
+          const numCredit = parseFloat(creditValue)
+          if (!isNaN(numCredit)) {
+            amount = numCredit.toString()
+          }
+        }
+      } else {
+        // Use regular amount column
+        amount = row[parseInt(columnMapping.amount)] || ''
+
+        // Apply amount reversal if enabled
+        if (reversePurchases && amount) {
+          const numAmount = parseFloat(amount)
+          if (!isNaN(numAmount)) {
+            amount = (-numAmount).toString()
+          }
         }
       }
 
@@ -359,27 +523,31 @@ export default function ImportStep2Page() {
     if (!columnMapping.description) {
       errors.push({ field: 'description', message: 'Description column is required' })
     }
-    if (!columnMapping.amount) {
-      errors.push({ field: 'amount', message: 'Amount column is required' })
+
+    // Amount validation: either amount OR (debit AND credit)
+    const hasAmount = !!columnMapping.amount
+    const hasDebitCredit = !!columnMapping.debit && !!columnMapping.credit
+
+    if (!hasAmount && !hasDebitCredit) {
+      errors.push({ field: 'amount', message: 'Amount column (or Debit/Credit pair) is required' })
     }
 
     setValidationErrors(errors)
   }
 
   const handleColumnMappingChange = (columnIndex: number, mappingType: string) => {
-    // Clear any existing mapping for this type
     const newMapping = { ...columnMapping }
 
-    // If setting to empty, just clear it
-    if (mappingType === '') {
-      // Find which field was mapped to this column and clear it
-      Object.entries(columnMapping).forEach(([key, value]) => {
-        if (value === columnIndex.toString()) {
-          newMapping[key as keyof ColumnMapping] = ''
-        }
-      })
-    } else {
-      // Set the new mapping
+    // Step 1: Clear any existing mapping for this column
+    // (e.g., if column 5 was mapped to "amount", clear that)
+    Object.entries(columnMapping).forEach(([key, value]) => {
+      if (value === columnIndex.toString()) {
+        newMapping[key as keyof ColumnMapping] = ''
+      }
+    })
+
+    // Step 2: If setting to a new type (not empty), set the new mapping
+    if (mappingType !== '') {
       newMapping[mappingType as keyof ColumnMapping] = columnIndex.toString()
     }
 
@@ -387,11 +555,14 @@ export default function ImportStep2Page() {
   }
 
   const canProceedToStep3 = () => {
+    const hasAmount = !!columnMapping.amount
+    const hasDebitCredit = !!columnMapping.debit && !!columnMapping.credit
+
     return validationErrors.length === 0 &&
            selectedSourceId &&
            columnMapping.date &&
            columnMapping.description &&
-           columnMapping.amount
+           (hasAmount || hasDebitCredit)
   }
 
   // Show loading while checking if step 1 is completed
@@ -514,7 +685,8 @@ export default function ImportStep2Page() {
                 type="checkbox"
                 checked={reversePurchases}
                 onChange={(e) => setReversePurchases(e.target.checked)}
-                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                disabled={!!(columnMapping.debit && columnMapping.credit)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -530,7 +702,7 @@ export default function ImportStep2Page() {
       </div>
 
       {/* Amount Reversal Suggestion Banner */}
-      {showReverseSuggestion && !reversePurchases && (
+      {showReverseSuggestion && !reversePurchases && !(columnMapping.debit && columnMapping.credit) && (
         <div className="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
           <div className="flex items-start">
             <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mr-3 mt-0.5 flex-shrink-0" />
@@ -551,6 +723,29 @@ export default function ImportStep2Page() {
             <button
               onClick={() => setShowReverseSuggestion(false)}
               className="p-1 text-orange-400 hover:text-orange-600 dark:hover:text-orange-200 ml-2"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Debit/Credit Consolidation Info Banner */}
+      {showDebitCreditInfo && (
+        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                Separate Debit and Credit columns detected
+              </h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Your CSV has separate Debit and Credit columns (common in bank exports like Capital One). Map both columns in the table below, and they will be automatically consolidated into a single amount column during import (debits as negative, credits as positive).
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDebitCreditInfo(false)}
+              className="p-1 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 ml-2"
             >
               <X className="w-4 h-4" />
             </button>
@@ -653,6 +848,8 @@ export default function ImportStep2Page() {
                           <option value="date">📅 Date *</option>
                           <option value="description">📝 Description *</option>
                           <option value="amount">💰 Amount *</option>
+                          <option value="debit" style={{paddingLeft: '1.5rem'}}>  ↳ Debit</option>
+                          <option value="credit" style={{paddingLeft: '1.5rem'}}>  ↳ Credit</option>
                           <option value="source_category">🏷️ Source Category</option>
                         </select>
                       </td>
@@ -731,7 +928,7 @@ export default function ImportStep2Page() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {previewData.map((row, index) => (
-                  <tr key={index} className="text-sm">
+                  <tr key={index} className="text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-3 py-2 text-gray-900 dark:text-white" style={{ width: '140px' }}>{row.date}</td>
                     <td className="px-3 py-2 text-gray-900 dark:text-white" style={{ width: getColumnWidth(parseInt(columnMapping.description) || 1) }}>
                       <div className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
@@ -755,8 +952,46 @@ export default function ImportStep2Page() {
               </tbody>
             </table>
           </div>
+
+          {/* Show More Button */}
+          {!previewExpanded && csvData.length > 6 && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setPreviewExpanded(true)}
+                className="px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center"
+              >
+                Show More Rows
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Incomplete Amount Mapping Warning */}
+      {rowsWithoutAmount > 0 && (
+        <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                {rowsWithoutAmount} row{rowsWithoutAmount > 1 ? 's' : ''} without amount values
+              </h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                {columnMapping.debit && !columnMapping.credit ? (
+                  <>Only the <strong>Debit</strong> column is mapped. Some rows may have amounts in the <strong>Credit</strong> column that won't be imported. Consider mapping both Debit and Credit columns.</>
+                ) : !columnMapping.debit && columnMapping.credit ? (
+                  <>Only the <strong>Credit</strong> column is mapped. Some rows may have amounts in the <strong>Debit</strong> column that won't be imported. Consider mapping both Debit and Credit columns.</>
+                ) : (
+                  <>Some rows don't have amount values. Make sure you've mapped either the <strong>Amount</strong> column, or both <strong>Debit</strong> and <strong>Credit</strong> columns correctly.</>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="mt-8 flex justify-between items-center">

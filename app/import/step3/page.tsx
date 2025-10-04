@@ -38,6 +38,8 @@ interface ColumnMapping {
   description: string
   amount: string
   source_category: string
+  debit?: string  // Optional: for separate debit column
+  credit?: string // Optional: for separate credit column
 }
 
 interface Source {
@@ -104,12 +106,62 @@ export default function ImportStep3Page() {
     return sourceData
   }
 
+  const getAmountFromRow = (row: string[], columnMapping: ColumnMapping, reversePurchases: boolean): string => {
+    // Helper function to extract amount from row, handling debit/credit consolidation
+    let amount = ''
+
+    // Automatically consolidate if both debit and credit columns are mapped
+    if (columnMapping.debit && columnMapping.credit) {
+      // Consolidate debit/credit columns
+      const debitValue = row[parseInt(columnMapping.debit)] || ''
+      const creditValue = row[parseInt(columnMapping.credit)] || ''
+
+      if (debitValue && debitValue.trim()) {
+        // Debit is an expense (negative)
+        const numDebit = parseFloat(debitValue)
+        if (!isNaN(numDebit)) {
+          amount = (-numDebit).toString()
+        }
+      } else if (creditValue && creditValue.trim()) {
+        // Credit is a payment/refund (positive)
+        const numCredit = parseFloat(creditValue)
+        if (!isNaN(numCredit)) {
+          amount = numCredit.toString()
+        }
+      }
+    } else {
+      // Use regular amount column
+      amount = row[parseInt(columnMapping.amount)] || ''
+
+      // Apply amount reversal if enabled
+      if (reversePurchases && amount) {
+        const numAmount = parseFloat(amount)
+        if (!isNaN(numAmount)) {
+          amount = (-numAmount).toString()
+        }
+      }
+    }
+
+    return amount
+  }
+
   const validateTransaction = (row: string[], columnMapping: ColumnMapping): { isValid: boolean; errors: string[] } => {
     const errors: string[] = []
 
     const date = row[parseInt(columnMapping.date)] || ''
     const description = row[parseInt(columnMapping.description)] || ''
-    const amount = row[parseInt(columnMapping.amount)] || ''
+
+    // Get amount from either amount column or debit/credit columns
+    let hasAmount = false
+    // Automatically check debit/credit if both are mapped
+    if (columnMapping.debit && columnMapping.credit) {
+      const debitValue = row[parseInt(columnMapping.debit)] || ''
+      const creditValue = row[parseInt(columnMapping.credit)] || ''
+      hasAmount = (debitValue && debitValue.trim() !== '') || (creditValue && creditValue.trim() !== '')
+    } else {
+      const amount = row[parseInt(columnMapping.amount)] || ''
+      hasAmount = amount && amount.trim() !== ''
+    }
 
     // Validate date
     if (!date || date.trim() === '') {
@@ -124,10 +176,8 @@ export default function ImportStep3Page() {
     }
 
     // Validate amount
-    if (!amount || amount.trim() === '') {
+    if (!hasAmount) {
       errors.push('Missing amount')
-    } else if (isNaN(parseFloat(amount))) {
-      errors.push('Invalid amount format')
     }
 
     return {
@@ -178,21 +228,20 @@ export default function ImportStep3Page() {
       const hashCounts = new Map<string, number>()
 
       // First pass: generate hashes and count duplicates within CSV
-      // IMPORTANT: Apply amount reversal BEFORE generating hash to match database
+      // IMPORTANT: Apply amount transformations BEFORE generating hash to match database
       const allHashes: string[] = []
       dataRows.forEach((row, index) => {
-        // Apply amount reversal if needed before hashing
-        let amountForHash = row[parseInt(columnMapping.amount)] || ''
-        if (reversePurchases && amountForHash) {
-          const numAmount = parseFloat(amountForHash)
-          if (!isNaN(numAmount)) {
-            amountForHash = (-numAmount).toString()
-          }
-        }
+        // Get transformed amount (handles both debit/credit consolidation and reversal)
+        const amountForHash = getAmountFromRow(row, columnMapping, reversePurchases)
 
         // Generate hash with the transformed amount
         const modifiedRow = [...row]
-        modifiedRow[parseInt(columnMapping.amount)] = amountForHash
+        if (columnMapping.amount) {
+          modifiedRow[parseInt(columnMapping.amount)] = amountForHash
+        } else if (columnMapping.debit) {
+          // For debit/credit mode, use debit column for hash consistency
+          modifiedRow[parseInt(columnMapping.debit)] = amountForHash
+        }
         const hash = generateRowHash(modifiedRow, columnMapping, selectedSourceId)
 
         allHashes.push(hash)
@@ -222,19 +271,17 @@ export default function ImportStep3Page() {
         const validation = validateTransaction(row, columnMapping)
         const sourceData = serializeSourceData(row, headers)
 
-        let amount = row[parseInt(columnMapping.amount)] || ''
-
-        // Apply amount reversal if enabled (must be done before hash generation)
-        if (reversePurchases && amount) {
-          const numAmount = parseFloat(amount)
-          if (!isNaN(numAmount)) {
-            amount = (-numAmount).toString()
-          }
-        }
+        // Get transformed amount (handles both debit/credit consolidation and reversal)
+        const amount = getAmountFromRow(row, columnMapping, reversePurchases)
 
         // Generate hash with the transformed amount
         const modifiedRow = [...row]
-        modifiedRow[parseInt(columnMapping.amount)] = amount
+        if (columnMapping.amount) {
+          modifiedRow[parseInt(columnMapping.amount)] = amount
+        } else if (columnMapping.debit) {
+          // For debit/credit mode, use debit column for hash consistency
+          modifiedRow[parseInt(columnMapping.debit)] = amount
+        }
         const hash = generateRowHash(modifiedRow, columnMapping, selectedSourceId)
 
         const isDuplicate = (hashCounts.get(hash) || 0) > 1

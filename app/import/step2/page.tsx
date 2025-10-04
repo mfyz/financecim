@@ -191,7 +191,6 @@ export default function ImportStep2Page() {
       const dataRows = csvData.slice(1) // Skip header
 
       let positiveCount = 0
-      let negativeCount = 0
       let validAmountCount = 0
 
       dataRows.forEach(row => {
@@ -202,8 +201,6 @@ export default function ImportStep2Page() {
             validAmountCount++
             if (amount > 0) {
               positiveCount++
-            } else {
-              negativeCount++
             }
           }
         }
@@ -293,11 +290,11 @@ export default function ImportStep2Page() {
         if (columnMapping.debit || columnMapping.credit) {
           const debitValue = columnMapping.debit ? (row[parseInt(columnMapping.debit)] || '') : ''
           const creditValue = columnMapping.credit ? (row[parseInt(columnMapping.credit)] || '') : ''
-          hasAmount = (debitValue && debitValue.trim() !== '') || (creditValue && creditValue.trim() !== '')
+          hasAmount = !!(debitValue && debitValue.trim() !== '') || !!(creditValue && creditValue.trim() !== '')
         } else if (columnMapping.amount) {
           // Check regular amount column
           const amountValue = row[parseInt(columnMapping.amount)] || ''
-          hasAmount = amountValue && amountValue.trim() !== ''
+          hasAmount = !!(amountValue && amountValue.trim() !== '')
         }
 
         if (!hasAmount) {
@@ -693,7 +690,7 @@ export default function ImportStep2Page() {
                   Purchases are noted with positive amounts
                 </span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Check this if your bank shows expenses as positive numbers. We'll reverse them to show expenses as negative.
+                  Check this if your bank shows expenses as positive numbers. We&apos;ll reverse them to show expenses as negative.
                 </p>
               </div>
             </label>
@@ -790,7 +787,6 @@ export default function ImportStep2Page() {
                     Original
                   </th>
                   {csvData[0].map((header, index) => {
-                    const mappedTo = Object.entries(columnMapping).find(([_, value]) => value === index.toString())?.[0] || ''
                     const isMapper = Object.values(columnMapping).includes(index.toString())
 
                     return (
@@ -823,7 +819,6 @@ export default function ImportStep2Page() {
                   </th>
                   {csvData[0].map((_, index) => {
                     const mappedTo = Object.entries(columnMapping).find(([_, value]) => value === index.toString())?.[0] || ''
-                    const isRequired = ['date', 'description', 'amount'].includes(mappedTo)
                     const isMapper = Object.values(columnMapping).includes(index.toString())
 
                     return (
@@ -870,7 +865,6 @@ export default function ImportStep2Page() {
                     </td>
                     {row.map((cell, cellIndex) => {
                       const isMapper = Object.values(columnMapping).includes(cellIndex.toString())
-                      const isLongContent = cell && cell.length > 30
 
                       return (
                         <td
@@ -981,11 +975,11 @@ export default function ImportStep2Page() {
               </h4>
               <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 {columnMapping.debit && !columnMapping.credit ? (
-                  <>Only the <strong>Debit</strong> column is mapped. Some rows may have amounts in the <strong>Credit</strong> column that won't be imported. Consider mapping both Debit and Credit columns.</>
+                  <>Only the <strong>Debit</strong> column is mapped. Some rows may have amounts in the <strong>Credit</strong> column that won&apos;t be imported. Consider mapping both Debit and Credit columns.</>
                 ) : !columnMapping.debit && columnMapping.credit ? (
-                  <>Only the <strong>Credit</strong> column is mapped. Some rows may have amounts in the <strong>Debit</strong> column that won't be imported. Consider mapping both Debit and Credit columns.</>
+                  <>Only the <strong>Credit</strong> column is mapped. Some rows may have amounts in the <strong>Debit</strong> column that won&apos;t be imported. Consider mapping both Debit and Credit columns.</>
                 ) : (
-                  <>Some rows don't have amount values. Make sure you've mapped either the <strong>Amount</strong> column, or both <strong>Debit</strong> and <strong>Credit</strong> columns correctly.</>
+                  <>Some rows don&apos;t have amount values. Make sure you&apos;ve mapped either the <strong>Amount</strong> column, or both <strong>Debit</strong> and <strong>Credit</strong> columns correctly.</>
                 )}
               </p>
             </div>

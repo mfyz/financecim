@@ -208,7 +208,7 @@ export default function ImportPage() {
         setUploadedFiles(prev => [...prev])
       }, 500)
 
-    } catch (error) {
+    } catch {
       setValidationErrors(prev => [...prev, {
         file: file.name,
         errors: ['Failed to parse CSV file. Please check the format.']

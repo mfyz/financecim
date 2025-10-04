@@ -139,10 +139,9 @@ export function CategoryDropdown({
   }
 
   const options = formatCategoryOptions()
-  const selectedOption = options.find(opt => opt.value === value)
 
   // Custom render functions for rich display
-  const renderTrigger = (selectedOption: DropdownOption | null, isOpen: boolean) => {
+  const renderTrigger = (selectedOption: DropdownOption | null, _isOpen: boolean) => {
     if (!selectedOption) {
       return <CategoryTextLabel text={placeholder} variant="input" />
     }

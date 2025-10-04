@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     let imported = 0
     let skipped = 0
-    const errors: any[] = []
+    const errors: Array<{ transaction: unknown; error: string }> = []
 
     // Process each transaction
     for (const transaction of importTransactions) {

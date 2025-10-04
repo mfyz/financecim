@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (mappingStr) {
       try {
         mapping = JSON.parse(mappingStr)
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { success: false, error: 'Invalid column mapping' },
           { status: 400 }
@@ -101,9 +101,9 @@ export async function POST(request: NextRequest) {
     // Process transactions with auto-categorization
     let imported = 0
     let skipped = 0
-    let updated = 0
-    const importErrors: any[] = []
-    const processedTransactions: any[] = []
+    const updated = 0
+    const importErrors: Array<{ transaction: unknown; error: string }> = []
+    const processedTransactions: Array<unknown> = []
 
     for (const parsed of parsedTransactions) {
       try {
@@ -116,7 +116,17 @@ export async function POST(request: NextRequest) {
         }
 
         // Prepare transaction data
-        const transactionData: any = {
+        const transactionData: {
+          source_id: number
+          date: Date
+          description: string
+          amount: number
+          source_category: string | null
+          notes: string | null
+          hash: string
+          unit_id?: number
+          category_id?: number
+        } = {
           source_id: sourceId,
           date: new Date(parsed.date),
           description: parsed.description,
@@ -252,7 +262,11 @@ export async function PUT(request: NextRequest) {
     // Apply auto-categorization rules for preview
     const previewWithRules = []
     for (const transaction of previewTransactions.slice(0, 10)) {
-      const preview: any = { ...transaction }
+      const preview: {
+        [key: string]: unknown
+        suggested_unit_id?: number
+        suggested_category_id?: number
+      } = { ...transaction }
 
       // Try to apply rules (read-only)
       try {
@@ -271,7 +285,7 @@ export async function PUT(request: NextRequest) {
         if (categoryRule) {
           preview.suggested_category_id = categoryRule
         }
-      } catch (error) {
+      } catch {
         // Ignore errors in preview
       }
 

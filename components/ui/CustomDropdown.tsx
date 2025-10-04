@@ -6,6 +6,7 @@ import { ChevronDown } from 'lucide-react'
 export interface DropdownOption {
   value: string
   label: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   category?: any // For rich category data
   isSpecial?: boolean // For "All Categories", "Uncategorized", etc.
   indent?: string // For tree hierarchy

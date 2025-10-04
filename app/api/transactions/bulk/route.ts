@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { transactionsModel, type BulkUpdateData } from '@/db/models/transactions.model'
+import { transactionsModel } from '@/db/models/transactions.model'
 import { z } from 'zod'
 
 // Validation schema for bulk operations

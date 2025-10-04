@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, DollarSign, Calendar, PieChart, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from 'recharts'
 
 interface TrendData {
@@ -53,7 +53,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<'3m' | '6m' | '12m' | 'all'>('12m')
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   useEffect(() => {
     fetchReportsData()
@@ -75,17 +74,17 @@ export default function ReportsPage() {
       const categoryData = await categoryResponse.json()
 
       // Transform the data for charts
-      const monthlyTrends: TrendData[] = trendsData.map((item: any) => ({
+      const monthlyTrends: TrendData[] = trendsData.map((item: { month: string; income?: number; expenses?: number }) => ({
         month: item.month,
         income: item.income || 0,
         expenses: Math.abs(item.expenses || 0),
         net: (item.income || 0) - Math.abs(item.expenses || 0)
       }))
 
-      const totalSpending = categoryData.reduce((sum: number, cat: any) => sum + Math.abs(cat.totalSpent || 0), 0)
+      const totalSpending = categoryData.reduce((sum: number, cat: { totalSpent?: number }) => sum + Math.abs(cat.totalSpent || 0), 0)
       const categoryBreakdown: CategoryData[] = categoryData
-        .filter((cat: any) => cat.totalSpent !== 0)
-        .map((cat: any) => ({
+        .filter((cat: { totalSpent?: number }) => cat.totalSpent !== 0)
+        .map((cat: { name: string; totalSpent?: number; color?: string; monthlyBudget?: number }) => ({
           name: cat.name,
           amount: Math.abs(cat.totalSpent || 0),
           percentage: totalSpending > 0 ? (Math.abs(cat.totalSpent || 0) / totalSpending) * 100 : 0,
@@ -316,10 +315,12 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
                 <Pie
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   data={data.categoryBreakdown as any}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   label={(props: any) => `${props.name} (${props.percentage.toFixed(0)}%)`}
                   outerRadius={80}
                   fill="#8884d8"

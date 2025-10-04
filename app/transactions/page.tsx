@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Edit2, Trash2, ChevronDown, ChevronUp, X, Plus, RefreshCw, Info } from 'lucide-react'
+import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Trash2, ChevronDown, ChevronUp, X, RefreshCw, Info } from 'lucide-react'
 import { TransactionWithRelations } from '@/db/models/transactions.model'
 import { CategoryDropdown } from '@/components/forms'
 import { SourceDataModal } from '@/components/ui/source-data-modal'
@@ -40,14 +40,16 @@ interface TransactionStats {
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionWithRelations[]>([])
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([])
-  const [showBulkActions, setShowBulkActions] = useState(false)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<TransactionStats | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_showBulkActions, setShowBulkActions] = useState(false)
   const [units, setUnits] = useState<Unit[]>([])
   const [sources, setSources] = useState<Source[]>([])
-  const [tags, setTags] = useState<string[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_tags, setTags] = useState<string[]>([])
   const [mounted, setMounted] = useState(false)
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -73,7 +75,7 @@ export default function TransactionsPage() {
 
   // Source data modal state
   const [isSourceDataModalOpen, setIsSourceDataModalOpen] = useState(false)
-  const [selectedSourceData, setSelectedSourceData] = useState<Record<string, any> | null>(null)
+  const [selectedSourceData, setSelectedSourceData] = useState<Record<string, unknown> | null>(null)
 
   // Set mounted state
   useEffect(() => {
@@ -407,7 +409,7 @@ export default function TransactionsPage() {
     })
   }
 
-  const handleShowSourceData = (sourceData: any) => {
+  const handleShowSourceData = (sourceData: Record<string, unknown>) => {
     setSelectedSourceData(sourceData || null)
     setIsSourceDataModalOpen(true)
   }
@@ -796,7 +798,7 @@ export default function TransactionsPage() {
                       <div className="inline-flex rounded-md shadow-sm gap-1">
                         {transaction.sourceData ? (
                           <button
-                            onClick={() => handleShowSourceData(transaction.sourceData as Record<string, any>)}
+                            onClick={() => handleShowSourceData(transaction.sourceData as Record<string, unknown>)}
                             className="px-2 py-1.5 border bg-white hover:bg-gray-50 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 border-gray-300 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors rounded"
                             title="Show Source Data"
                           >

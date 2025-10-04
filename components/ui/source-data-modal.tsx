@@ -5,7 +5,7 @@ import { X } from 'lucide-react'
 interface SourceDataModalProps {
   isOpen: boolean
   onClose: () => void
-  sourceData: Record<string, any> | null
+  sourceData: Record<string, unknown> | null
 }
 
 export function SourceDataModal({ isOpen, onClose, sourceData }: SourceDataModalProps) {

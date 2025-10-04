@@ -49,14 +49,8 @@ export function CategoryLabel({
 
   const iconSizes = {
     sm: 'text-xs',
-    md: 'text-sm', 
+    md: 'text-sm',
     lg: 'text-base'
-  }
-
-  const colorDotSizes = {
-    sm: 'w-2 h-2',
-    md: 'w-3 h-3',
-    lg: 'w-4 h-4'
   }
 
   // Determine text color based on background brightness

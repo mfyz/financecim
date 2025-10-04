@@ -16,7 +16,7 @@ interface PreviewTransaction {
   source_category: string
   source_name: string
   rawRow: string[]
-  source_data: Record<string, any>
+  source_data: Record<string, unknown>
   isDuplicate: boolean
   isDbDuplicate: boolean
   hasError: boolean
@@ -81,7 +81,17 @@ export default function ImportStep3Page() {
     // Format: sourceId|date|description|amount (with amount fixed to 2 decimals)
     const date = row[parseInt(columnMapping.date)] || ''
     const description = row[parseInt(columnMapping.description)] || ''
-    const amountStr = row[parseInt(columnMapping.amount)] || ''
+
+    // Read amount from correct column based on mapping mode
+    let amountStr = ''
+    if (columnMapping.debit && columnMapping.credit) {
+      // In debit/credit mode, the consolidated amount is placed in the debit column
+      amountStr = row[parseInt(columnMapping.debit)] || ''
+    } else {
+      // In regular mode, read from amount column
+      amountStr = row[parseInt(columnMapping.amount)] || ''
+    }
+
     const amount = parseFloat(amountStr)
 
     if (isNaN(amount)) {
@@ -93,9 +103,9 @@ export default function ImportStep3Page() {
     return CryptoJS.SHA256(data).toString().substring(0, 16)
   }
 
-  const serializeSourceData = (row: string[], headers: string[]): Record<string, any> => {
+  const serializeSourceData = (row: string[], headers: string[]): Record<string, unknown> => {
     // Create a JSON object mapping header names to row values
-    const sourceData: Record<string, any> = {}
+    const sourceData: Record<string, unknown> = {}
 
     headers.forEach((header, index) => {
       // Use header as key, with fallback for empty headers
@@ -157,10 +167,10 @@ export default function ImportStep3Page() {
     if (columnMapping.debit && columnMapping.credit) {
       const debitValue = row[parseInt(columnMapping.debit)] || ''
       const creditValue = row[parseInt(columnMapping.credit)] || ''
-      hasAmount = (debitValue && debitValue.trim() !== '') || (creditValue && creditValue.trim() !== '')
+      hasAmount = !!(debitValue && debitValue.trim() !== '') || !!(creditValue && creditValue.trim() !== '')
     } else {
       const amount = row[parseInt(columnMapping.amount)] || ''
-      hasAmount = amount && amount.trim() !== ''
+      hasAmount = !!(amount && amount.trim() !== '')
     }
 
     // Validate date
@@ -213,7 +223,7 @@ export default function ImportStep3Page() {
       const reversePurchases = reversePurchasesStr ? JSON.parse(reversePurchasesStr) : false
 
       // Fetch source information
-      let sourceInfo: any = null
+      let sourceInfo: Source | null = null
       const sourceResponse = await fetch(`/api/sources/${selectedSourceId}`)
       if (sourceResponse.ok) {
         const sourceData = await sourceResponse.json()
@@ -230,7 +240,7 @@ export default function ImportStep3Page() {
       // First pass: generate hashes and count duplicates within CSV
       // IMPORTANT: Apply amount transformations BEFORE generating hash to match database
       const allHashes: string[] = []
-      dataRows.forEach((row, index) => {
+      dataRows.forEach((row) => {
         // Get transformed amount (handles both debit/credit consolidation and reversal)
         const amountForHash = getAmountFromRow(row, columnMapping, reversePurchases)
 
@@ -479,7 +489,7 @@ export default function ImportStep3Page() {
   }
 
   const filteredAndSortedData = useMemo(() => {
-    let filtered = previewData.filter(transaction => {
+    const filtered = previewData.filter(transaction => {
       const matchesSearch = !searchTerm ||
         transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.source_category.toLowerCase().includes(searchTerm.toLowerCase())

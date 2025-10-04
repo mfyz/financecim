@@ -12,6 +12,7 @@ interface ColumnMapping {
   source_category: string
   debit?: string  // Optional: for separate debit column
   credit?: string // Optional: for separate credit column
+  transaction_type?: string // Optional: for transaction type column (Credit/Debit values)
 }
 
 interface ValidationError {
@@ -66,6 +67,8 @@ export default function ImportStep2Page() {
   const [reversePurchases, setReversePurchases] = useState(false)
   const [showReverseSuggestion, setShowReverseSuggestion] = useState(false)
   const [showDebitCreditInfo, setShowDebitCreditInfo] = useState(false)
+  const [showTransactionTypeInfo, setShowTransactionTypeInfo] = useState(false)
+  const [useTransactionType, setUseTransactionType] = useState(false)
   const [rowsWithoutAmount, setRowsWithoutAmount] = useState(0)
   const [previewExpanded, setPreviewExpanded] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -98,22 +101,24 @@ export default function ImportStep2Page() {
     validateMapping()
     analyzeAmountData()
     analyzeDebitCreditColumns()
+    analyzeTransactionTypeColumn()
     checkRowsWithoutAmount()
     analyzeColumnWidths() // Re-analyze whenever data changes
 
     // Only save to sessionStorage after initial load is complete
     if (isInitialized) {
       // Save to sessionStorage whenever mapping or source changes
-      if (columnMapping.date || columnMapping.description || columnMapping.amount || columnMapping.debit || columnMapping.credit) {
+      if (columnMapping.date || columnMapping.description || columnMapping.amount || columnMapping.debit || columnMapping.credit || columnMapping.transaction_type) {
         sessionStorage.setItem('columnMapping', JSON.stringify(columnMapping))
       }
       if (selectedSourceId) {
         sessionStorage.setItem('selectedSourceId', selectedSourceId)
       }
       sessionStorage.setItem('reversePurchases', JSON.stringify(reversePurchases))
+      sessionStorage.setItem('useTransactionType', JSON.stringify(useTransactionType))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnMapping, selectedSourceId, reversePurchases, previewExpanded, isInitialized, csvData])
+  }, [columnMapping, selectedSourceId, reversePurchases, useTransactionType, previewExpanded, isInitialized, csvData])
 
   const fetchSources = async () => {
     try {
@@ -176,6 +181,12 @@ export default function ImportStep2Page() {
       const savedReversePurchases = sessionStorage.getItem('reversePurchases')
       if (savedReversePurchases) {
         setReversePurchases(JSON.parse(savedReversePurchases))
+      }
+
+      // Load saved transaction type setting
+      const savedUseTransactionType = sessionStorage.getItem('useTransactionType')
+      if (savedUseTransactionType) {
+        setUseTransactionType(JSON.parse(savedUseTransactionType))
       }
 
     } catch (error) {
@@ -273,6 +284,51 @@ export default function ImportStep2Page() {
     }
   }
 
+  const analyzeTransactionTypeColumn = () => {
+    if (csvData.length <= 1) return
+    // Don't re-analyze if already mapped
+    if (columnMapping.transaction_type) return
+
+    try {
+      const headers = csvData[0]
+
+      // Look for columns that contain ONLY "Credit" and "Debit" values
+      headers.forEach((header, index) => {
+        const dataRows = csvData.slice(1, Math.min(51, csvData.length)) // Sample first 50 rows
+        const uniqueValues = new Set<string>()
+        let nonEmptyCount = 0
+
+        dataRows.forEach(row => {
+          const value = row[index]?.trim()
+          if (value && value !== '') {
+            uniqueValues.add(value.toLowerCase())
+            nonEmptyCount++
+          }
+        })
+
+        // Check if this column contains only "credit" and "debit" values
+        const hasOnlyCreditDebit = uniqueValues.size > 0 &&
+          uniqueValues.size <= 2 &&
+          Array.from(uniqueValues).every(v => v === 'credit' || v === 'debit')
+
+        // If we found a transaction type column with sufficient data
+        if (hasOnlyCreditDebit && nonEmptyCount >= Math.min(5, dataRows.length * 0.8)) {
+          // Auto-map this column (only if not already mapped)
+          if (!columnMapping.transaction_type) {
+            const newMapping = { ...columnMapping }
+            newMapping.transaction_type = index.toString()
+            setColumnMapping(newMapping)
+
+            // Show the info banner
+            setShowTransactionTypeInfo(true)
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Error analyzing transaction type column:', error)
+    }
+  }
+
   const checkRowsWithoutAmount = () => {
     if (csvData.length <= 1) {
       setRowsWithoutAmount(0)
@@ -286,8 +342,13 @@ export default function ImportStep2Page() {
       dataRows.forEach(row => {
         let hasAmount = false
 
+        // Check if transaction type + amount consolidation is enabled
+        if (useTransactionType && columnMapping.transaction_type && columnMapping.amount) {
+          const amountValue = row[parseInt(columnMapping.amount)] || ''
+          hasAmount = !!(amountValue && amountValue.trim() !== '')
+        }
         // Check if debit/credit columns are mapped (either one or both)
-        if (columnMapping.debit || columnMapping.credit) {
+        else if (columnMapping.debit || columnMapping.credit) {
           const debitValue = columnMapping.debit ? (row[parseInt(columnMapping.debit)] || '') : ''
           const creditValue = columnMapping.credit ? (row[parseInt(columnMapping.credit)] || '') : ''
           hasAmount = !!(debitValue && debitValue.trim() !== '') || !!(creditValue && creditValue.trim() !== '')
@@ -464,8 +525,29 @@ export default function ImportStep2Page() {
     const preview = csvData.slice(1, rowLimit + 1).map((row, index) => {
       let amount = ''
 
+      // Check if transaction type + amount consolidation is enabled
+      if (useTransactionType && columnMapping.transaction_type && columnMapping.amount) {
+        const transactionType = row[parseInt(columnMapping.transaction_type)]?.trim().toLowerCase() || ''
+        const amountValue = row[parseInt(columnMapping.amount)] || ''
+
+        if (amountValue && amountValue.trim()) {
+          const numAmount = parseFloat(amountValue)
+          if (!isNaN(numAmount)) {
+            if (transactionType === 'debit') {
+              // Debit is an expense (negative)
+              amount = (-Math.abs(numAmount)).toString()
+            } else if (transactionType === 'credit') {
+              // Credit is income/payment (positive)
+              amount = Math.abs(numAmount).toString()
+            } else {
+              // Unknown type, use as-is
+              amount = numAmount.toString()
+            }
+          }
+        }
+      }
       // Check if debit/credit columns are mapped - automatically consolidate
-      if (columnMapping.debit && columnMapping.credit) {
+      else if (columnMapping.debit && columnMapping.credit) {
         const debitValue = row[parseInt(columnMapping.debit)] || ''
         const creditValue = row[parseInt(columnMapping.credit)] || ''
 
@@ -521,12 +603,13 @@ export default function ImportStep2Page() {
       errors.push({ field: 'description', message: 'Description column is required' })
     }
 
-    // Amount validation: either amount OR (debit AND credit)
+    // Amount validation: either amount OR (debit AND credit) OR (transaction_type AND amount)
     const hasAmount = !!columnMapping.amount
     const hasDebitCredit = !!columnMapping.debit && !!columnMapping.credit
+    const hasTransactionTypeAmount = useTransactionType && !!columnMapping.transaction_type && !!columnMapping.amount
 
-    if (!hasAmount && !hasDebitCredit) {
-      errors.push({ field: 'amount', message: 'Amount column (or Debit/Credit pair) is required' })
+    if (!hasAmount && !hasDebitCredit && !hasTransactionTypeAmount) {
+      errors.push({ field: 'amount', message: 'Amount column (or Debit/Credit pair, or Transaction Type + Amount) is required' })
     }
 
     setValidationErrors(errors)
@@ -554,12 +637,13 @@ export default function ImportStep2Page() {
   const canProceedToStep3 = () => {
     const hasAmount = !!columnMapping.amount
     const hasDebitCredit = !!columnMapping.debit && !!columnMapping.credit
+    const hasTransactionTypeAmount = useTransactionType && !!columnMapping.transaction_type && !!columnMapping.amount
 
     return validationErrors.length === 0 &&
            selectedSourceId &&
            columnMapping.date &&
            columnMapping.description &&
-           (hasAmount || hasDebitCredit)
+           (hasAmount || hasDebitCredit || hasTransactionTypeAmount)
   }
 
   // Show loading while checking if step 1 is completed
@@ -676,13 +760,13 @@ export default function ImportStep2Page() {
           </div>
 
           {/* Amount Processing Options */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 space-y-3">
             <label className="flex items-center space-x-3">
               <input
                 type="checkbox"
                 checked={reversePurchases}
                 onChange={(e) => setReversePurchases(e.target.checked)}
-                disabled={!!(columnMapping.debit && columnMapping.credit)}
+                disabled={!!(columnMapping.debit && columnMapping.credit) || !!(useTransactionType && columnMapping.transaction_type)}
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div>
@@ -694,6 +778,27 @@ export default function ImportStep2Page() {
                 </p>
               </div>
             </label>
+
+            {/* Transaction Type Consolidation Option */}
+            {columnMapping.transaction_type && (
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={useTransactionType}
+                  onChange={(e) => setUseTransactionType(e.target.checked)}
+                  disabled={!!(columnMapping.debit && columnMapping.credit)}
+                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Consolidate amounts based on Transaction Type
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Use the Transaction Type column (Credit/Debit values) with the Amount column to automatically sign amounts (debits as negative, credits as positive).
+                  </p>
+                </div>
+              </label>
+            )}
           </div>
         </div>
       </div>
@@ -743,6 +848,35 @@ export default function ImportStep2Page() {
             <button
               onClick={() => setShowDebitCreditInfo(false)}
               className="p-1 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 ml-2"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Type Consolidation Info Banner */}
+      {showTransactionTypeInfo && !useTransactionType && (
+        <div className="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 mr-3 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-1">
+                Transaction Type column detected
+              </h4>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                We detected a column with only &quot;Credit&quot; and &quot;Debit&quot; values. Enable the option below to consolidate amounts based on the transaction type (debits as negative, credits as positive).
+              </p>
+              <button
+                onClick={() => setUseTransactionType(true)}
+                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded transition-colors"
+              >
+                Enable Transaction Type Consolidation
+              </button>
+            </div>
+            <button
+              onClick={() => setShowTransactionTypeInfo(false)}
+              className="p-1 text-orange-400 hover:text-orange-600 dark:hover:text-orange-200 ml-2"
             >
               <X className="w-4 h-4" />
             </button>
@@ -845,6 +979,7 @@ export default function ImportStep2Page() {
                           <option value="amount">💰 Amount *</option>
                           <option value="debit" style={{paddingLeft: '1.5rem'}}>  ↳ Debit</option>
                           <option value="credit" style={{paddingLeft: '1.5rem'}}>  ↳ Credit</option>
+                          <option value="transaction_type">🔄 Transaction Type</option>
                           <option value="source_category">🏷️ Source Category</option>
                         </select>
                       </td>
@@ -937,7 +1072,7 @@ export default function ImportStep2Page() {
                         : 'text-gray-400 dark:text-gray-500'
                     }`} style={{ width: '120px' }}>
                       {row.amount && !isNaN(parseFloat(String(row.amount)))
-                        ? `$${Math.abs(parseFloat(String(row.amount))).toFixed(2)}`
+                        ? `$${Math.abs(parseFloat(String(row.amount))).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                         : ''}
                     </td>
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400" style={{ width: '160px' }}>{row.source_category}</td>

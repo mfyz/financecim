@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend } from 'recharts'
 
@@ -54,11 +54,7 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<'3m' | '6m' | '12m' | 'all'>('12m')
 
-  useEffect(() => {
-    fetchReportsData()
-  }, [timeRange])
-
-  const fetchReportsData = async () => {
+  const fetchReportsData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -134,7 +130,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange])
+
+  useEffect(() => {
+    fetchReportsData()
+  }, [fetchReportsData])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

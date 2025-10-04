@@ -103,6 +103,8 @@ describe('/api/transactions/bulk', () => {
     })
 
     it('should return 400 for empty IDs array', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: [],
         data: { unitId: 2 }
@@ -121,9 +123,13 @@ describe('/api/transactions/bulk', () => {
       expect(data.error).toBe('Validation failed')
       expect(data.details).toBeDefined()
       expect(mockTransactionsModel.bulkUpdate).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for invalid ID types', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: ['invalid', 2, 3],
         data: { unitId: 2 }
@@ -141,9 +147,13 @@ describe('/api/transactions/bulk', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.bulkUpdate).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for empty update data', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: [1, 2, 3],
         data: {} // no update fields provided
@@ -161,9 +171,13 @@ describe('/api/transactions/bulk', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.bulkUpdate).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for invalid data types in update', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: [1, 2, 3],
         data: {
@@ -184,6 +198,8 @@ describe('/api/transactions/bulk', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.bulkUpdate).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should handle foreign key constraint errors', async () => {
@@ -274,6 +290,8 @@ describe('/api/transactions/bulk', () => {
     })
 
     it('should return 400 for empty IDs array', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: []
       }
@@ -290,9 +308,13 @@ describe('/api/transactions/bulk', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.bulkDelete).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for invalid ID types', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         ids: ['invalid', 2, 3]
       }
@@ -309,6 +331,8 @@ describe('/api/transactions/bulk', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.bulkDelete).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should handle database errors', async () => {
@@ -331,6 +355,8 @@ describe('/api/transactions/bulk', () => {
     })
 
     it('should handle invalid JSON', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const request = new NextRequest('http://localhost:3000/api/transactions/bulk', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -340,6 +366,8 @@ describe('/api/transactions/bulk', () => {
       const response = await DELETE(request)
 
       expect(response.status).toBe(500)
+
+      consoleSpy.mockRestore()
     })
   })
 })

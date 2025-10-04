@@ -57,15 +57,6 @@ export default function ImportPage() {
     setShowResumeBanner(false)
   }
 
-  const clearImportSession = () => {
-    sessionStorage.removeItem('csvData')
-    sessionStorage.removeItem('columnMapping')
-    sessionStorage.removeItem('selectedSourceId')
-    sessionStorage.removeItem('reversePurchases')
-    setShowResumeBanner(false)
-    setResumeStep(null)
-  }
-
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
@@ -77,22 +68,22 @@ export default function ImportPage() {
   const validateFile = (file: File) => {
     const errors: string[] = []
     const maxSize = 50 * 1024 * 1024 // 50MB
-    
+
     // Check file size
     if (file.size > maxSize) {
       errors.push('File size exceeds 50MB limit')
     }
-    
+
     // Check file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
       errors.push('Only CSV files are allowed')
     }
-    
+
     // Check file name
     if (file.name.length > 100) {
       errors.push('File name is too long')
     }
-    
+
     return {
       valid: errors.length === 0,
       errors: errors
@@ -221,8 +212,13 @@ export default function ImportPage() {
   }, [])
 
   const processFiles = useCallback((files: FileList) => {
-    // Clear any existing import session when uploading new files
-    clearImportSession()
+    // Clear any existing import session when uploading new files (inline to avoid dependency issue)
+    sessionStorage.removeItem('csvData')
+    sessionStorage.removeItem('columnMapping')
+    sessionStorage.removeItem('selectedSourceId')
+    sessionStorage.removeItem('reversePurchases')
+    setShowResumeBanner(false)
+    setResumeStep(null)
 
     setValidationErrors([])
     const newFiles: UploadedFile[] = []
@@ -252,7 +248,7 @@ export default function ImportPage() {
 
     setUploadedFiles(prev => [...prev, ...newFiles])
     setValidationErrors(errors)
-  }, [processFileData, clearImportSession])
+  }, [processFileData])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files

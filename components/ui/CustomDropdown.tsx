@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown } from 'lucide-react'
 
 export interface DropdownOption {
@@ -41,6 +41,14 @@ export function CustomDropdown({
 
   const selectedOption = options.find(opt => opt.value === value) || null
 
+  // Define handleSelect before it's used in effects
+  const handleSelect = useCallback((option: DropdownOption) => {
+    onChange(option.value)
+    setIsOpen(false)
+    setHighlightedIndex(-1)
+    triggerRef.current?.focus()
+  }, [onChange])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,13 +77,13 @@ export function CustomDropdown({
           break
         case 'ArrowDown':
           event.preventDefault()
-          setHighlightedIndex(prev => 
+          setHighlightedIndex(prev =>
             prev < options.length - 1 ? prev + 1 : 0
           )
           break
         case 'ArrowUp':
           event.preventDefault()
-          setHighlightedIndex(prev => 
+          setHighlightedIndex(prev =>
             prev > 0 ? prev - 1 : options.length - 1
           )
           break
@@ -93,7 +101,7 @@ export function CustomDropdown({
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, highlightedIndex, options])
+  }, [isOpen, highlightedIndex, options, handleSelect])
 
   // Scroll highlighted option into view
   useEffect(() => {
@@ -104,13 +112,6 @@ export function CustomDropdown({
       }
     }
   }, [highlightedIndex])
-
-  const handleSelect = (option: DropdownOption) => {
-    onChange(option.value)
-    setIsOpen(false)
-    setHighlightedIndex(-1)
-    triggerRef.current?.focus()
-  }
 
   const handleTriggerClick = () => {
     if (disabled) return

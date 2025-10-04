@@ -34,9 +34,25 @@ beforeAll(() => {
 })
 
 describe('Transaction Type Detection and Consolidation', () => {
+  let consoleErrorSpy: jest.SpyInstance
+
   beforeEach(() => {
     jest.clearAllMocks()
     Object.keys(mockSessionStorage).forEach(key => delete mockSessionStorage[key])
+    // Suppress expected "Error fetching sources" console.error for all tests
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation((message) => {
+      // Only suppress the specific "Error fetching sources" error
+      if (typeof message === 'string' && message.includes('Error fetching sources')) {
+        return
+      }
+      // Let other errors through (in case of real issues)
+      console.warn(message)
+    })
+  })
+
+  afterEach(() => {
+    // Restore console.error after each test
+    consoleErrorSpy.mockRestore()
   })
 
   describe('Auto-detection of Transaction Type column', () => {

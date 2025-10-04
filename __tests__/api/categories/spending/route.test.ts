@@ -325,12 +325,16 @@ describe('/api/categories/spending', () => {
     })
 
     it('should error on custom period without dates', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const request = new NextRequest('http://localhost/api/categories/spending?period=custom')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(400)
       expect(data.error).toContain('Custom period requires')
+
+      consoleSpy.mockRestore()
     })
   })
 
@@ -590,12 +594,16 @@ describe('/api/categories/spending', () => {
     })
 
     it('should handle invalid period parameter', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const request = new NextRequest('http://localhost/api/categories/spending?period=invalid')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(400)
       expect(data.error).toBe('Invalid query parameters')
+
+      consoleSpy.mockRestore()
     })
   })
 })

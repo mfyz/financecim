@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Calendar, Building2, FileText, Tag, DollarSign, Layers, Tags, EyeOff, StickyNote, Settings, Trash2, ChevronDown, ChevronUp, X, RefreshCw, Info } from 'lucide-react'
 import { TransactionWithRelations } from '@/db/models/transactions.model'
@@ -89,16 +89,6 @@ export default function TransactionsPage() {
     fetchTags()
   }, [])
 
-  // Fetch transactions when filters change
-  useEffect(() => {
-    fetchTransactions()
-  }, [currentPage, sortBy, sortOrder, searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
-
-  // Fetch stats when filters change
-  useEffect(() => {
-    fetchStats()
-  }, [searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
-
   const fetchUnits = async () => {
     try {
       const response = await fetch('/api/units')
@@ -132,14 +122,14 @@ export default function TransactionsPage() {
     }
   }
 
-  const buildQueryParams = () => {
+  const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams()
-    
+
     params.set('page', currentPage.toString())
     params.set('limit', limit.toString())
     params.set('sortBy', sortBy)
     params.set('sortOrder', sortOrder)
-    
+
     if (searchTerm) params.set('search', searchTerm)
     if (selectedUnit !== 'all') params.set('unitId', selectedUnit)
     if (selectedSource !== 'all') params.set('sourceId', selectedSource)
@@ -156,11 +146,11 @@ export default function TransactionsPage() {
     if (amountMax) params.set('amountMax', amountMax)
     if (showIgnored !== undefined) params.set('showIgnored', showIgnored.toString())
     if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
-    
-    return params
-  }
 
-  const fetchTransactions = async () => {
+    return params
+  }, [currentPage, limit, sortBy, sortOrder, searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
+
+  const fetchTransactions = useCallback(async () => {
     setLoading(true)
     try {
       const params = buildQueryParams()
@@ -182,9 +172,9 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [buildQueryParams, selectedCategory])
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (searchTerm) params.set('search', searchTerm)
@@ -204,7 +194,17 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error('Error fetching stats:', error)
     }
-  }
+  }, [searchTerm, selectedUnit, selectedSource, selectedCategory, dateFrom, dateTo, amountMin, amountMax, showIgnored, selectedTags])
+
+  // Fetch transactions when filters change
+  useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
+
+  // Fetch stats when filters change
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   const toggleSort = (field: 'date' | 'amount' | 'description' | 'created_at') => {
     if (sortBy === field) {

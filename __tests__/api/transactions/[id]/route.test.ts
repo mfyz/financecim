@@ -156,6 +156,8 @@ describe('/api/transactions/[id]', () => {
     })
 
     it('should return 400 for validation errors', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         sourceId: 'invalid', // should be number
         description: '', // should be non-empty
@@ -175,9 +177,13 @@ describe('/api/transactions/[id]', () => {
       expect(data.error).toBe('Validation failed')
       expect(data.details).toBeDefined()
       expect(mockTransactionsModel.update).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for description too long', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         description: 'A'.repeat(501) // exceeds max length
       }
@@ -194,6 +200,8 @@ describe('/api/transactions/[id]', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.update).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 404 for non-existent transaction', async () => {

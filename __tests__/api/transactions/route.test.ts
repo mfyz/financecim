@@ -229,6 +229,8 @@ describe('/api/transactions', () => {
     })
 
     it('should return 400 for invalid data - missing required fields', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         sourceId: 1,
         // missing date, description, amount
@@ -247,9 +249,13 @@ describe('/api/transactions', () => {
       expect(data.error).toBe('Validation failed')
       expect(data.details).toBeDefined()
       expect(mockTransactionsModel.create).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for invalid data types', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         sourceId: 'invalid', // should be number
         date: '2024-01-20',
@@ -270,9 +276,13 @@ describe('/api/transactions', () => {
       expect(data.error).toBe('Validation failed')
       expect(data.details).toBeDefined()
       expect(mockTransactionsModel.create).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should return 400 for description too long', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const invalidData = {
         sourceId: 1,
         date: '2024-01-20',
@@ -292,6 +302,8 @@ describe('/api/transactions', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Validation failed')
       expect(mockTransactionsModel.create).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should handle foreign key constraint errors', async () => {
@@ -334,6 +346,8 @@ describe('/api/transactions', () => {
     })
 
     it('should handle invalid JSON', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const request = new NextRequest('http://localhost:3000/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -343,6 +357,8 @@ describe('/api/transactions', () => {
       const response = await POST(request)
 
       expect(response.status).toBe(500)
+
+      consoleSpy.mockRestore()
     })
   })
 })

@@ -70,6 +70,7 @@ export default function ImportStep3Page() {
   useEffect(() => {
     setMounted(true)
     loadImportData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

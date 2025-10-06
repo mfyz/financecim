@@ -58,10 +58,6 @@ describe('Real CSV Import Bug - Integration Test', () => {
       allowDuplicate: false
     }
 
-    console.log('Transaction being sent to API:', JSON.stringify(transaction, null, 2))
-    console.log('Expected source_category:', 'Dining')
-    console.log('Actual source_category in payload:', transaction.source_category)
-
     const req = new NextRequest('http://localhost:3000/api/transactions/import', {
       method: 'POST',
       body: JSON.stringify({ transactions: [transaction] }),
@@ -82,7 +78,6 @@ describe('Real CSV Import Bug - Integration Test', () => {
     })
 
     const inserted = allTransactions.data.find(t => t.description === 'Coffee Shop')
-    console.log('Inserted transaction from DB:', JSON.stringify(inserted, null, 2))
 
     expect(inserted).toBeTruthy()
 

@@ -232,12 +232,16 @@ describe('/api/transactions/trends', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid period parameter', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       const request = new NextRequest('http://localhost/api/transactions/trends?period=invalid')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(400)
       expect(data.error).toBe('Invalid query parameters')
+
+      consoleSpy.mockRestore()
     })
 
     it('should handle invalid unitId parameter', async () => {

@@ -40,6 +40,7 @@ interface ColumnMapping {
   source_category: string
   debit?: string  // Optional: for separate debit column
   credit?: string // Optional: for separate credit column
+  transaction_type?: string // Optional: for transaction type column (Credit/Debit values)
 }
 
 interface Source {
@@ -72,10 +73,6 @@ export default function ImportStep3Page() {
     loadImportData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    console.log('Toolbar debug:', { mounted, selectedIdsSize: selectedIds.size, shouldShow: mounted && selectedIds.size > 0 })
-  }, [mounted, selectedIds])
 
   const generateRowHash = (row: string[], columnMapping: ColumnMapping, sourceId: number): string => {
     // Generate hash using the same algorithm as the backend
@@ -117,12 +114,33 @@ export default function ImportStep3Page() {
     return sourceData
   }
 
-  const getAmountFromRow = (row: string[], columnMapping: ColumnMapping, reversePurchases: boolean): string => {
+  const getAmountFromRow = (row: string[], columnMapping: ColumnMapping, reversePurchases: boolean, useTransactionType: boolean): string => {
     // Helper function to extract amount from row, handling debit/credit consolidation
     let amount = ''
 
+    // Check if transaction type + amount consolidation is enabled
+    if (useTransactionType && columnMapping.transaction_type && columnMapping.amount) {
+      const transactionType = row[parseInt(columnMapping.transaction_type)]?.trim().toLowerCase() || ''
+      const amountValue = row[parseInt(columnMapping.amount)] || ''
+
+      if (amountValue && amountValue.trim()) {
+        const numAmount = parseFloat(amountValue)
+        if (!isNaN(numAmount)) {
+          if (transactionType === 'debit') {
+            // Debit is an expense (negative)
+            amount = (-Math.abs(numAmount)).toString()
+          } else if (transactionType === 'credit') {
+            // Credit is income/payment (positive)
+            amount = Math.abs(numAmount).toString()
+          } else {
+            // Unknown type, use as-is
+            amount = numAmount.toString()
+          }
+        }
+      }
+    }
     // Automatically consolidate if both debit and credit columns are mapped
-    if (columnMapping.debit && columnMapping.credit) {
+    else if (columnMapping.debit && columnMapping.credit) {
       // Consolidate debit/credit columns
       const debitValue = row[parseInt(columnMapping.debit)] || ''
       const creditValue = row[parseInt(columnMapping.credit)] || ''
@@ -212,6 +230,7 @@ export default function ImportStep3Page() {
       const columnMappingStr = sessionStorage.getItem('columnMapping')
       const selectedSourceIdStr = sessionStorage.getItem('selectedSourceId')
       const reversePurchasesStr = sessionStorage.getItem('reversePurchases')
+      const useTransactionTypeStr = sessionStorage.getItem('useTransactionType')
 
       if (!columnMappingStr || !selectedSourceIdStr) {
         router.push('/import/step2')
@@ -222,6 +241,7 @@ export default function ImportStep3Page() {
       const columnMapping: ColumnMapping = JSON.parse(columnMappingStr)
       const selectedSourceId = parseInt(selectedSourceIdStr)
       const reversePurchases = reversePurchasesStr ? JSON.parse(reversePurchasesStr) : false
+      const useTransactionType = useTransactionTypeStr ? JSON.parse(useTransactionTypeStr) : false
 
       // Fetch source information
       let sourceInfo: Source | null = null
@@ -242,12 +262,15 @@ export default function ImportStep3Page() {
       // IMPORTANT: Apply amount transformations BEFORE generating hash to match database
       const allHashes: string[] = []
       dataRows.forEach((row) => {
-        // Get transformed amount (handles both debit/credit consolidation and reversal)
-        const amountForHash = getAmountFromRow(row, columnMapping, reversePurchases)
+        // Get transformed amount (handles debit/credit, transaction type, and reversal)
+        const amountForHash = getAmountFromRow(row, columnMapping, reversePurchases, useTransactionType)
 
         // Generate hash with the transformed amount
         const modifiedRow = [...row]
-        if (columnMapping.amount) {
+        if (useTransactionType && columnMapping.transaction_type && columnMapping.amount) {
+          // For transaction type mode, use amount column for hash
+          modifiedRow[parseInt(columnMapping.amount)] = amountForHash
+        } else if (columnMapping.amount) {
           modifiedRow[parseInt(columnMapping.amount)] = amountForHash
         } else if (columnMapping.debit) {
           // For debit/credit mode, use debit column for hash consistency
@@ -282,12 +305,15 @@ export default function ImportStep3Page() {
         const validation = validateTransaction(row, columnMapping)
         const sourceData = serializeSourceData(row, headers)
 
-        // Get transformed amount (handles both debit/credit consolidation and reversal)
-        const amount = getAmountFromRow(row, columnMapping, reversePurchases)
+        // Get transformed amount (handles debit/credit, transaction type, and reversal)
+        const amount = getAmountFromRow(row, columnMapping, reversePurchases, useTransactionType)
 
         // Generate hash with the transformed amount
         const modifiedRow = [...row]
-        if (columnMapping.amount) {
+        if (useTransactionType && columnMapping.transaction_type && columnMapping.amount) {
+          // For transaction type mode, use amount column for hash
+          modifiedRow[parseInt(columnMapping.amount)] = amount
+        } else if (columnMapping.amount) {
           modifiedRow[parseInt(columnMapping.amount)] = amount
         } else if (columnMapping.debit) {
           // For debit/credit mode, use debit column for hash consistency
@@ -958,17 +984,16 @@ export default function ImportStep3Page() {
               </p>
               <div className="flex space-x-3">
                 <Link
-                  href="/"
+                  href="/transactions"
                   className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-center"
                 >
-                  View Dashboard
+                  Open Transactions
                 </Link>
                 <Link
-                  href="/import"
+                  href="/"
                   className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-lg transition-colors text-center"
-                  onClick={() => setImportComplete(false)}
                 >
-                  Import More
+                  View Dashboard
                 </Link>
               </div>
             </div>

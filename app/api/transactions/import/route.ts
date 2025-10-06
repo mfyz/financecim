@@ -6,8 +6,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const importTransactions = body.transactions
 
-    console.log('Import API called with', importTransactions?.length, 'transactions')
-
     if (!importTransactions || !Array.isArray(importTransactions)) {
       console.error('Invalid transaction data:', importTransactions)
       return NextResponse.json(
@@ -23,8 +21,6 @@ export async function POST(request: NextRequest) {
     // Process each transaction
     for (const transaction of importTransactions) {
       try {
-        console.log('Processing transaction:', transaction)
-
         // Normalize the transaction payload (this will generate the correct hash)
         const normalized = transactionsModel.normalizePayload(transaction)
 
@@ -32,19 +28,15 @@ export async function POST(request: NextRequest) {
         if (normalized.hash && !transaction.allowDuplicate) {
           const existing = await transactionsModel.getByHash(normalized.hash)
           if (existing) {
-            console.log('Skipping duplicate transaction with hash:', normalized.hash)
             skipped++
             continue
           }
-        } else if (transaction.allowDuplicate) {
-          console.log('Allowing duplicate import (user override) for hash:', normalized.hash)
         }
 
         // Create the transaction (pass the already-normalized data)
         await transactionsModel.create(transaction)
 
         imported++
-        console.log('Successfully imported transaction', imported)
       } catch (error) {
         console.error('Error importing transaction:', error)
         if (error instanceof Error) {
@@ -56,8 +48,6 @@ export async function POST(request: NextRequest) {
         // Continue with next transaction
       }
     }
-
-    console.log('Import complete:', { imported, skipped, total: importTransactions.length, errors: errors.length })
 
     return NextResponse.json({
       success: true,

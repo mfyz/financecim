@@ -406,12 +406,7 @@ export default function ImportStep2Page() {
       } else {
         widths[index] = 'narrow' // Short content like dates, amounts
       }
-
-      console.log(`Column ${index} (${header}): maxLength=${maxLength}, avgLength=${avgLength.toFixed(1)}, width=${widths[index]}`)
     })
-
-    console.log('All CSV headers:', csvData[0])
-    console.log('Column widths mapping:', widths)
 
     setColumnWidths(widths)
   }
@@ -432,7 +427,6 @@ export default function ImportStep2Page() {
     if (!csvData || csvData.length === 0) return
 
     const headers = csvData[0]
-    console.log('Auto-detecting columns for headers:', headers)
 
     const mapping: ColumnMapping = {
       date: '',
@@ -515,7 +509,6 @@ export default function ImportStep2Page() {
       })
     })
 
-    console.log('Auto-detected mapping:', mapping)
     setColumnMapping(mapping)
   }
 
@@ -530,7 +523,7 @@ export default function ImportStep2Page() {
         const transactionType = row[parseInt(columnMapping.transaction_type)]?.trim().toLowerCase() || ''
         const amountValue = row[parseInt(columnMapping.amount)] || ''
 
-        if (amountValue && amountValue.trim()) {
+          if (amountValue && amountValue.trim()) {
           const numAmount = parseFloat(amountValue)
           if (!isNaN(numAmount)) {
             if (transactionType === 'debit') {

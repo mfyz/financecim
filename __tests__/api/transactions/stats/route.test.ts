@@ -155,6 +155,8 @@ describe('/api/transactions/stats', () => {
     })
 
     it('should handle invalid numeric parameters gracefully', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       mockTransactionsModel.getStats.mockResolvedValue(mockStats)
 
       const request = new NextRequest('http://localhost:3000/api/transactions/stats?unitId=invalid&amountMin=not-a-number')
@@ -165,6 +167,8 @@ describe('/api/transactions/stats', () => {
       expect(data.error).toBe('Invalid query parameters')
       expect(data.details).toBeDefined()
       expect(mockTransactionsModel.getStats).not.toHaveBeenCalled()
+
+      consoleSpy.mockRestore()
     })
 
     it('should ignore empty string parameters', async () => {

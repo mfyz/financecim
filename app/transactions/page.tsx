@@ -648,7 +648,7 @@ export default function TransactionsPage() {
                       Source
                     </div>
                   </th>
-                  <th 
+                  <th
                     onClick={() => toggleSort('description')}
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[200px]"
                   >
@@ -662,13 +662,7 @@ export default function TransactionsPage() {
                       )}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
-                    <div className="flex items-center">
-                      <Tag className="w-3 h-3 mr-1" />
-                      Source Category
-                    </div>
-                  </th>
-                  <th 
+                  <th
                     onClick={() => toggleSort('amount')}
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[100px]"
                   >
@@ -692,6 +686,12 @@ export default function TransactionsPage() {
                     <div className="flex items-center">
                       <Tags className="w-3 h-3 mr-1" />
                       Category
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
+                    <div className="flex items-center">
+                      <Tag className="w-3 h-3 mr-1" />
+                      Source Category
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider min-w-[80px]">
@@ -736,23 +736,20 @@ export default function TransactionsPage() {
                     <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">
                       {transaction.description}
                     </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {transaction.sourceCategory || '-'}
-                    </td>
                     <td className={`px-6 py-3 whitespace-nowrap text-sm font-semibold ${
-                      transaction.amount > 0 
-                        ? 'text-green-600 dark:text-green-400' 
+                      transaction.amount > 0
+                        ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
                     }`}>
                       {transaction.amount > 0 ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm">
-                      <select 
+                      <select
                         value={transaction.unitId || ''}
                         onChange={(e) => updateTransaction(transaction.id, { unitId: e.target.value ? parseInt(e.target.value) : undefined })}
                         className={`border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-2 py-1 text-xs min-w-[100px] ${
-                          !transaction.unitId 
-                            ? 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/30' 
+                          !transaction.unitId
+                            ? 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/30'
                             : 'border-gray-300'
                         }`}
                       >
@@ -772,11 +769,14 @@ export default function TransactionsPage() {
                         includeUncategorized={false}
                         size="sm"
                         className={`text-xs min-w-[120px] ${
-                          !transaction.categoryId 
-                            ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30' 
+                          !transaction.categoryId
+                            ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30'
                             : ''
                         }`}
                       />
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {transaction.sourceCategory || '-'}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm">
                       <input 

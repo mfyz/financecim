@@ -809,7 +809,7 @@ export default function ImportStep3Page() {
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-red-600 dark:text-red-400'
                       }>
-                        ${Math.abs(parseFloat(transaction.amount)).toFixed(2)}
+                        ${Math.abs(parseFloat(transaction.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     )}
                   </td>

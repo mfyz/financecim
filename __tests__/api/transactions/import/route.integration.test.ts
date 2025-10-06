@@ -6,6 +6,9 @@ import { POST } from '@/app/api/transactions/import/route'
 import { transactionsModel } from '@/db/models/transactions.model'
 import { sourcesModel } from '@/db/models/sources.model'
 
+// Store original console methods
+const originalError = console.error
+
 describe('POST /api/transactions/import - Integration Tests', () => {
   let consoleSpy: jest.SpyInstance
   let consoleErrSpy: jest.SpyInstance
@@ -20,15 +23,15 @@ describe('POST /api/transactions/import - Integration Tests', () => {
       })
       testSourceId = source.id
     } catch (error) {
-      console.error('Failed to create test source:', error)
+      originalError('Failed to create test source:', error)
       throw error
     }
   })
 
   beforeEach(() => {
-    // Don't suppress console logs - we need to see them
-    consoleSpy = jest.spyOn(console, 'log')
-    consoleErrSpy = jest.spyOn(console, 'error')
+    // Spy on console to capture logs, but suppress output
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+    consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -56,26 +59,26 @@ describe('POST /api/transactions/import - Integration Tests', () => {
       body: JSON.stringify({ transactions: [transaction] }),
     })
 
-    console.log('=== Running Integration Test ===')
-    console.log('Transaction to import:', JSON.stringify(transaction, null, 2))
+    // Debug logs suppressed to reduce test output noise
+    // Uncomment for debugging:
+    // console.log('=== Running Integration Test ===')
+    // console.log('Transaction to import:', JSON.stringify(transaction, null, 2))
 
     const res = await POST(req)
     const body = await res.json()
 
-    console.log('Response status:', res.status)
-    console.log('Response body:', JSON.stringify(body, null, 2))
-
-    // Check console logs for debugging
-    const allLogs = consoleSpy.mock.calls.map(call => call.join(' ')).join('\n')
-    const allErrors = consoleErrSpy.mock.calls.map(call => call.join(' ')).join('\n')
-
-    console.log('=== Console Logs ===')
-    console.log(allLogs)
-
-    if (allErrors) {
-      console.log('=== Console Errors ===')
-      console.log(allErrors)
-    }
+    // Debug logs suppressed to reduce test output noise
+    // Uncomment for debugging:
+    // console.log('Response status:', res.status)
+    // console.log('Response body:', JSON.stringify(body, null, 2))
+    // const allLogs = consoleSpy.mock.calls.map(call => call.join(' ')).join('\n')
+    // const allErrors = consoleErrSpy.mock.calls.map(call => call.join(' ')).join('\n')
+    // console.log('=== Console Logs ===')
+    // console.log(allLogs)
+    // if (allErrors) {
+    //   console.log('=== Console Errors ===')
+    //   console.log(allErrors)
+    // }
 
     expect(res.status).toBe(200)
     expect(body).toMatchObject({
@@ -94,12 +97,14 @@ describe('POST /api/transactions/import - Integration Tests', () => {
         dateTo: '2024-01-15'
       })
 
-      console.log('Total transactions found for 2024-01-15:', allTransactions.total)
-      console.log('Looking for description:', `Integration Test Transaction ${timestamp}`)
+      // Debug logs suppressed - uncomment for debugging:
+      // console.log('Total transactions found for 2024-01-15:', allTransactions.total)
+      // console.log('Looking for description:', `Integration Test Transaction ${timestamp}`)
 
       const inserted = allTransactions.data.find(t => t.description === `Integration Test Transaction ${timestamp}`)
 
-      console.log('Found inserted transaction:', inserted)
+      // Debug logs suppressed - uncomment for debugging:
+      // console.log('Found inserted transaction:', inserted)
       expect(inserted).toBeTruthy()
       expect(inserted?.amount).toBe(-99.99)
       expect(inserted?.sourceCategory).toBe('Test Category')
@@ -122,7 +127,8 @@ describe('POST /api/transactions/import - Integration Tests', () => {
     const res = await POST(req)
     const body = await res.json()
 
-    console.log('Hash test response:', body)
+    // Debug logs suppressed - uncomment for debugging:
+    // console.log('Hash test response:', body)
 
     expect(res.status).toBe(200)
     expect(body.imported).toBe(1)
@@ -136,7 +142,8 @@ describe('POST /api/transactions/import - Integration Tests', () => {
     const res2 = await POST(req2)
     const body2 = await res2.json()
 
-    console.log('Duplicate test response:', body2)
+    // Debug logs suppressed - uncomment for debugging:
+    // console.log('Duplicate test response:', body2)
 
     expect(res2.status).toBe(200)
     expect(body2.skipped).toBe(1)

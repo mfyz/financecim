@@ -9,6 +9,24 @@ require('@testing-library/jest-dom')
 // Mock environment variables for testing
 process.env.DATABASE_URL = './data_test.db'
 
+// Suppress noisy database connection logs globally
+const originalLog = console.log
+global.console.log = (...args) => {
+  const message = args[0]
+  if (typeof message === 'string') {
+    // Suppress database infrastructure logs
+    if (message.includes('📁 Using local SQLite') ||
+        message.includes('ℹ️  No migrations') ||
+        message.includes('✅ Database migrations') ||
+        message.includes('🔄 Turso configuration') ||
+        message.includes('📝 Will fall back')) {
+      return
+    }
+  }
+  // Let other logs through
+  originalLog(...args)
+}
+
 // Disable global database mock to allow individual test mocking
 // jest.mock('@/db/connection', () => ({
 //   getDatabase: jest.fn(() => ({

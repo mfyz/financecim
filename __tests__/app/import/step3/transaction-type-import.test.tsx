@@ -10,6 +10,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import ImportStep3Page from '@/app/import/step3/page'
 
+// Suppress console.log output for this test file (bug documentation logs)
+jest.spyOn(console, 'log').mockImplementation(() => {})
+
 // Mock Next.js modules
 jest.mock('next/link', () => {
   return function MockLink({ children, href, className, onClick }: any) {
